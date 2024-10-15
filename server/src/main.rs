@@ -1,13 +1,39 @@
-use std::collections::HashMap;
-use std::env;
+use clap::Parser;
 use std::error::Error;
 use std::os::fd::AsFd;
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
-const WIDTH: u32 = 30;
-const HEIGHT: u32 = 20;
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long, help = "Port number")]
+    port: u16,
+
+    #[arg(short('x'), long, help = "World width")]
+    width: u16,
+
+    #[arg(short('y'), long, help = "World height")]
+    height: u16,
+
+    #[arg(
+        short,
+        long,
+        help = "Number of clients authorized at the beginning of the game"
+    )]
+    clients: u16,
+
+    #[arg(
+        short,
+        long,
+        help = "Time Unit Divider (the greater t is, the faster the game will go)"
+    )]
+    tud: u16,
+
+    #[arg(short, long, help = "List of team names", required = true, num_args = 1..)]
+    names: Vec<String>,
+}
 
 struct Server {
     pub max_clients: u32,
@@ -58,10 +84,9 @@ async fn read_socket(socket: &mut TcpStream) -> Option<String> {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let addr = env::args()
-        .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:8080".to_string());
-    let server = Arc::new(Mutex::new(Server::new(1)));
+    let args = Args::parse();
+    let addr = format!("127.0.0.1:{}", args.port);
+    let server = Arc::new(Mutex::new(Server::new(1))); // TODO: args.clients?
 
     let listener = TcpListener::bind(&addr).await?;
     println!("Listening on: {}", addr);
@@ -83,7 +108,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 &format!("{}\n", server.lock().unwrap().remaining_clients()),
             )
             .await;
-            write_socket(&mut socket, &format!("{} {}\n", WIDTH, HEIGHT)).await;
+            write_socket(&mut socket, &format!("{} {}\n", args.width, args.height)).await;
 
             println!("Client connected in team: {team_name}");
 
