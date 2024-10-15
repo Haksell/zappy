@@ -8,3 +8,5 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.20", features = ["derive"] }
 tokio = { version = "1.40.0", default-features = true, features = ["full"] }
+log = { workspace = true }
+env_logger = { workspace = true }
