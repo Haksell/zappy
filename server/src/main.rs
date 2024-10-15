@@ -22,8 +22,37 @@ impl Server {
         }
     }
 
-    pub fn add_client(&mut self, client: &TcpStream) {
-        self.clients.push(format!("{:?}", client.as_fd()));
+    pub fn add_client(&mut self, client: &TcpStream) -> bool {
+        if self.remaining_clients() == 0 {
+            false
+        } else {
+            self.clients.push(format!("{:?}", client.as_fd()));
+            true
+        }
+    }
+
+    pub fn remaining_clients(&self) -> u32 {
+        self.max_clients - self.clients.len() as u32
+    }
+}
+
+async fn write_socket(socket: &mut TcpStream, message: &str) {
+    socket
+        .write_all(message.as_bytes())
+        .await
+        .expect("failed to write data to socket");
+}
+
+async fn read_socket(socket: &mut TcpStream) -> Option<String> {
+    let mut buf = vec![0; 1024];
+    let n = socket
+        .read(&mut buf)
+        .await
+        .expect("failed to read data from socket");
+    if n == 0 {
+        None
+    } else {
+        Some(String::from_utf8(buf).unwrap())
     }
 }
 
@@ -42,31 +71,26 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let server = Arc::clone(&server);
 
         tokio::spawn(async move {
-            let mut buf = vec![0; 1024];
-            server.lock().unwrap().add_client(&socket);
+            if !server.lock().unwrap().add_client(&socket) {
+                write_socket(&mut socket, "Too many clients\n").await;
+                return;
+            };
 
-            println!("{:?}", server.lock().unwrap().clients);
+            write_socket(&mut socket, "BIENVENUE\n").await;
+            let team_name = read_socket(&mut socket).await.unwrap();
+            write_socket(
+                &mut socket,
+                &format!("{}\n", server.lock().unwrap().remaining_clients()),
+            )
+            .await;
+            write_socket(&mut socket, &format!("{} {}\n", WIDTH, HEIGHT)).await;
+
+            println!("Client connected in team: {team_name}");
 
             loop {
-                let n = socket
-                    .read(&mut buf)
-                    .await
-                    .expect("failed to read data from socket");
-
-                if n == 0 {
-                    return;
-                }
-
-                print!(
-                    "{:?} {}",
-                    socket.as_fd(),
-                    String::from_utf8(buf.clone()).unwrap()
-                );
-
-                socket
-                    .write_all(&buf[0..n])
-                    .await
-                    .expect("failed to write data to socket");
+                let s = read_socket(&mut socket).await.unwrap();
+                print!("{:?} {}", socket.as_fd(), s);
+                write_socket(&mut socket, &s).await;
             }
         });
     }
