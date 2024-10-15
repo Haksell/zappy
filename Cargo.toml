@@ -1,3 +1,6 @@
 [workspace]
-members = ["server"]
+members = ["server", "client"]
 resolver = "2"
+
+[workspace.dependencies]
+clap = { version = "4.5.20", features = ["derive"] }
