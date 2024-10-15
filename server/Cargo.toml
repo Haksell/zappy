@@ -8,3 +8,5 @@ clap = { workspace = true }
 tokio = { version = "1.40.0", default-features = true, features = ["full"] }
 log = { workspace = true }
 env_logger = { workspace = true }
+chrono = { workspace = true }
+colored = { workspace = true }

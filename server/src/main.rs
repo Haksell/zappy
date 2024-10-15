@@ -4,12 +4,15 @@ mod server;
 
 use crate::client::Client;
 use crate::server::Server;
-use std::env;
+use chrono::Local;
+use colored::Colorize;
+use env_logger::Builder;
+use log::{Level, LevelFilter};
 use std::error::Error;
-use std::os::fd::AsFd;
-use std::sync::{Arc, Mutex};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use std::io::Write;
+use std::sync::Arc;
+use tokio::net::TcpListener;
+use tokio::sync::{mpsc, Mutex};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -47,7 +50,26 @@ const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";
 
 //TODO: change to info the default log level
 fn init_logger() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
+    Builder::new()
+        .filter(None, LevelFilter::Debug)
+        .format(|buf, record| {
+            let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
+            let level = match record.level() {
+                Level::Error => "ERROR".red().bold(),
+                Level::Warn => "WARN".yellow().bold(),
+                Level::Info => "INFO".green().bold(),
+                Level::Debug => "DEBUG".blue().bold(),
+                Level::Trace => "TRACE".magenta().bold(),
+            };
+            writeln!(
+                buf,
+                "{} [{}]: {}",
+                timestamp,
+                level,
+                record.args().to_string().trim_end()
+            )
+        })
+        .init();
     log::debug!("Starting the server");
 }
 
@@ -57,13 +79,14 @@ pub enum ZappyError {
     LogicalError(String),
 }
 
+enum ServerCommandToClient {
+    Shutdown,
+    SendMessage(String),
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     init_logger();
-    let addr = env::args()
-        .nth(1)
-        .unwrap_or_else(|| "127.0.0.1:8080".to_string());
-    let server = Arc::new(Mutex::new(Server::new(1)));
     let args = Args::parse();
     let addr = format!("127.0.0.1:{}", args.port);
     let server = Arc::new(Mutex::new(Server::new(1))); // TODO: args.clients?
@@ -72,34 +95,30 @@ async fn main() -> Result<(), Box<dyn Error>> {
     log::debug!("Listening on: {}", addr);
 
     loop {
-        let (socket, _) = listener.accept().await?;
-        let mut client = Client::new(socket);
+        let (socket, addr) = listener.accept().await?;
+        log::debug!("New connection from: {}", addr);
+        let mut client = Client::new(socket, addr.clone());
         let server = Arc::clone(&server);
 
         tokio::spawn(async move {
             let bidon: Result<(), ZappyError> = async {
-                /*
-                if !server.lock().unwrap().add_client(&client) {
-                    write_socket(&mut client, "Too many clients\n").await;
-                    return;
-                };
-                 */
-
+                //TODO: review the queue size
+                let (cmd_tx, cmd_rx) = mpsc::channel::<ServerCommandToClient>(32);
                 client.write_socket(HANDSHAKE_MSG).await?;
                 let team_name = client.read_socket().await?;
+                if !server.lock().await.add_client(team_name, addr, cmd_tx) {
+                    client.write_socket("Too many clients\n").await?;
+                };
                 client
-                    .write_socket(&format!("{}\n", server.lock().unwrap().remaining_clients()))
+                    .write_socket(&format!("{}\n", server.lock().await.remaining_clients()))
                     .await?;
                 client
                     .write_socket(&format!("{} {}\n", WIDTH, HEIGHT))
                     .await?;
 
-                log::debug!("Client connected in team: {team_name}");
-
                 loop {
                     let s = client.read_socket().await?;
-                    //log::debug!("{:?} {}", client.as_fd(), s);
-                    log::debug!("{:?} {}", "someone", s);
+                    log::debug!("{:?} {}", client.get_addr(), s);
 
                     client.write_socket(&s).await?;
                 }
@@ -107,8 +126,50 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .await;
 
             if let Err(err) = bidon {
-                println!("Bidon error: {:?}", err);
+                server.lock().await.remove_client(client.get_addr());
+                log::error!("{:?}", err);
             }
         });
     }
 }
+
+/*
+async fn handle_client(mut client: Client, mut cmd_rx: mpsc::Receiver<ServerCommandToClient>) -> std::io::Result<()> {
+    let mut buf = [0u8; 1024];
+
+    loop {
+        tokio::select! {
+            result = client.read(&mut buf) => {
+                let n = result?;
+                if n == 0 {
+                    println!("Client disconnected");
+                    return Ok(());
+                }
+                client.write_all(&buf[..n]).await?;
+            }
+
+            // Handle commands from the server
+            Some(cmd) = cmd_rx.recv() => {
+                match cmd {
+                    ServerCommandToClient::Shutdown => {
+                        println!("Shutdown command received. Closing connection.");
+                        let goodbye = b"Server is shutting down the connection.\n";
+                        client.write_all(goodbye).await?;
+                        return Ok(());
+                    }
+                    ServerCommandToClient::PrintMessage(message) => {
+                        println!("Sending message to client: {}", message.trim_end());
+                        client.write_all(message.as_bytes()).await?;
+                    }
+                }
+            }
+
+            else => {
+                return Ok(());
+            }
+        }
+    }
+}
+
+
+ */
