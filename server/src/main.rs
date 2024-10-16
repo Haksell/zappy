@@ -1,19 +1,25 @@
 mod args;
 mod client_connection;
 mod logger;
+mod map;
 mod player;
 mod server;
 
 use crate::args::ServerArgs;
 use crate::client_connection::ClientConnection;
 use crate::logger::init_logger;
+use crate::map::Play;
 use crate::server::Server;
 use clap::Parser;
-use serde_json::from_str;
+use serde_json::{from_str, to_string};
 use shared::Command;
 use std::error::Error;
 use std::sync::Arc;
+use std::time::Duration;
+use tokio::io::AsyncWriteExt;
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{mpsc, Mutex};
+use tokio::time::sleep;
 
 const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";
 
@@ -38,9 +44,24 @@ enum ServerCommandToClient {
 async fn main() -> Result<(), Box<dyn Error>> {
     init_logger();
     let args = ServerArgs::parse();
-    let (server, listener) = Server::from(args).await?;
+    let port = args.port;
+    let (server, regular_listener) = Server::from(args).await?;
+    let graphic_listener = TcpListener::bind("127.0.0.1:4242").await?;
     let server = Arc::new(Mutex::new(server));
 
+    log::debug!("Server running on 127.0.0.1:{port} (regular) and 127.0.0.1:4242 (stream)");
+
+    tokio::select! {
+        _ = handle_regular_connection(Arc::clone(&server), regular_listener) => {},
+        _ = handle_stream_connection(server, graphic_listener) => {},
+    }
+    Ok(())
+}
+
+async fn handle_regular_connection(
+    server: Arc<Mutex<Server>>,
+    listener: TcpListener,
+) -> Result<(), Box<dyn Error>> {
     loop {
         let (socket, addr) = listener.accept().await?;
         log::debug!("New connection from: {}", addr);
@@ -67,7 +88,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 client.writeln(&remaining_clients.to_string()).await?;
                 client.writeln(&format!("{} {}", width, height)).await?;
 
-                return handle_client(&mut client, cmd_rx).await;
+                return handle_player(&mut client, cmd_rx).await;
             }
             .await;
 
@@ -93,7 +114,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 }
 
-async fn handle_client(
+async fn handle_player(
     client: &mut ClientConnection,
     mut cmd_rx: mpsc::Receiver<ServerCommandToClient>,
 ) -> Result<(), ZappyError> {
@@ -136,6 +157,38 @@ async fn handle_client(
     }
 }
 
+async fn handle_stream_connection(
+    server: Arc<Mutex<Server>>,
+    listener: TcpListener,
+) -> Result<(), Box<dyn Error>> {
+    loop {
+        let (socket, addr) = listener.accept().await?;
+        log::debug!("New streaming client connected: {}", addr);
+        let server_clone = Arc::clone(&server);
+
+        tokio::spawn(async move {
+            if let Err(e) = handle_streaming_client(server_clone, socket).await {
+                log::error!("Error handling streaming client {}: {:?}", addr, e);
+            }
+        });
+    }
+}
+
+async fn handle_streaming_client(
+    server: Arc<Mutex<Server>>,
+    mut socket: TcpStream,
+) -> std::io::Result<()> {
+    loop {
+        let mut server_lock = server.lock().await;
+        let json_data = to_string(&server_lock.map)?;
+        server_lock.map.next_position();
+
+        socket.write_all(json_data.as_bytes()).await?;
+        socket.write_all(b"\n").await?; // Add a newline for easier reading
+
+        sleep(Duration::from_secs(1)).await;
+    }
+}
 /* Tests commands
 tokio::spawn(async move {
 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;

@@ -19,7 +19,7 @@ pub enum ServerResponse {
     /// Represents a generic value response.
     Value(String),
     ///Death of a player
-    Mort
+    Mort,
 }
 
 /// Represents the different commands that can be sent to the server.
@@ -101,4 +101,11 @@ impl Command {
             Command::ConnectNbr => 0,
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Map {
+    pub map: Vec<Vec<char>>,
+    pub cur_x: usize,
+    pub cur_y: usize,
 }

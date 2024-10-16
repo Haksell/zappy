@@ -1,6 +1,8 @@
 use crate::args::ServerArgs;
+use crate::map::Play;
 use crate::player::Player;
 use crate::{ServerCommandToClient, ZappyError};
+use shared::Map;
 use std::collections::HashMap;
 use std::error::Error;
 use std::net::SocketAddr;
@@ -16,6 +18,7 @@ pub struct Server {
     team_names: Vec<String>,
     clients: HashMap<SocketAddr, Player>,
     client_max_id: usize,
+    pub(crate) map: Map,
 }
 
 impl Server {
@@ -33,6 +36,7 @@ impl Server {
                 team_names: args.names,
                 clients: HashMap::new(),
                 client_max_id: 0,
+                map: Map::new(args.width, args.height),
             },
             listener,
         ))

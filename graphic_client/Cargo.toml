@@ -1,0 +1,11 @@
+[package]
+name = "graphic_client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1.40.0", default-features = true, features = ["full"] }
+crossterm = "0.28.1"
+unicode-width = "0.2.0"
+serde_json = { workspace = true }
+shared = {path = "../shared"}
