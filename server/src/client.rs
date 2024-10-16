@@ -35,9 +35,7 @@ impl Client {
             ZappyError::TechnicalError(format!("Failed to read data from socket: {}", e))
         })?;
         if n == 0 {
-            Err(ZappyError::TechnicalError(
-                "Client has closed the connection.".to_string(),
-            ))
+            Err(ZappyError::ConnectionClosedByClient)
         } else if n > BUF_SIZE {
             //TODO: handle properly
             Err(ZappyError::TechnicalError(

@@ -75,6 +75,7 @@ fn init_logger() {
 
 #[derive(Debug)]
 pub enum ZappyError {
+    ConnectionClosedByClient,
     TechnicalError(String),
     LogicalError(String),
 }
@@ -106,9 +107,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 let (cmd_tx, cmd_rx) = mpsc::channel::<ServerCommandToClient>(32);
                 client.write_socket(HANDSHAKE_MSG).await?;
                 let team_name = client.read_socket().await?;
-                if !server.lock().await.add_client(team_name, addr, cmd_tx) {
+                if !server.lock().await.add_client(team_name, addr, cmd_tx.clone()) {
                     client.write_socket("Too many clients\n").await?;
                 };
+                tokio::spawn(async move {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    let a = cmd_tx.send(ServerCommandToClient::SendMessage("Shutdown soon\n".to_string())).await.map_err(|e| ZappyError::TechnicalError(e.to_string()));
+                    log::warn!("Shutdown test start: Client send message: {:?}", a);
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    let a = cmd_tx.send(ServerCommandToClient::Shutdown).await.map_err(|e| ZappyError::TechnicalError(e.to_string()));
+                    log::warn!("Shutdown test end: Client shutdown message: {:?}", a);
+                });
                 client
                     .write_socket(&format!("{}\n", server.lock().await.remaining_clients()))
                     .await?;
@@ -116,50 +125,42 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     .write_socket(&format!("{} {}\n", WIDTH, HEIGHT))
                     .await?;
 
-                loop {
-                    let s = client.read_socket().await?;
-                    log::debug!("{:?} {}", client.get_addr(), s);
-
-                    client.write_socket(&s).await?;
-                }
+                return handle_client(&mut client, cmd_rx).await;
             }
             .await;
 
+            server.lock().await.remove_client(client.get_addr());
             if let Err(err) = bidon {
-                server.lock().await.remove_client(client.get_addr());
-                log::error!("{:?}", err);
+                match err {
+                    ZappyError::ConnectionClosedByClient => log::debug!("Client disconnected"),
+                    err => log::error!("{:?}", err),
+                }
             }
         });
     }
 }
 
-/*
-async fn handle_client(mut client: Client, mut cmd_rx: mpsc::Receiver<ServerCommandToClient>) -> std::io::Result<()> {
-    let mut buf = [0u8; 1024];
-
+async fn handle_client(client: &mut Client, mut cmd_rx: mpsc::Receiver<ServerCommandToClient>) -> Result<(), ZappyError> {
     loop {
         tokio::select! {
-            result = client.read(&mut buf) => {
+            //TODO await? o_O
+            result = client.read_socket() => {
                 let n = result?;
-                if n == 0 {
-                    println!("Client disconnected");
-                    return Ok(());
-                }
-                client.write_all(&buf[..n]).await?;
+                log::debug!("{:?}: {:?}", client.get_addr(), n);
+                client.write_socket(&n).await?
             }
 
-            // Handle commands from the server
             Some(cmd) = cmd_rx.recv() => {
                 match cmd {
                     ServerCommandToClient::Shutdown => {
-                        println!("Shutdown command received. Closing connection.");
-                        let goodbye = b"Server is shutting down the connection.\n";
-                        client.write_all(goodbye).await?;
+                        log::debug!("Shutdown command received. Closing connection.");
+                        let goodbye = "Server is shutting down the connection.\n";
+                        client.write_socket(goodbye).await?;
                         return Ok(());
                     }
-                    ServerCommandToClient::PrintMessage(message) => {
-                        println!("Sending message to client: {}", message.trim_end());
-                        client.write_all(message.as_bytes()).await?;
+                    ServerCommandToClient::SendMessage(message) => {
+                        log::debug!("Sending message to client: {}", message.trim_end());
+                        client.write_socket(&message).await?;
                     }
                 }
             }
@@ -170,6 +171,3 @@ async fn handle_client(mut client: Client, mut cmd_rx: mpsc::Receiver<ServerComm
         }
     }
 }
-
-
- */
