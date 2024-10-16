@@ -9,6 +9,8 @@ use crate::client_connection::ClientConnection;
 use crate::logger::init_logger;
 use crate::server::Server;
 use clap::Parser;
+use serde_json::from_str;
+use shared::Command;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
@@ -99,8 +101,17 @@ async fn handle_client(
         tokio::select! {
             result = client.read() => {
                 let n = result?;
-                log::debug!("{:?}: {:?}", client.get_addr(), n);
-                client.write(&n).await?
+                let trimmed = n.trim_end();
+                match from_str::<Command>(trimmed) {
+                    Ok(command) => {
+                        log::debug!("Received command: {:?}", command);
+                        //TODO: implement
+                        client.writeln("OK").await?
+                    },
+                    Err(_) => {
+                        client.writeln(&format!("Unknown command \"{}\"", trimmed)).await?;
+                    }
+                }
             }
 
             Some(cmd) = cmd_rx.recv() => {
