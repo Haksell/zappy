@@ -84,8 +84,7 @@ pub enum Command {
 }
 
 impl Command {
-    /// Returns the delay (`delai`) associated with each command.
-    pub fn delai(&self) -> u32 {
+    pub fn delay(&self) -> u64 {
         match self {
             Command::Avance => 7,
             Command::Droite => 7,
@@ -111,3 +110,4 @@ pub struct Map {
 }
 
 pub const GFX_PORT: u16 = 4343;
+pub const MAX_COMMANDS: usize = 10;

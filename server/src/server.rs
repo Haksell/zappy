@@ -3,7 +3,7 @@ use crate::map::Play;
 use crate::player::Player;
 use crate::{ServerCommandToClient, ZappyError};
 use rand::Rng as _;
-use shared::Map;
+use shared::{Command, Map, MAX_COMMANDS};
 use std::collections::HashMap;
 use std::error::Error;
 use std::net::SocketAddr;
@@ -21,6 +21,7 @@ pub struct Server {
     clients: HashMap<SocketAddr, Player>,
     client_max_id: usize,
     pub(crate) map: Map,
+    pub(crate) frame: u64,
 }
 
 impl Server {
@@ -39,6 +40,7 @@ impl Server {
                 clients: HashMap::new(),
                 client_max_id: 0,
                 map: Map::new(args.width, args.height),
+                frame: 0,
             },
             listener,
         ))
@@ -46,6 +48,15 @@ impl Server {
 
     pub fn tick(&mut self) {
         self.map.next_position();
+        for (_, player) in &mut self.clients {
+            // TODO: handle 0-time differently
+            if !player.commands.is_empty() && self.frame >= player.next_frame {
+                let command = player.commands.pop_front().unwrap();
+                player.execute(&command);
+                player.next_frame = self.frame + command.delay();
+            }
+        }
+        self.frame += 1;
     }
 
     //TODO: maybe bed idea to disconnect client here, because this method is called during the mutex lock
@@ -87,6 +98,16 @@ impl Server {
 
     pub fn remaining_clients(&self) -> u16 {
         self.max_clients - self.clients.len() as u16
+    }
+
+    pub fn take_command(&mut self, addr: &SocketAddr, cmd: Command) {
+        let client = self.clients.get_mut(addr).unwrap();
+        if client.commands.len() >= MAX_COMMANDS {
+            // TODO: send message
+            log::debug!("Client {addr:?} tried to push {cmd:?} in to a full queue.");
+        } else {
+            client.commands.push_back(cmd);
+        }
     }
 
     fn get_available_ids(&mut self) -> usize {

@@ -8,7 +8,7 @@ pub fn init_logger() {
     Builder::new()
         .filter(None, LevelFilter::Debug)
         .format(|buf, record| {
-            let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S");
+            let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S.%3f");
             let level = match record.level() {
                 Level::Error => "ERROR".red().bold(),
                 Level::Warn => "WARN".yellow().bold(),

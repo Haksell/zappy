@@ -17,6 +17,7 @@ pub async fn handle_regular_connection(
         log::debug!("New connection from: {}", addr);
         let mut client = ClientConnection::new(socket, addr.clone());
         let server = Arc::clone(&server);
+        let server2 = Arc::clone(&server);
 
         tokio::spawn(async move {
             let bidon: Result<(), ZappyError> = async {
@@ -38,11 +39,11 @@ pub async fn handle_regular_connection(
                 client.writeln(&remaining_clients.to_string()).await?;
                 client.writeln(&format!("{} {}", width, height)).await?;
 
-                return handle_player(&mut client, cmd_rx).await;
+                return handle_player(server, &mut client, cmd_rx).await;
             }
             .await;
 
-            let _ = server.lock().await.remove_player(client.get_addr()).await;
+            let _ = server2.lock().await.remove_player(client.get_addr()).await;
             if let Err(err) = bidon {
                 //TODO: put log level and message to the impl error block of ZappyError
                 match err {
@@ -65,6 +66,7 @@ pub async fn handle_regular_connection(
 }
 
 async fn handle_player(
+    server: Arc<Mutex<Server>>,
     client: &mut ClientConnection,
     mut cmd_rx: mpsc::Receiver<ServerCommandToClient>,
 ) -> Result<(), ZappyError> {
@@ -76,8 +78,7 @@ async fn handle_player(
                 match from_str::<Command>(trimmed) {
                     Ok(command) => {
                         log::debug!("Received command: {:?}", command);
-                        //TODO: implement
-                        client.writeln("OK").await?
+                        server.lock().await.take_command(client.get_addr(), command);
                     },
                     Err(_) => {
                         client.writeln(&format!("Unknown command \"{}\"", trimmed)).await?;
