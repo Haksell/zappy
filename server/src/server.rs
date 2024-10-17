@@ -45,7 +45,7 @@ impl Server {
     }
 
     pub fn tick(&mut self) {
-        println!("TICK");
+        self.map.next_position();
     }
 
     //TODO: maybe bed idea to disconnect client here, because this method is called during the mutex lock

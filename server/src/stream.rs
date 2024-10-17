@@ -31,13 +31,12 @@ async fn handle_streaming_client(
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
     loop {
-        let mut server_lock = server.lock().await;
-        let json_data = to_string(&server_lock.map)?;
-        server_lock.map.next_position();
+        let json_data = to_string(&server.lock().await.map)?;
 
+        // TODO: don't send if no changes (dirty state or hash)
         socket.write_all(json_data.as_bytes()).await?;
-        socket.write_all(b"\n").await?; // Add a newline for easier reading
+        socket.write_all(b"\n").await?;
 
-        sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_millis(10)).await;
     }
 }
