@@ -2,10 +2,12 @@ use crate::args::ServerArgs;
 use crate::map::Play;
 use crate::player::Player;
 use crate::{ServerCommandToClient, ZappyError};
+use rand::Rng as _;
 use shared::Map;
 use std::collections::HashMap;
 use std::error::Error;
 use std::net::SocketAddr;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 
@@ -14,7 +16,7 @@ pub struct Server {
     pub(crate) width: u16,
     pub(crate) height: u16,
     max_clients: u16,
-    tud: u16,
+    pub(crate) tud: u16,
     team_names: Vec<String>,
     clients: HashMap<SocketAddr, Player>,
     client_max_id: usize,
@@ -22,7 +24,7 @@ pub struct Server {
 }
 
 impl Server {
-    pub async fn from(args: ServerArgs) -> Result<(Self, TcpListener), Box<dyn Error>> {
+    pub async fn from(args: &ServerArgs) -> Result<(Self, TcpListener), Box<dyn Error>> {
         let addr = format!("127.0.0.1:{}", args.port);
         let listener = TcpListener::bind(&addr).await?;
         log::debug!("Listening on: {}", addr);
@@ -33,13 +35,30 @@ impl Server {
                 height: args.height,
                 max_clients: args.clients,
                 tud: args.tud,
-                team_names: args.names,
+                team_names: args.names.clone(),
                 clients: HashMap::new(),
                 client_max_id: 0,
                 map: Map::new(args.width, args.height),
             },
             listener,
         ))
+    }
+
+    pub fn tick(&mut self) {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        println!(
+            "Current Epoch Time (microseconds): {}.{}.{}",
+            now.as_secs(),
+            &now.subsec_micros().to_string()[..2],
+            &now.subsec_micros().to_string()[2..],
+        );
+        let mut rng = rand::thread_rng();
+        let iterations = rng.gen_range(0..=1_000);
+        let mut x = 0u64;
+        for i in 0..iterations {
+            x += i;
+        }
+        println!("1+...+{} = {} ", iterations, x);
     }
 
     //TODO: maybe bed idea to disconnect client here, because this method is called during the mutex lock
