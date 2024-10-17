@@ -22,7 +22,8 @@ pub(crate) struct ServerArgs {
     #[arg(
         short,
         long,
-        help = "Time Unit Divider (the greater t is, the faster the game will go)"
+        help = "Time Unit Divider (the greater t is, the faster the game will go)",
+        default_value_t = 100
     )]
     pub(crate) tud: u16,
 
