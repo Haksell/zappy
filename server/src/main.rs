@@ -40,16 +40,18 @@ enum ServerCommandToClient {
     SendMessage(String),
 }
 
+const GFX_PORT: u16 = 4343;
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     init_logger();
     let args = ServerArgs::parse();
     let port = args.port;
     let (server, regular_listener) = Server::from(args).await?;
-    let graphic_listener = TcpListener::bind("127.0.0.1:4242").await?;
+    let graphic_listener = TcpListener::bind(format!("127.0.0.1:{GFX_PORT}")).await?;
     let server = Arc::new(Mutex::new(server));
 
-    log::debug!("Server running on 127.0.0.1:{port} (regular) and 127.0.0.1:4242 (stream)");
+    log::debug!("Server running on 127.0.0.1:{port} (regular) and 127.0.0.1:{GFX_PORT} (stream)");
 
     tokio::select! {
         _ = handle_regular_connection(Arc::clone(&server), regular_listener) => {},
@@ -148,10 +150,6 @@ async fn handle_player(
                         client.write(&message).await?;
                     }
                 }
-            }
-
-            else => {
-                return Ok(());
             }
         }
     }
