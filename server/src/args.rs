@@ -1,6 +1,7 @@
 use clap::Parser;
 
 // TODO: more default values
+// TODO: min value for width and height
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
