@@ -12,7 +12,7 @@ use crate::map::Play;
 use crate::server::Server;
 use clap::Parser;
 use serde_json::{from_str, to_string};
-use shared::Command;
+use shared::{Command, GFX_PORT};
 use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
@@ -39,8 +39,6 @@ enum ServerCommandToClient {
     Shutdown,
     SendMessage(String),
 }
-
-const GFX_PORT: u16 = 4343;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {

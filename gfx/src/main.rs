@@ -1,7 +1,7 @@
 use crossterm::execute;
 use crossterm::terminal::{Clear, ClearType};
 use serde_json::from_str;
-use shared::Map;
+use shared::{Map, GFX_PORT};
 use std::io::{stdout, Write};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
@@ -17,7 +17,7 @@ impl PrettyPrint for Map {
         for row in &self.map {
             for &ch in row {
                 let width = UnicodeWidthChar::width(ch).unwrap_or(1);
-
+                // TODO: clean print!("{:1$}", ch, 3 - width);
                 if width == 2 {
                     print!("{:2}", ch);
                 } else {
@@ -32,7 +32,7 @@ impl PrettyPrint for Map {
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    let stream = TcpStream::connect("127.0.0.1:4242").await?;
+    let stream = TcpStream::connect(format!("127.0.0.1:{GFX_PORT}")).await?;
     let reader = BufReader::new(stream);
     let mut lines = reader.lines();
 

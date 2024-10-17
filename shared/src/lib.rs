@@ -109,3 +109,5 @@ pub struct Map {
     pub cur_x: usize,
     pub cur_y: usize,
 }
+
+pub const GFX_PORT: u16 = 4343;
