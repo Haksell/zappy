@@ -103,8 +103,6 @@ impl Command {
     }
 }
 
-type Unknown = String;
-
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 enum Resource {
     Linemate,
@@ -123,7 +121,7 @@ struct Egg {
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
-    players: Vec<Unknown>,
+    players: Vec<String>,
     resources: HashMap<Resource, usize>,
     eggs: Vec<Egg>,
 }
