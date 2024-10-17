@@ -43,6 +43,7 @@ impl ClientConnection {
             .map_err(|e| ZappyError::TechnicalError(format!("Failed to write to socket: {}", e)))?)
     }
 
+    // TODO: handle multiline commands and buffer with Ctrl+D like ft_irc/webserv
     pub async fn read(&mut self) -> Result<String, ZappyError> {
         let n = self.tcp_stream.read(&mut self.buf).await.map_err(|e| {
             ZappyError::TechnicalError(format!("Failed to read data from socket: {}", e))

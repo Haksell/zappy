@@ -16,6 +16,8 @@ pub async fn handle_regular_connection(
         let (socket, addr) = listener.accept().await?;
         log::debug!("New connection from: {}", addr);
         let mut client = ClientConnection::new(socket, addr.clone());
+
+        // FIXME
         let server = Arc::clone(&server);
         let server2 = Arc::clone(&server);
 

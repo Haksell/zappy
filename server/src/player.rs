@@ -3,19 +3,6 @@ use shared::{Command, MAX_COMMANDS};
 use std::collections::VecDeque;
 use tokio::sync::mpsc::Sender;
 
-/*
-STACK
-abc
-abcde
-ab
-a
-
-QUEUE
-abc
-bc
-bcde
-*/
-
 pub struct Player {
     communication_channel: Sender<ServerCommandToClient>,
     pub(crate) team: String,
