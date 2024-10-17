@@ -45,20 +45,7 @@ impl Server {
     }
 
     pub fn tick(&mut self) {
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-        println!(
-            "Current Epoch Time (microseconds): {}.{}.{}",
-            now.as_secs(),
-            &now.subsec_micros().to_string()[..2],
-            &now.subsec_micros().to_string()[2..],
-        );
-        let mut rng = rand::thread_rng();
-        let iterations = rng.gen_range(0..=1_000);
-        let mut x = 0u64;
-        for i in 0..iterations {
-            x += i;
-        }
-        println!("1+...+{} = {} ", iterations, x);
+        println!("TICK");
     }
 
     //TODO: maybe bed idea to disconnect client here, because this method is called during the mutex lock
