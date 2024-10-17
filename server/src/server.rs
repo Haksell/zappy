@@ -11,8 +11,8 @@ use tokio::sync::mpsc::Sender;
 
 pub struct Server {
     port: u16,
-    pub(crate) width: u16,
-    pub(crate) height: u16,
+    pub(crate) width: usize,
+    pub(crate) height: usize,
     max_clients: u16,
     pub(crate) tud: u16,
     team_names: Vec<String>,
@@ -45,7 +45,7 @@ impl Server {
     }
 
     pub fn tick(&mut self) {
-        self.map.next_position();
+        //self.map.next_position();
         for (_, player) in &mut self.clients {
             // TODO: handle 0-time differently
             if !player.commands.is_empty() && self.frame >= player.next_frame {

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Represents the different types of responses the server can send to the client.
 /// Review comments
@@ -102,12 +103,52 @@ impl Command {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Map {
-    pub map: Vec<Vec<char>>,
-    pub cur_x: usize,
-    pub cur_y: usize,
+type Unknown = String;
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
+enum Resource {
+    Linemate,
+    Deraumere,
+    Sibur,
+    Mendiane,
+    Phiras,
+    Thystame,
+    Nourriture,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Egg {
+    team_name: String,
+    start_frame: u64,
+}
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Cell {
+    players: Vec<Unknown>,
+    resources: HashMap<Resource, usize>,
+    eggs: Vec<Egg>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Map {
+    pub map: Vec<Vec<Cell>>,
+    pub width: usize,
+    pub height: usize,
+}
+
+impl Cell {
+    pub fn new() -> Self {
+        Self {
+            players: Vec::new(),
+            resources: HashMap::new(),
+            eggs: Vec::new(),
+        }
+    }
+}
+impl Map {
+    pub fn new(width: usize, height: usize) -> Self {
+        let map = vec![vec![Cell::new(); width]; height];
+        Self { map, width, height }
+    }
+}
 pub const GFX_PORT: u16 = 4343;
 pub const MAX_COMMANDS: usize = 10;

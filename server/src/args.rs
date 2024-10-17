@@ -10,10 +10,10 @@ pub(crate) struct ServerArgs {
     pub(crate) port: u16,
 
     #[arg(short('x'), long, help = "World width")]
-    pub(crate) width: u16,
+    pub(crate) width: usize,
 
     #[arg(short('y'), long, help = "World height")]
-    pub(crate) height: u16,
+    pub(crate) height: usize,
 
     #[arg(
         short,
