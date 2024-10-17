@@ -1,5 +1,7 @@
 use clap::Parser;
 
+// TODO: more default values
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub(crate) struct ServerArgs {
