@@ -9,8 +9,7 @@ use ratatui::{
     Frame,
 };
 use serde_json::from_str;
-use shared::{Cell, Egg, Map, Resource};
-use std::fmt::format;
+use shared::{Cell, Egg, Map, Resource, GFX_PORT};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -102,7 +101,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (tx, mut rx) = mpsc::channel(100);
     tokio::spawn(async move {
-        let stream = TcpStream::connect("127.0.0.1:4343").await.unwrap();
+        let stream = TcpStream::connect(format!("127.0.0.1:{}", GFX_PORT))
+            .await
+            .unwrap();
         let reader = BufReader::new(stream);
         let mut lines = reader.lines();
 
