@@ -1,5 +1,26 @@
+pub mod player;
+
+use player::Player;
+use rand::Rng as _;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
+
+#[derive(Debug)]
+pub enum ZappyError {
+    ConnectionClosedByClient,
+    MaxPlayersReached,
+    ConnectionCorrupted,
+    AlreadyConnected,
+    TryToDisconnectNotConnected,
+    TeamDoesntExist,
+    TechnicalError(String),
+    LogicalError(String),
+}
+
+pub enum ServerCommandToClient {
+    Shutdown,
+    SendMessage(String),
+}
 
 /// Represents the different types of responses the server can send to the client.
 /// Review comments
@@ -123,7 +144,7 @@ impl Resource {
             Resource::Mendiane => "M",
             Resource::Phiras => "P",
             Resource::Thystame => "T",
-            Resource::Nourriture => "N"
+            Resource::Nourriture => "N",
         })
     }
 }
@@ -136,7 +157,7 @@ pub struct Egg {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
-    pub players: Vec<String>,
+    pub players: Vec<Arc<Player>>,
     pub resources: HashMap<Resource, usize>,
     pub eggs: Vec<Egg>,
 }
@@ -163,8 +184,19 @@ impl Map {
         let map = vec![vec![Cell::new(); width]; height];
         Self { map, width, height }
     }
+
+    pub fn random_position(&self) -> (usize, usize) {
+        let mut thread_rng = rand::thread_rng();
+        (
+            thread_rng.gen_range(0..self.width),
+            thread_rng.gen_range(0..self.height),
+        )
+    }
+
+    pub fn add_player(&self, player: &Player) {}
 }
 
 pub const GFX_PORT: u16 = 4343;
 pub const MAX_COMMANDS: usize = 10;
 pub const MAX_FIELD_SIZE: usize = 50;
+pub const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";

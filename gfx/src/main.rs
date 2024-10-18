@@ -47,7 +47,7 @@ fn draw(frame: &mut Frame, data: &mut Option<Map>) {
                     .map(|e| e.team_name.get(..1).unwrap())
                     .collect::<Vec<_>>()
                     .concat();
-                let mapped_player = cell.players.join(", ");
+                let mapped_player = cell.players.iter().map(|_| 'P').collect::<String>();
                 let widget = Paragraph::new(format!(
                     "{mapped_player}, {mapped_eggs}, {mapped_resources}"
                 ))
@@ -55,11 +55,6 @@ fn draw(frame: &mut Frame, data: &mut Option<Map>) {
                 frame.render_widget(widget, col);
             }
         }
-
-        /*
-        for col in cols {
-        }
-         */
     }
 }
 

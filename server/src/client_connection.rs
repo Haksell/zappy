@@ -1,4 +1,4 @@
-use crate::ZappyError;
+use shared::ZappyError;
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;

@@ -1,8 +1,7 @@
 use crate::client_connection::ClientConnection;
 use crate::server::Server;
-use crate::{ServerCommandToClient, ZappyError, HANDSHAKE_MSG};
 use serde_json::from_str;
-use shared::Command;
+use shared::{Command, ServerCommandToClient, ZappyError, HANDSHAKE_MSG};
 use std::error::Error;
 use std::sync::Arc;
 use tokio::net::TcpListener;

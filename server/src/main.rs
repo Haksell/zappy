@@ -4,8 +4,6 @@ mod client_loop;
 mod game_loop;
 mod gfx_loop;
 mod logger;
-mod map;
-mod player;
 mod server;
 
 use crate::args::ServerArgs;
@@ -22,25 +20,6 @@ use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::time::interval;
-
-const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";
-
-#[derive(Debug)]
-pub enum ZappyError {
-    ConnectionClosedByClient,
-    MaxPlayersReached,
-    ConnectionCorrupted,
-    AlreadyConnected,
-    TryToDisconnectNotConnected,
-    TeamDoesntExist,
-    TechnicalError(String),
-    LogicalError(String),
-}
-
-enum ServerCommandToClient {
-    Shutdown,
-    SendMessage(String),
-}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {

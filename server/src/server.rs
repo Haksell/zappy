@@ -1,8 +1,6 @@
 use crate::args::ServerArgs;
-use crate::map::Play;
-use crate::player::Player;
-use crate::{ServerCommandToClient, ZappyError};
-use shared::{Command, Map, MAX_COMMANDS};
+use shared::player::Player;
+use shared::{Command, Map, ServerCommandToClient, ZappyError, MAX_COMMANDS};
 use std::collections::HashMap;
 use std::error::Error;
 use std::net::SocketAddr;
@@ -68,13 +66,15 @@ impl Server {
         if !self.team_names.contains(&team.trim().into()) {
             Err(ZappyError::TeamDoesntExist)
         } else if self.remaining_clients() == 0 {
+            // TODO: for each team
             Err(ZappyError::MaxPlayersReached)
         } else {
             let id = self.get_available_ids();
-            if let Some(dup) = self
-                .clients
-                .insert(addr, Player::new(communication_channel, id, team))
-            {
+            let (x, y) = self.map.random_position();
+            let player = Player::new(communication_channel, id, team, x, y);
+            self.map.add_player(&player);
+            if let Some(dup) = self.clients.insert(addr, player) {
+                // TODO: remove from map
                 log::error!("Duplicate connection attempted from {addr}. Disconnecting both...");
                 dup.disconnect().await?;
                 self.remove_player(&addr).await?;
