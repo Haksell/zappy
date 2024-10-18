@@ -6,7 +6,7 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub(crate) struct ServerArgs {
-    #[arg(short, long, help = "Port number")]
+    #[arg(short, long, help = "Port number", default_value_t = 8080)]
     pub(crate) port: u16,
 
     #[arg(short('x'), long, help = "World width")]
