@@ -1,4 +1,5 @@
 use ratatui::layout::Margin;
+use ratatui::widgets::Paragraph;
 use ratatui::{
     crossterm::event::{self, Event, KeyCode},
     widgets::Block,
@@ -8,14 +9,28 @@ use ratatui::{
     Frame,
 };
 use serde_json::from_str;
-use shared::Map;
+use shared::{Cell, Egg, Map, Resource};
+use std::fmt::format;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::time::Duration;
 
-fn draw(frame: &mut Frame, data: &Option<Map>) {
+fn draw(frame: &mut Frame, data: &mut Option<Map>) {
     if let Some(data) = data {
+        /************************************************/
+        let mut cell = Cell::new();
+        cell.players = vec![String::from("P1")];
+        cell.resources.insert(Resource::Deraumere, 2);
+        cell.resources.insert(Resource::Nourriture, 2);
+        cell.eggs.push(Egg {
+            start_frame: 0,
+            team_name: String::from("Axel"),
+        });
+
+        data.map[0][0] = cell;
+        /************************************************/
+
         let area = frame.area().inner(Margin {
             vertical: 1,
             horizontal: 1,
@@ -24,15 +39,41 @@ fn draw(frame: &mut Frame, data: &Option<Map>) {
         let rows =
             Layout::vertical(vec![Constraint::Ratio(1, data.width as u32); data.width]).split(area);
 
-        let cols = rows.iter().flat_map(|row| {
+        let mut cols = rows.iter().flat_map(|row| {
             Layout::horizontal(vec![Constraint::Ratio(1, data.height as u32); data.height])
                 .split(*row)
                 .to_vec()
         });
 
-        for col in cols {
-            frame.render_widget(Block::bordered().title("COORD"), col);
+        for x in 0..data.width {
+            for y in 0..data.height {
+                let col = cols.next().unwrap();
+                let cell = &data.map[y][x];
+                let mapped_resources = cell
+                    .resources
+                    .iter()
+                    .map(|(k, v)| k.alias().repeat(*v))
+                    .collect::<Vec<_>>()
+                    .concat();
+                let mapped_eggs = cell
+                    .eggs
+                    .iter()
+                    .map(|e| e.team_name.get(..1).unwrap())
+                    .collect::<Vec<_>>()
+                    .concat();
+                let mapped_player = cell.players.join(", ");
+                let widget = Paragraph::new(format!(
+                    "{mapped_player}, {mapped_eggs}, {mapped_resources}"
+                ))
+                .block(Block::bordered().title(format!("x={x} y={y}")));
+                frame.render_widget(widget, col);
+            }
         }
+
+        /*
+        for col in cols {
+        }
+         */
     }
 }
 
@@ -82,7 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut data: Option<Map> = None;
     loop {
         terminal.draw(|frame| {
-            draw(frame, &data);
+            draw(frame, &mut data);
         })?;
         tokio::select! {
             Some(key) = event_rx.recv() => {
