@@ -103,10 +103,8 @@ impl Command {
     }
 }
 
-type Unknown = String;
-
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
-enum Resource {
+pub enum Resource {
     Linemate,
     Deraumere,
     Sibur,
@@ -117,15 +115,16 @@ enum Resource {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct Egg {
-    team_name: String,
-    start_frame: u64,
+pub struct Egg {
+    pub team_name: String,
+    pub start_frame: u64,
 }
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
-    players: Vec<Unknown>,
-    resources: HashMap<Resource, usize>,
-    eggs: Vec<Egg>,
+    pub players: Vec<String>,
+    pub resources: HashMap<Resource, usize>,
+    pub eggs: Vec<Egg>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -144,12 +143,14 @@ impl Cell {
         }
     }
 }
+
 impl Map {
     pub fn new(width: usize, height: usize) -> Self {
         let map = vec![vec![Cell::new(); width]; height];
         Self { map, width, height }
     }
 }
+
 pub const GFX_PORT: u16 = 4343;
 pub const MAX_COMMANDS: usize = 10;
 pub const MAX_FIELD_SIZE: usize = 50;
