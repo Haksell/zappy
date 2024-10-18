@@ -1,24 +1,24 @@
 mod args;
 mod client_connection;
+mod client_loop;
 mod game_loop;
+mod gfx_loop;
 mod logger;
 mod map;
 mod player;
-mod regular;
 mod server;
-mod stream;
 
 use crate::args::ServerArgs;
 use crate::game_loop::game_loop;
 use crate::logger::init_logger;
 use crate::server::Server;
 use clap::Parser;
-use regular::handle_regular_connection;
+use client_loop::client_loop;
+use gfx_loop::gfx_loop;
 use shared::GFX_PORT;
 use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
-use stream::handle_stream_connection;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 use tokio::time::interval;
@@ -51,11 +51,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let graphic_listener = TcpListener::bind(format!("127.0.0.1:{GFX_PORT}")).await?;
     let server = Arc::new(Mutex::new(server));
 
-    log::debug!("Server running on 127.0.0.1:{port} (regular) and 127.0.0.1:{GFX_PORT} (stream)");
+    log::debug!("Server running on 127.0.0.1:{port} (client) and 127.0.0.1:{GFX_PORT} (gfx)");
 
     tokio::select! {
-        _ = handle_regular_connection(Arc::clone(&server), regular_listener) => {},
-        _ = handle_stream_connection(Arc::clone(&server), graphic_listener) => {},
+        _ = client_loop(Arc::clone(&server), regular_listener) => {},
+        _ = gfx_loop(Arc::clone(&server), graphic_listener) => {},
         _ = game_loop(Arc::clone(&server), args.tud) => {},
     };
 

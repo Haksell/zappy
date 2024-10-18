@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, Mutex};
 
-pub async fn handle_regular_connection(
+pub async fn client_loop(
     server: Arc<Mutex<Server>>,
     listener: TcpListener,
 ) -> Result<(), Box<dyn Error>> {

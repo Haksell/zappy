@@ -8,7 +8,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
-pub async fn handle_stream_connection(
+pub async fn gfx_loop(
     server: Arc<Mutex<Server>>,
     listener: TcpListener,
 ) -> Result<(), Box<dyn Error>> {
