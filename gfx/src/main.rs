@@ -9,7 +9,7 @@ use ratatui::{
     Frame,
 };
 use serde_json::from_str;
-use shared::{Cell, Egg, Map, Resource, GFX_PORT};
+use shared::{Map, GFX_PORT};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;

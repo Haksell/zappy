@@ -3,7 +3,7 @@ pub mod player;
 use player::Player;
 use rand::Rng as _;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum ZappyError {
@@ -22,86 +22,30 @@ pub enum ServerCommandToClient {
     SendMessage(String),
 }
 
-/// Represents the different types of responses the server can send to the client.
-/// Review comments
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ServerResponse {
-    /// Indicates a successful operation.
     Ok,
-    /// Indicates a failed operation.
     Ko,
-    /// Represents the response from the `see` command.
-    /// Contains a list of visible cases.
     Cases(Vec<String>),
-    /// Represents the response from the `inventory` command.
-    /// Contains a list of inventory items with their quantities.
     Inventory(Vec<String>),
-    /// Indicates that an incantation (elevation) is in progress.
     ElevationInProgress,
-    /// Represents a generic value response.
     Value(String),
-    ///Death of a player
     Mort,
 }
 
-/// Represents the different commands that can be sent to the server.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Command {
-    /// Advance one square.
-    /// Command: avance
     Avance,
-
-    /// Turn right 90 degrees.
-    /// Command: degrees_droite
     Droite,
-
-    /// Turn left 90 degrees.
-    /// Command: degrees_gauche
     Gauche,
-
-    /// See the surrounding squares.
-    /// Command: voir
     Voir,
-
-    /// View inventory.
-    /// Command: inventaire
     Inventaire,
-
-    /// Take an object.
-    /// Command: prend <object>
-    Prend {
-        /// The object to take.
-        object_name: String,
-    },
-
-    /// Put down an object.
-    /// Command: pose <object>
-    Pose {
-        /// The object to put down.
-        object_name: String,
-    },
-
-    /// Kick the players from the square.
-    /// Command: expulse
+    Prend { object_name: String },
+    Pose { object_name: String },
     Expulse,
-
-    /// Broadcast a message.
-    /// Command: broadcast <text>
-    Broadcast {
-        /// The message to broadcast.
-        text: String,
-    },
-
-    /// Begin the incantation (elevation).
-    /// Command: incantation
+    Broadcast { text: String },
     Incantation,
-
-    /// Fork a player.
-    /// Command: fork
     Fork,
-
-    /// Know the number of unused connections by the team.
-    /// Command: connect_nbr
     ConnectNbr,
 }
 
@@ -157,7 +101,7 @@ pub struct Egg {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
-    pub players: Vec<Arc<Player>>,
+    pub players: Vec<Player>,
     pub resources: HashMap<Resource, usize>,
     pub eggs: Vec<Egg>,
 }
@@ -193,7 +137,10 @@ impl Map {
         )
     }
 
-    pub fn add_player(&self, player: &Player) {}
+    pub fn add_player(&mut self, player: &Player) {
+        println!("add_player: {player:?}");
+        self.map[player.y][player.x].players.push(player.clone()); // TODO: Arc<Mutex> or some shit
+    }
 }
 
 pub const GFX_PORT: u16 = 4343;

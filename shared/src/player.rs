@@ -6,7 +6,7 @@ use tokio::sync::mpsc::Sender;
 
 // TOOD: pos: Pos
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Player {
     #[serde(skip_serializing, skip_deserializing)]
     pub communication_channel: Option<Sender<ServerCommandToClient>>,
