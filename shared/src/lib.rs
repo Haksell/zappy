@@ -114,6 +114,20 @@ pub enum Resource {
     Nourriture,
 }
 
+impl Resource {
+    pub fn alias(&self) -> String {
+        String::from(match self {
+            Resource::Linemate => "L",
+            Resource::Deraumere => "D",
+            Resource::Sibur => "S",
+            Resource::Mendiane => "M",
+            Resource::Phiras => "P",
+            Resource::Thystame => "T",
+            Resource::Nourriture => "N"
+        })
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Egg {
     pub team_name: String,
