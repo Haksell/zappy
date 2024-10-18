@@ -1,4 +1,3 @@
-use crate::map::Play;
 use crate::server::Server;
 use serde_json::to_string;
 use std::error::Error;
@@ -37,6 +36,6 @@ async fn handle_streaming_client(
         socket.write_all(json_data.as_bytes()).await?;
         socket.write_all(b"\n").await?;
 
-        sleep(Duration::from_millis(10)).await;
+        sleep(Duration::from_millis(1000)).await;
     }
 }

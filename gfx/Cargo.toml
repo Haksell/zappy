@@ -1,14 +1,16 @@
 [package]
 name = "gfx"
 version = "0.1.0"
-authors = ["Obito-git <antonmyroshnychenko@gmail.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+crossterm = "0.28.1"
+ratatui = "0.28.1"
+serde_json = "1.0.129"
+unicode-width = "0.1.14"
+tokio = { version = "1.40.0", default-features = true, features = ["full"] }
 
-dioxus = { version = "0.5", features = ["web"] }
 
-# Debug
-dioxus-logger = "0.5.1"
+shared = {path = "../shared"}
