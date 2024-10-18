@@ -80,16 +80,16 @@ pub enum Resource {
 }
 
 impl Resource {
-    pub fn alias(&self) -> String {
-        String::from(match self {
-            Resource::Linemate => "L",
-            Resource::Deraumere => "D",
-            Resource::Sibur => "S",
-            Resource::Mendiane => "M",
-            Resource::Phiras => "P",
-            Resource::Thystame => "T",
-            Resource::Nourriture => "N",
-        })
+    pub fn alias(&self) -> char {
+        match self {
+            Resource::Linemate => 'L',
+            Resource::Deraumere => 'D',
+            Resource::Sibur => 'S',
+            Resource::Mendiane => 'M',
+            Resource::Phiras => 'P',
+            Resource::Thystame => 'T',
+            Resource::Nourriture => 'N',
+        }
     }
 }
 

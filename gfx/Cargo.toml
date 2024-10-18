@@ -14,3 +14,4 @@ tokio = { version = "1.40.0", default-features = true, features = ["full"] }
 
 
 shared = {path = "../shared"}
+itertools = "0.13.0"

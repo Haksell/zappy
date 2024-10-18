@@ -1,3 +1,4 @@
+use itertools::Itertools as _;
 use ratatui::layout::Margin;
 use ratatui::widgets::Paragraph;
 use ratatui::{
@@ -38,7 +39,8 @@ fn draw(frame: &mut Frame, data: &mut Option<Map>) {
                 let mapped_resources = cell
                     .resources
                     .iter()
-                    .map(|(k, v)| k.alias().repeat(*v))
+                    .map(|(k, &v)| (0..v).map(|_| k.alias()).collect::<String>())
+                    .sorted()
                     .collect::<Vec<_>>()
                     .concat();
                 let mapped_eggs = cell
