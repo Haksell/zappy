@@ -1,5 +1,6 @@
 use crate::server::Server;
 use serde_json::to_string;
+use shared::{Cell,Egg,Resource};
 use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
@@ -30,6 +31,18 @@ async fn handle_streaming_client(
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
     loop {
+        /************************************************/
+        let mut cell = Cell::new();
+        cell.players = vec![String::from("P1")];
+        cell.resources.insert(Resource::Deraumere, 2);
+        cell.resources.insert(Resource::Nourriture, 2);
+        cell.eggs.push(Egg {
+            start_frame: 0,
+            team_name: String::from("Axel"),
+        });
+        server.lock().await.map.map[0][0] = cell;
+        /************************************************/
+
         let json_data = to_string(&server.lock().await.map)?;
 
         // TODO: don't send if no changes (dirty state or hash)

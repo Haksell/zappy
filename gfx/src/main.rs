@@ -17,19 +17,6 @@ use tokio::time::Duration;
 
 fn draw(frame: &mut Frame, data: &mut Option<Map>) {
     if let Some(data) = data {
-        /************************************************/
-        let mut cell = Cell::new();
-        cell.players = vec![String::from("P1")];
-        cell.resources.insert(Resource::Deraumere, 2);
-        cell.resources.insert(Resource::Nourriture, 2);
-        cell.eggs.push(Egg {
-            start_frame: 0,
-            team_name: String::from("Axel"),
-        });
-
-        data.map[0][0] = cell;
-        /************************************************/
-
         let area = frame.area().inner(Margin {
             vertical: 1,
             horizontal: 1,
