@@ -4,6 +4,7 @@ use shared::{Command, Map, ServerCommandToClient, ZappyError, MAX_COMMANDS};
 use std::collections::HashMap;
 use std::error::Error;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 
@@ -14,7 +15,7 @@ pub struct Server {
     max_clients: u16,
     pub(crate) tud: u16,
     team_names: Vec<String>,
-    clients: HashMap<SocketAddr, Player>,
+    clients: HashMap<SocketAddr, Arc<Player>>,
     client_max_id: usize,
     pub(crate) map: Map,
     pub(crate) frame: u64,
@@ -41,15 +42,22 @@ impl Server {
             listener,
         ))
     }
+    
+    //TODO: it is launched in the loop that borrows self
+    // so it can't be self, investigate is it the best place for this logic?
+    fn execute(map: &Map, player: &mut Player, command: &Command) {
+        log::debug!("Executing command: {:?} for {:?}", command, player);
+    }
 
     pub fn tick(&mut self) {
         //self.map.next_position();
         for (_, player) in &mut self.clients {
             // TODO: handle 0-time differently
             if !player.commands.is_empty() && self.frame >= player.next_frame {
-                let command = player.commands.pop_front().unwrap();
-                player.execute(&command);
-                player.next_frame = self.frame + command.delay();
+                let player_mut = Arc::make_mut(player);
+                let command = player_mut.commands.pop_front().unwrap();
+                player_mut.next_frame = self.frame + command.delay();
+                Server::execute(&self.map, player_mut, &command);
             }
         }
         self.frame += 1;
@@ -71,8 +79,8 @@ impl Server {
         } else {
             let id = self.get_available_ids();
             let (x, y) = self.map.random_position();
-            let player = Player::new(communication_channel, id, team, x, y);
-            self.map.add_player(&player);
+            let player = Arc::new(Player::new(communication_channel, id, team, x, y));
+            self.map.add_player(Arc::clone(&player));
             if let Some(dup) = self.clients.insert(addr, player) {
                 // TODO: remove from map
                 log::error!("Duplicate connection attempted from {addr}. Disconnecting both...");
@@ -104,7 +112,7 @@ impl Server {
             // TODO: send message
             log::debug!("Client {addr:?} tried to push {cmd:?} in to a full queue.");
         } else {
-            client.commands.push_back(cmd);
+            Arc::make_mut(client).commands.push_back(cmd);
         }
     }
 

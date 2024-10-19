@@ -4,6 +4,7 @@ use player::Player;
 use rand::Rng as _;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum ZappyError {
@@ -101,7 +102,7 @@ pub struct Egg {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
-    pub players: Vec<Player>,
+    pub players: Vec<Arc<Player>>,
     pub resources: HashMap<Resource, usize>,
     pub eggs: Vec<Egg>,
 }
@@ -137,9 +138,9 @@ impl Map {
         )
     }
 
-    pub fn add_player(&mut self, player: &Player) {
+    pub fn add_player(&mut self, player: Arc<Player>) {
         println!("add_player: {player:?}");
-        self.map[player.y][player.x].players.push(player.clone()); // TODO: Arc<Mutex> or some shit
+        self.map[player.y][player.x].players.push(player); // TODO: Arc<Mutex> or some shit
     }
 }
 

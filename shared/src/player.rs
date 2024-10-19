@@ -49,7 +49,5 @@ impl Player {
             })
     }
 
-    pub fn execute(&self, command: &Command) {
-        log::debug!("{command:?}");
-    }
+    
 }

@@ -33,8 +33,6 @@ async fn handle_streaming_client(
     loop {
         let json_data = to_string(&server.lock().await.map)?;
 
-        println!("======\n{}\n==========", json_data);
-
         // TODO: don't send if no changes (dirty state or hash)
         socket.write_all(json_data.as_bytes()).await?;
         socket.write_all(b"\n").await?;

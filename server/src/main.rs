@@ -16,10 +16,8 @@ use gfx_loop::gfx_loop;
 use shared::GFX_PORT;
 use std::error::Error;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
-use tokio::time::interval;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -35,7 +33,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     tokio::select! {
         _ = client_loop(Arc::clone(&server), regular_listener) => {},
         _ = gfx_loop(Arc::clone(&server), graphic_listener) => {},
-        _ = game_loop(Arc::clone(&server), args.tud) => {},
+        _ = game_loop(server, args.tud) => {},
     };
 
     Ok(())

@@ -65,6 +65,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = ratatui::init();
 
     let (event_tx, mut event_rx) = mpsc::channel(100);
+    let (tx, mut rx) = mpsc::channel(100);
+    let (conn_tx, mut conn_rx) = mpsc::channel(10);
+
     tokio::spawn(async move {
         loop {
             let poll = tokio::task::spawn_blocking(|| event::poll(Duration::from_millis(500)))
@@ -83,33 +86,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let (tx, mut rx) = mpsc::channel(100);
     tokio::spawn(async move {
-        let stream = TcpStream::connect(format!("127.0.0.1:{}", GFX_PORT))
-            .await
-            .unwrap();
-        let reader = BufReader::new(stream);
-        let mut lines = reader.lines();
+        loop {
+            match TcpStream::connect(format!("127.0.0.1:{}", GFX_PORT)).await {
+                Ok(stream) => {
+                    eprintln!("Connected to server");
+                    let _ = conn_tx.send(true).await; // Notify connection
+                    let reader = BufReader::new(stream);
+                    let mut lines = reader.lines();
 
-        while let Ok(Some(line)) = lines.next_line().await {
-            match from_str::<Map>(&line) {
-                Ok(data) => {
-                    if tx.send(data).await.is_err() {
-                        break;
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        match from_str::<Map>(&line) {
+                            Ok(data) => {
+                                if tx.send(data).await.is_err() {
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to deserialize JSON: {}", e);
+                            }
+                        }
                     }
+                    eprintln!("Connection lost, retrying...");
                 }
                 Err(e) => {
-                    eprintln!("Failed to deserialize JSON: {}", e);
+                    eprintln!("Failed to connect: {}, retrying in 1 second...", e);
+                    let _ = conn_tx.send(false).await;
                 }
             }
+            tokio::time::sleep(Duration::from_secs(1)).await;
         }
     });
 
     let mut data: Option<Map> = None;
+
     loop {
         terminal.draw(|frame| {
             draw(frame, &mut data);
         })?;
+
         tokio::select! {
             Some(key) = event_rx.recv() => {
                 if key.code == KeyCode::Char('q') {
@@ -119,10 +134,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             Some(new_data) = rx.recv() => {
                 data = Some(new_data);
             }
-
+            Some(is_connected) = conn_rx.recv() => {
+                if is_connected {
+                    terminal.clear()?;
+                }
+            }
             //_ = tokio::time::sleep(Duration::from_millis(50)) => {}
         }
     }
     ratatui::restore();
     Ok(())
 }
+
+
+
