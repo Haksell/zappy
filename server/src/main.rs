@@ -21,19 +21,19 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
-use crate::client_connection::ClientConnection;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     init_logger();
     let args = ServerArgs::parse();
     let port = args.port;
-    let (server, client_listener) = Server::from(&args).await?;
+    let server = Server::from(&args).await?;
+    let client_listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let gfx_listener = TcpListener::bind(format!("127.0.0.1:{GFX_PORT}")).await?;
     let client_connections: Arc<Mutex<HashMap<SocketAddr, Sender<ServerCommandToClient>>>> = Arc::new(Mutex::new(HashMap::new()));
     let server = Arc::new(Mutex::new(server));
 
-    log::debug!("Server running on 127.0.0.1:{port} (client) and 127.0.0.1:{GFX_PORT} (gfx)");
+    log::info!("Server running on 127.0.0.1:{port} (client) and 127.0.0.1:{GFX_PORT} (gfx)");
 
     tokio::select! {
         _ = client_loop(Arc::clone(&server), Arc::clone(&client_connections), client_listener) => {},

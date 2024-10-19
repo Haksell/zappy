@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 
 pub struct Server {
@@ -22,11 +21,8 @@ pub struct Server {
 }
 
 impl Server {
-    pub async fn from(args: &ServerArgs) -> Result<(Self, TcpListener), Box<dyn Error>> {
-        let addr = format!("127.0.0.1:{}", args.port);
-        let listener = TcpListener::bind(&addr).await?;
-        log::debug!("Listening on: {}", addr);
-        Ok((
+    pub async fn from(args: &ServerArgs) -> Result<Self, Box<dyn Error>> {
+        Ok(
             Self {
                 port: args.port,
                 width: args.width,
@@ -38,9 +34,8 @@ impl Server {
                 client_max_id: 0,
                 map: Map::new(args.width, args.height),
                 frame: 0,
-            },
-            listener,
-        ))
+            }
+        )
     }
 
     //TODO: it is launched in the loop that borrows self
