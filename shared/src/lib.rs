@@ -5,6 +5,7 @@ use rand::Rng as _;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
+use crate::player::MessageToPlayer;
 
 #[derive(Debug)]
 pub enum ZappyError {
@@ -14,8 +15,9 @@ pub enum ZappyError {
     AlreadyConnected,
     TryToDisconnectNotConnected,
     TeamDoesntExist,
+    IsNotConnectedToServer,
     TechnicalError(String),
-    LogicalError(String),
+    Waring(MessageToPlayer)
 }
 
 pub enum ServerCommandToClient {

@@ -4,8 +4,20 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use tokio::sync::mpsc::Sender;
 
-// TOOD: pos: Pos
+#[derive(Debug)]
+pub enum MessageToPlayer {
+    ActionQueueIsFull
+}
 
+impl MessageToPlayer {
+    pub fn get_text(&self) -> &'static str {
+        match self {
+            _ => "Action queue limit is reached",
+        }
+    }
+}
+
+// TOOD: pos: Pos
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Player {
     #[serde(skip_serializing, skip_deserializing)]
@@ -48,6 +60,4 @@ impl Player {
                 ZappyError::ConnectionCorrupted
             })
     }
-
-    
 }

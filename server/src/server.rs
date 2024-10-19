@@ -1,5 +1,5 @@
 use crate::args::ServerArgs;
-use shared::player::Player;
+use shared::player::{MessageToPlayer, Player};
 use shared::{Command, Map, ServerCommandToClient, ZappyError, MAX_COMMANDS};
 use std::collections::HashMap;
 use std::error::Error;
@@ -63,8 +63,7 @@ impl Server {
         self.frame += 1;
     }
 
-    //TODO: maybe bed idea to disconnect client here, because this method is called during the mutex lock
-    pub async fn add_player(
+    pub fn add_player(
         &mut self,
         addr: SocketAddr,
         communication_channel: Sender<ServerCommandToClient>,
@@ -81,23 +80,21 @@ impl Server {
             let (x, y) = self.map.random_position();
             let player = Arc::new(Player::new(communication_channel, id, team, x, y));
             self.map.add_player(Arc::clone(&player));
-            if let Some(dup) = self.clients.insert(addr, player) {
-                // TODO: remove from map
-                log::error!("Duplicate connection attempted from {addr}. Disconnecting both...");
-                dup.disconnect().await?;
-                self.remove_player(&addr).await?;
+            if let Some(_) = self.clients.insert(addr, player) {
+                //TODO: is it possible? need to handle?
+                log::warn!("Duplicate connection attempted from {addr}.");
             }
             Ok(())
         }
     }
 
-    pub async fn remove_player(&mut self, addr: &SocketAddr) -> Result<(), ZappyError> {
-        if let Some(player) = self.clients.remove(addr) {
-            log::debug!("Client removed {addr}, sending shutdown");
-            player.disconnect().await?;
+    pub fn remove_player(&mut self, addr: &SocketAddr) -> Result<(), ZappyError> {
+        if let Some(_) = self.clients.remove(addr) {
+            log::debug!("Client removed {addr} from the server");
+            //player.disconnect().await?;
             Ok(())
         } else {
-            log::debug!("{addr} isn't connected");
+            log::error!("{addr} isn't connected");
             Err(ZappyError::TryToDisconnectNotConnected)
         }
     }
@@ -106,13 +103,18 @@ impl Server {
         self.max_clients - self.clients.len() as u16
     }
 
-    pub fn take_command(&mut self, addr: &SocketAddr, cmd: Command) {
-        let client = self.clients.get_mut(addr).unwrap();
-        if client.commands.len() >= MAX_COMMANDS {
-            // TODO: send message
-            log::debug!("Client {addr:?} tried to push {cmd:?} in to a full queue.");
+    pub fn take_command(&mut self, addr: &SocketAddr, cmd: Command) -> Result<(), ZappyError> {
+        if let Some(player) = self.clients.get_mut(addr) {
+            if player.commands.len() >= MAX_COMMANDS {
+                // TODO: send message
+                log::debug!("Player {addr:?} tried to push {cmd:?} in to a full queue.");
+                return Err(ZappyError::Waring(MessageToPlayer::ActionQueueIsFull))
+            } else {
+                Arc::make_mut(player).commands.push_back(cmd);
+            }
+            Ok(())
         } else {
-            Arc::make_mut(client).commands.push_back(cmd);
+            Err(ZappyError::IsNotConnectedToServer)
         }
     }
 

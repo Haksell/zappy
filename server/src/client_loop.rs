@@ -29,8 +29,7 @@ pub async fn client_loop(
                 let (width, height, remaining_clients) = {
                     let mut server_lock = server.lock().await;
                     server_lock
-                        .add_player(addr, cmd_tx.clone(), team_name)
-                        .await?;
+                        .add_player(addr, cmd_tx.clone(), team_name)?;
                     (
                         server_lock.width,
                         server_lock.height,
@@ -44,7 +43,7 @@ pub async fn client_loop(
             }
             .await;
 
-            let _ = server2.lock().await.remove_player(client.get_addr()).await;
+            let _ = server2.lock().await.remove_player(client.get_addr());
             if let Err(err) = bidon {
                 //TODO: put log level and message to the impl error block of ZappyError
                 match err {
@@ -79,7 +78,13 @@ async fn handle_player(
                 match from_str::<Command>(trimmed) {
                     Ok(command) => {
                         log::debug!("Received command: {:?}", command);
-                        server.lock().await.take_command(client.get_addr(), command);
+                        if let Err(e)= server.lock().await.take_command(client.get_addr(), command) {
+                            match e {
+                                ZappyError::Waring(msg) => client.writeln(msg.get_text()).await?,
+                                _ => return Err(e),
+                            }
+                            //TODO: test lock here
+                        }
                     },
                     Err(_) => {
                         client.writeln(&format!("Unknown command \"{}\"", trimmed)).await?;
