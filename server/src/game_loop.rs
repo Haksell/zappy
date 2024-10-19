@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::net::SocketAddr;
 use crate::server::Server;
 use std::sync::Arc;
 use std::time::Duration;
@@ -7,10 +6,10 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 use shared::{ServerCommandToClient, ServerResponse};
 
-pub async fn game_loop(server: Arc<Mutex<Server>>, client_connections: Arc<Mutex<HashMap<SocketAddr, Sender<ServerCommandToClient>>>>,
+pub async fn game_loop(server: Arc<Mutex<Server>>, client_connections: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
                        tud: u16) {
     let t0 = tokio::time::Instant::now();
-    let mut action_execution_results: Vec<(SocketAddr, ServerResponse)> = Vec::new();
+    let mut action_execution_results: Vec<(u16, ServerResponse)> = Vec::new();
 
     loop {
         let frame = {

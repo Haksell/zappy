@@ -25,5 +25,5 @@ pub fn init_logger() {
             )
         })
         .init();
-    log::debug!("Starting the server");
+    log::info!("Starting the server...");
 }

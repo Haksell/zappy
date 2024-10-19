@@ -16,7 +16,6 @@ use client_loop::client_loop;
 use gfx_loop::gfx_loop;
 use shared::{ServerCommandToClient, GFX_PORT};
 use std::error::Error;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
@@ -26,14 +25,14 @@ use tokio::sync::Mutex;
 async fn main() -> Result<(), Box<dyn Error>> {
     init_logger();
     let args = ServerArgs::parse();
-    let port = args.port;
+    let client_port = args.port;
     let server = Server::from(&args).await?;
     let client_listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let gfx_listener = TcpListener::bind(format!("127.0.0.1:{GFX_PORT}")).await?;
-    let client_connections: Arc<Mutex<HashMap<SocketAddr, Sender<ServerCommandToClient>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let client_connections: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>> = Arc::new(Mutex::new(HashMap::new()));
     let server = Arc::new(Mutex::new(server));
 
-    log::info!("Server running on 127.0.0.1:{port} (client) and 127.0.0.1:{GFX_PORT} (gfx)");
+    log::info!("Server running on 127.0.0.1:{client_port} (client) and 127.0.0.1:{GFX_PORT} (gfx)");
 
     tokio::select! {
         _ = client_loop(Arc::clone(&server), Arc::clone(&client_connections), client_listener) => {},

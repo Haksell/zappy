@@ -2,7 +2,6 @@ use crate::{Command, MAX_COMMANDS};
 use crate::{ServerCommandToClient, ZappyError};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-use std::net::SocketAddr;
 use tokio::sync::mpsc::Sender;
 
 // TOOD: pos: Pos
@@ -12,22 +11,20 @@ pub struct Player {
     #[serde(skip_serializing, skip_deserializing)]
     pub communication_channel: Option<Sender<ServerCommandToClient>>,
     pub team: String,
-    pub id: usize,
+    id: u16,
     pub next_frame: u64,
     pub commands: VecDeque<Command>,
     pub x: usize,
-    pub y: usize,
-    pub addr: SocketAddr
+    pub y: usize
 }
 
 impl Player {
     pub fn new(
         communication_channel: Sender<ServerCommandToClient>,
-        id: usize,
+        id: u16,
         team: String,
         x: usize,
         y: usize,
-        addr: SocketAddr
     ) -> Self {
         Self {
             communication_channel: Some(communication_channel),
@@ -37,7 +34,6 @@ impl Player {
             commands: VecDeque::with_capacity(MAX_COMMANDS),
             x,
             y,
-            addr
         }
     }
 
@@ -51,5 +47,9 @@ impl Player {
                 log::error!("[err while disconnect] {}", e);
                 ZappyError::ConnectionCorrupted
             })
+    }
+    
+    pub fn id(&self) -> u16 {
+        self.id
     }
 }

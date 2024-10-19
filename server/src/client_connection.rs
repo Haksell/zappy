@@ -1,5 +1,4 @@
 use shared::ZappyError;
-use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -10,17 +9,17 @@ pub type VoidResult<T> = Result<(), T>;
 pub struct ClientConnection {
     tcp_stream: TcpStream,
     buf: Vec<u8>,
-    addr: SocketAddr,
+    id: u16,
 }
 
 impl ClientConnection {
     //TODO: check when msg > buf size
-    pub fn new(tcp_stream: TcpStream, addr: SocketAddr) -> Self {
+    pub fn new(tcp_stream: TcpStream, id: u16) -> Self {
         let buf = vec![0u8; BUF_SIZE];
         Self {
             tcp_stream,
             buf,
-            addr,
+            id,
         }
     }
 
@@ -62,7 +61,7 @@ impl ClientConnection {
         }
     }
 
-    pub fn get_addr(&self) -> &SocketAddr {
-        &self.addr
+    pub fn id(&self) -> u16 {
+        self.id
     }
 }

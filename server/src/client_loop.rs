@@ -4,7 +4,6 @@ use crate::server::Server;
 use serde_json::from_str;
 use shared::{Command, ServerCommandToClient, ZappyError, HANDSHAKE_MSG};
 use std::error::Error;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, Mutex};
@@ -12,13 +11,13 @@ use tokio::sync::mpsc::Sender;
 
 pub async fn client_loop(
     server: Arc<Mutex<Server>>,
-    client_connections: Arc<Mutex<HashMap<SocketAddr, Sender<ServerCommandToClient>>>>,
+    client_connections: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
     listener: TcpListener,
 ) -> Result<(), Box<dyn Error>> {
     loop {
         let (socket, addr) = listener.accept().await?;
-        log::debug!("New connection from: {}", addr);
-        let mut client = ClientConnection::new(socket, addr.clone());
+        log::info!("New connection, assigned id: {}", addr.port());
+        let mut client = ClientConnection::new(socket, addr.port());
 
         // FIXME
         let server = Arc::clone(&server);
@@ -35,26 +34,26 @@ pub async fn client_loop(
                 let (width, height, remaining_clients) = {
                     let mut server_lock = server.lock().await;
                     server_lock
-                        .add_player(addr, cmd_tx.clone(), team_name)?;
+                        .add_player(client.id(), cmd_tx.clone(), team_name)?;
                     (
                         server_lock.width,
                         server_lock.height,
                         server_lock.remaining_clients(),
                     )
                 };
-                client_connections.lock().await.insert(addr, cmd_tx);
+                client_connections.lock().await.insert(client.id(), cmd_tx);
                 client.writeln(&remaining_clients.to_string()).await?;
                 client.writeln(&format!("{} {}", width, height)).await?;
 
                 return handle_player(server, &mut client, cmd_rx).await;
             }
             .await;
-            
+
             //Specific client loop ends here, cleanup before quiting async task
 
-            client_connections.lock().await.remove(&addr);
+            client_connections.lock().await.remove(&client.id());
             //TODO: handle
-            let _ = server2.lock().await.remove_player(client.get_addr());
+            let _ = server2.lock().await.remove_player(&client.id());
             if let Err(err) = bidon {
                 //TODO: put log level and message to the impl error block of ZappyError
                 match err {
@@ -89,7 +88,7 @@ async fn handle_player(
                 match from_str::<Command>(trimmed) {
                     Ok(command) => {
                         log::debug!("Received command: {:?}", command);
-                        if let Err(e)= server.lock().await.take_command(client.get_addr(), command) {
+                        if let Err(e)= server.lock().await.take_command(&client.id(), command) {
                             match e {
                                 ZappyError::Waring(msg) => client.writeln(msg.get_text()).await?,
                                 _ => return Err(e),
