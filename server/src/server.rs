@@ -67,14 +67,23 @@ impl Server {
         communication_channel: Sender<ServerCommandToClient>,
         team: String,
     ) -> Result<usize, ZappyError> {
-        log::debug!("{player_id} wants to join {}", team);
+        log::debug!("{player_id} wants to join {team}");
         let team_name_trimmed = team.trim().to_string();
         let remaining_clients = self.remaining_clients(&team_name_trimmed)?;
         if remaining_clients > 0 {
             let (x, y) = self.map.random_position();
-            let player = Arc::new(Player::new(communication_channel, player_id, team_name_trimmed.clone(), x, y));
+            let player = Arc::new(Player::new(
+                communication_channel,
+                player_id,
+                team_name_trimmed.clone(),
+                x,
+                y,
+            ));
             self.map.add_player(Arc::clone(&player));
-            self.teams.get_mut(&team_name_trimmed).unwrap().push(Arc::clone(&player));
+            self.teams
+                .get_mut(&team_name_trimmed)
+                .unwrap()
+                .push(Arc::clone(&player));
             if let Some(_) = self.clients.insert(player_id, player) {
                 //TODO: is it possible? need to handle?
                 log::warn!("Duplicate connection attempted from {player_id}.");
@@ -88,7 +97,10 @@ impl Server {
     pub fn remove_player(&mut self, player_id: &u16) {
         if let Some(player) = self.clients.remove(player_id) {
             log::debug!("Client {player_id} has been removed from the server");
-            self.teams.get_mut(&player.team).unwrap().retain(|p| p.id() != *player_id);
+            self.teams
+                .get_mut(&player.team)
+                .unwrap()
+                .retain(|p| p.id() != *player_id);
             //player.disconnect().await?;
         }
     }
@@ -97,20 +109,20 @@ impl Server {
         if let Some(players_in_team) = self.teams.get(team_name) {
             Ok(self.max_clients - players_in_team.len() as u16)
         } else {
-            Err(ZappyError::TeamDoesntExist)
+            Err(ZappyError::TeamDoesntExist(team_name.to_string()))
         }
     }
 
-    pub fn take_command(&mut self, player_id: &u16, cmd: Command) -> Result<(), ZappyError> {
+    pub fn take_command(&mut self, player_id: &u16, cmd: Command) -> Result<Option<ServerResponse>, ZappyError> {
         if let Some(player) = self.clients.get_mut(player_id) {
-            if player.commands.len() >= MAX_COMMANDS {
+            Ok(if player.commands.len() >= MAX_COMMANDS {
                 // TODO: send message
                 log::debug!("Player {player_id:?} tried to push {cmd:?} in to a full queue.");
-                return Err(ZappyError::Waring(ServerResponse::ActionQueueIsFull));
+                Some(ServerResponse::ActionQueueIsFull)
             } else {
                 Arc::make_mut(player).commands.push_back(cmd);
-            }
-            Ok(())
+                None
+            })
         } else {
             Err(ZappyError::IsNotConnectedToServer)
         }

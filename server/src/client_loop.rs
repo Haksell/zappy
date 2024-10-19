@@ -50,13 +50,15 @@ pub async fn client_loop(
             if let Err(err) = handle_result {
                 //TODO: put log level and message to the impl error block of ZappyError
                 match err {
-                    ZappyError::ConnectionClosedByClient => log::debug!("Client disconnected"),
+                    ZappyError::ConnectionClosedByClient => {
+                        log::info!("{}: client disconnected", client.id())
+                    }
                     ZappyError::MaxPlayersReached => {
                         log::debug!("Max players reached");
                         let _ = client.writeln("Max players reached").await;
                     }
-                    ZappyError::TeamDoesntExist => {
-                        log::debug!("Team doesn't exist");
+                    ZappyError::TeamDoesntExist(name) => {
+                        log::debug!("{name}: team doesn't exist");
                         let _ = client
                             .writeln("Team doesn't exist. You are disconnected")
                             .await;
@@ -81,12 +83,8 @@ async fn handle_player(
                 match from_str::<Command>(trimmed) {
                     Ok(command) => {
                         log::debug!("Received command: {:?}", command);
-                        if let Err(e)= server.lock().await.take_command(&client.id(), command) {
-                            match e {
-                                ZappyError::Waring(msg) => client.writeln(msg.get_text()).await?,
-                                _ => return Err(e),
-                            }
-                            //TODO: test lock here
+                        if let Some(e)= server.lock().await.take_command(&client.id(), command)? {
+                            client.writeln(e.get_text()).await?;
                         }
                     },
                     Err(_) => {

@@ -12,11 +12,9 @@ pub enum ZappyError {
     MaxPlayersReached,
     ConnectionCorrupted,
     AlreadyConnected,
-    TeamDoesntExist,
+    TeamDoesntExist(String),
     IsNotConnectedToServer,
     TechnicalError(String),
-    //TODO: handle this case in other way
-    Waring(ServerResponse)
 }
 
 pub enum ServerCommandToClient {
@@ -33,7 +31,7 @@ pub enum ServerResponse {
     ElevationInProgress,
     Value(String),
     Mort,
-    ActionQueueIsFull
+    ActionQueueIsFull,
 }
 
 impl ServerResponse {
@@ -46,7 +44,7 @@ impl ServerResponse {
             ServerResponse::ElevationInProgress => "Elevation InProgress",
             ServerResponse::Value(_) => todo!(),
             ServerResponse::Mort => "Mort",
-            ServerResponse::ActionQueueIsFull => "The action queue is full, please try later."
+            ServerResponse::ActionQueueIsFull => "The action queue is full, please try later.",
         }
     }
 }
