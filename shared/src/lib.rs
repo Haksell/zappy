@@ -12,7 +12,6 @@ pub enum ZappyError {
     MaxPlayersReached,
     ConnectionCorrupted,
     AlreadyConnected,
-    TryToDisconnectNotConnected,
     TeamDoesntExist,
     IsNotConnectedToServer,
     TechnicalError(String),

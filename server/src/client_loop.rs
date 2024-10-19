@@ -1,13 +1,13 @@
-use std::collections::HashMap;
 use crate::client_connection::ClientConnection;
 use crate::server::Server;
 use serde_json::from_str;
 use shared::{Command, ServerCommandToClient, ZappyError, HANDSHAKE_MSG};
+use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::{mpsc, Mutex};
 use tokio::sync::mpsc::Sender;
+use tokio::sync::{mpsc, Mutex};
 
 pub async fn client_loop(
     server: Arc<Mutex<Server>>,
@@ -25,21 +25,15 @@ pub async fn client_loop(
         let client_connections = Arc::clone(&client_connections);
 
         tokio::spawn(async move {
-
-            let bidon: Result<(), ZappyError> = async {
-                //TODO: review the queue size
+            let handle_result: Result<(), ZappyError> = async {
                 let (cmd_tx, cmd_rx) = mpsc::channel::<ServerCommandToClient>(32);
                 client.write(HANDSHAKE_MSG).await?;
                 let team_name = client.read().await?;
                 let (width, height, remaining_clients) = {
                     let mut server_lock = server.lock().await;
-                    server_lock
-                        .add_player(client.id(), cmd_tx.clone(), team_name)?;
-                    (
-                        server_lock.width,
-                        server_lock.height,
-                        server_lock.remaining_clients(),
-                    )
+                    let remaining_clients =
+                        server_lock.add_player(client.id(), cmd_tx.clone(), team_name)?;
+                    (server_lock.width, server_lock.height, remaining_clients)
                 };
                 client_connections.lock().await.insert(client.id(), cmd_tx);
                 client.writeln(&remaining_clients.to_string()).await?;
@@ -52,9 +46,8 @@ pub async fn client_loop(
             //Specific client loop ends here, cleanup before quiting async task
 
             client_connections.lock().await.remove(&client.id());
-            //TODO: handle
-            let _ = server2.lock().await.remove_player(&client.id());
-            if let Err(err) = bidon {
+            server2.lock().await.remove_player(&client.id());
+            if let Err(err) = handle_result {
                 //TODO: put log level and message to the impl error block of ZappyError
                 match err {
                     ZappyError::ConnectionClosedByClient => log::debug!("Client disconnected"),
