@@ -5,7 +5,6 @@ use rand::Rng as _;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use crate::player::MessageToPlayer;
 
 #[derive(Debug)]
 pub enum ZappyError {
@@ -17,12 +16,13 @@ pub enum ZappyError {
     TeamDoesntExist,
     IsNotConnectedToServer,
     TechnicalError(String),
-    Waring(MessageToPlayer)
+    //TODO: handle this case in other way
+    Waring(ServerResponse)
 }
 
 pub enum ServerCommandToClient {
     Shutdown,
-    SendMessage(String),
+    SendMessage(ServerResponse),
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,6 +34,22 @@ pub enum ServerResponse {
     ElevationInProgress,
     Value(String),
     Mort,
+    ActionQueueIsFull
+}
+
+impl ServerResponse {
+    pub fn get_text(&self) -> &'static str {
+        match self {
+            ServerResponse::Ok => "Ok",
+            ServerResponse::Ko => "Ko",
+            ServerResponse::Cases(_) => todo!(),
+            ServerResponse::Inventory(_) => todo!(),
+            ServerResponse::ElevationInProgress => "Elevation InProgress",
+            ServerResponse::Value(_) => todo!(),
+            ServerResponse::Mort => "Mort",
+            ServerResponse::ActionQueueIsFull => "The action queue is full, please try later."
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -142,7 +158,7 @@ impl Map {
 
     pub fn add_player(&mut self, player: Arc<Player>) {
         println!("add_player: {player:?}");
-        self.map[player.y][player.x].players.push(player); // TODO: Arc<Mutex> or some shit
+        self.map[player.y][player.x].players.push(player);
     }
 }
 

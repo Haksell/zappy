@@ -1,14 +1,18 @@
+use std::collections::HashMap;
 use crate::client_connection::ClientConnection;
 use crate::server::Server;
 use serde_json::from_str;
 use shared::{Command, ServerCommandToClient, ZappyError, HANDSHAKE_MSG};
 use std::error::Error;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, Mutex};
+use tokio::sync::mpsc::Sender;
 
 pub async fn client_loop(
     server: Arc<Mutex<Server>>,
+    client_connections: Arc<Mutex<HashMap<SocketAddr, Sender<ServerCommandToClient>>>>,
     listener: TcpListener,
 ) -> Result<(), Box<dyn Error>> {
     loop {
@@ -19,8 +23,10 @@ pub async fn client_loop(
         // FIXME
         let server = Arc::clone(&server);
         let server2 = Arc::clone(&server);
+        let client_connections = Arc::clone(&client_connections);
 
         tokio::spawn(async move {
+
             let bidon: Result<(), ZappyError> = async {
                 //TODO: review the queue size
                 let (cmd_tx, cmd_rx) = mpsc::channel::<ServerCommandToClient>(32);
@@ -36,13 +42,18 @@ pub async fn client_loop(
                         server_lock.remaining_clients(),
                     )
                 };
+                client_connections.lock().await.insert(addr, cmd_tx);
                 client.writeln(&remaining_clients.to_string()).await?;
                 client.writeln(&format!("{} {}", width, height)).await?;
 
                 return handle_player(server, &mut client, cmd_rx).await;
             }
             .await;
+            
+            //Specific client loop ends here, cleanup before quiting async task
 
+            client_connections.lock().await.remove(&addr);
+            //TODO: handle
             let _ = server2.lock().await.remove_player(client.get_addr());
             if let Err(err) = bidon {
                 //TODO: put log level and message to the impl error block of ZappyError
@@ -100,9 +111,9 @@ async fn handle_player(
                         client.writeln(goodbye).await?;
                         return Ok(());
                     }
-                    ServerCommandToClient::SendMessage(message) => {
-                        log::debug!("Sending message to client: {}", message.trim_end());
-                        client.write(&message).await?;
+                    ServerCommandToClient::SendMessage(response) => {
+                        log::debug!("Sending message to client: {}", response.get_text());
+                        client.writeln(response.get_text()).await?;
                     }
                 }
             }

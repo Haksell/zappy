@@ -2,24 +2,13 @@ use crate::{Command, MAX_COMMANDS};
 use crate::{ServerCommandToClient, ZappyError};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use std::net::SocketAddr;
 use tokio::sync::mpsc::Sender;
-
-#[derive(Debug)]
-pub enum MessageToPlayer {
-    ActionQueueIsFull
-}
-
-impl MessageToPlayer {
-    pub fn get_text(&self) -> &'static str {
-        match self {
-            _ => "Action queue limit is reached",
-        }
-    }
-}
 
 // TOOD: pos: Pos
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Player {
+    //TODO: communication channel is still unused, can be used in case of die, admin disconnect
     #[serde(skip_serializing, skip_deserializing)]
     pub communication_channel: Option<Sender<ServerCommandToClient>>,
     pub team: String,
@@ -28,6 +17,7 @@ pub struct Player {
     pub commands: VecDeque<Command>,
     pub x: usize,
     pub y: usize,
+    pub addr: SocketAddr
 }
 
 impl Player {
@@ -37,6 +27,7 @@ impl Player {
         team: String,
         x: usize,
         y: usize,
+        addr: SocketAddr
     ) -> Self {
         Self {
             communication_channel: Some(communication_channel),
@@ -46,6 +37,7 @@ impl Player {
             commands: VecDeque::with_capacity(MAX_COMMANDS),
             x,
             y,
+            addr
         }
     }
 
