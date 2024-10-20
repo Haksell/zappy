@@ -1,5 +1,5 @@
 use crate::args::ServerArgs;
-use shared::player::{Direction, Player};
+use shared::player::Player;
 use shared::{Command, Map, ServerCommandToClient, ServerResponse, ZappyError, MAX_COMMANDS};
 use std::collections::HashMap;
 use std::error::Error;
@@ -40,6 +40,25 @@ impl Server {
     // so it can't be self, investigate is it the best place for this logic?
     fn execute(map: &Map, player: &mut Player, command: &Command) -> Option<ServerResponse> {
         log::debug!("Executing command: {:?} for {:?}", command, player);
+        /*
+        match command {
+            Command::Avance => {
+                match player.direction() {
+                    Direction::North => {
+                    }
+                    Direction::South => {}
+                    Direction::East => {
+                        if *player.x() == map.width - 1 {
+
+                        }
+                    }
+                    Direction::West => {}
+                }
+                Some(ServerResponse::Ok)
+            },
+            _ => Some(ServerResponse::Mort)
+        }
+         */
         Some(ServerResponse::Mort)
     }
 
@@ -71,14 +90,11 @@ impl Server {
         let team_name_trimmed = team.trim().to_string();
         let remaining_clients = self.remaining_clients(&team_name_trimmed)?;
         if remaining_clients > 0 {
-            let (x, y) = self.map.random_position();
             let player = Arc::new(Player::new(
                 communication_channel,
                 player_id,
                 team_name_trimmed.clone(),
-                x,
-                y,
-                Direction::random()
+                self.map.random_position(),
             ));
             self.map.add_player(Arc::clone(&player));
             self.teams
@@ -89,7 +105,11 @@ impl Server {
                 //TODO: is it possible? need to handle?
                 log::warn!("Duplicate connection attempted from {player_id}.");
             }
-            log::info!("The player with id: {} has successfully joined the \"{}\" team.", player.id(), player.team());
+            log::info!(
+                "The player with id: {} has successfully joined the \"{}\" team.",
+                player.id(),
+                player.team()
+            );
             Ok((remaining_clients - 1) as usize)
         } else {
             Err(ZappyError::MaxPlayersReached)
@@ -116,7 +136,11 @@ impl Server {
         }
     }
 
-    pub fn take_command(&mut self, player_id: &u16, cmd: Command) -> Result<Option<ServerResponse>, ZappyError> {
+    pub fn take_command(
+        &mut self,
+        player_id: &u16,
+        cmd: Command,
+    ) -> Result<Option<ServerResponse>, ZappyError> {
         if let Some(player) = self.clients.get_mut(player_id) {
             Ok(if player.commands().len() >= MAX_COMMANDS {
                 // TODO: send message

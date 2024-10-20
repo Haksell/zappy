@@ -1,10 +1,10 @@
 use crate::{Command, MAX_COMMANDS};
 use crate::{ServerCommandToClient, ZappyError};
-use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
 use derive_getters::Getters;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use tokio::sync::mpsc::Sender;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
@@ -12,15 +12,27 @@ pub enum Direction {
     North,
     South,
     East,
-    West
+    West,
 }
 
 impl Direction {
-    const DIRECTIONS: [Direction; 4] = [Direction::North, Direction::South, Direction::East, Direction::West];
+    const DIRECTIONS: [Direction; 4] = [
+        Direction::North,
+        Direction::South,
+        Direction::East,
+        Direction::West,
+    ];
     pub fn random() -> Self {
         let mut rng = thread_rng();
         *Direction::DIRECTIONS.choose(&mut rng).unwrap()
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Position {
+    pub x: usize,
+    pub y: usize,
+    pub direction: Direction,
 }
 
 // TOOD: pos: Pos
@@ -33,9 +45,7 @@ pub struct Player {
     id: u16,
     next_frame: u64,
     commands: VecDeque<Command>,
-    x: usize,
-    y: usize,
-    direction: Direction
+    position: Position,
 }
 
 impl Player {
@@ -43,9 +53,7 @@ impl Player {
         communication_channel: Sender<ServerCommandToClient>,
         id: u16,
         team: String,
-        x: usize,
-        y: usize,
-        direction: Direction
+        position: Position,
     ) -> Self {
         Self {
             communication_channel: Some(communication_channel),
@@ -53,9 +61,7 @@ impl Player {
             team,
             next_frame: 0,
             commands: VecDeque::with_capacity(MAX_COMMANDS),
-            x,
-            y,
-            direction
+            position,
         }
     }
 
@@ -70,15 +76,15 @@ impl Player {
                 ZappyError::ConnectionCorrupted
             })
     }
-    
+
     pub fn pop_command_from_queue(&mut self) -> Option<Command> {
         self.commands.pop_front()
     }
-    
+
     pub fn push_command_to_queue(&mut self, command: Command) {
         self.commands.push_back(command);
     }
-    
+
     pub fn set_next_frame(&mut self, value: u64) {
         self.next_frame = value;
     }

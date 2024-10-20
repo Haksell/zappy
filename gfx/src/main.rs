@@ -10,12 +10,12 @@ use ratatui::{
     Frame,
 };
 use serde_json::from_str;
+use shared::player::Direction;
 use shared::{Map, GFX_PORT};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::time::Duration;
-use shared::player::Direction;
 
 pub const NORTH_EMOJI: &'static str = "⬆️";
 pub const SOUTH_EMOJI: &'static str = "⬇️";
@@ -64,7 +64,17 @@ fn draw(frame: &mut Frame, data: &mut Option<Map>) {
                     .map(|e| e.team_name.get(..1).unwrap())
                     .collect::<Vec<_>>()
                     .concat();
-                let mapped_player = cell.players.iter().map(|p| format!("[{}{}]", p.id(), direction_to_emoji(p.direction()))).collect::<String>();
+                let mapped_player = cell
+                    .players
+                    .iter()
+                    .map(|p| {
+                        format!(
+                            "[{}{}]",
+                            p.id(),
+                            direction_to_emoji(&p.position().direction)
+                        )
+                    })
+                    .collect::<String>();
                 let widget = Paragraph::new(format!(
                     "{mapped_player}, {mapped_eggs}, {mapped_resources}"
                 ))
@@ -160,6 +170,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ratatui::restore();
     Ok(())
 }
-
-
-

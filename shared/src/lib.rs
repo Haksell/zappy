@@ -1,5 +1,6 @@
 pub mod player;
 
+use crate::player::{Direction, Position};
 use player::Player;
 use rand::Rng as _;
 use serde::{Deserialize, Serialize};
@@ -145,22 +146,29 @@ impl Map {
         Self { map, width, height }
     }
 
-    pub fn random_position(&self) -> (usize, usize) {
+    pub fn random_position(&self) -> Position {
         let mut thread_rng = rand::thread_rng();
-        (
-            thread_rng.gen_range(0..self.width),
-            thread_rng.gen_range(0..self.height),
-        )
+        Position {
+            x: thread_rng.gen_range(0..self.width),
+            y: thread_rng.gen_range(0..self.height),
+            direction: Direction::random(),
+        }
     }
 
     pub fn add_player(&mut self, player: Arc<Player>) {
-        log::debug!("Adding player to the game field: {player:?}");
-        self.map[*player.y()][*player.x()].players.push(player);
+        log::debug!("Adding {} to the game field.", player.id());
+        let player_position = player.position();
+        self.map[player_position.y][player_position.x]
+            .players
+            .push(player);
     }
-    
+
     pub fn remove_player(&mut self, player: &Arc<Player>) {
-        log::debug!("Removing player from the game field: {player:?}");
-        self.map[*player.y()][*player.x()].players.retain(|p| p.id() != player.id());
+        log::debug!("Removing {} from the game field.", player.id());
+        let player_position = player.position();
+        self.map[player_position.y][player_position.x]
+            .players
+            .retain(|p| p.id() != player.id());
     }
 }
 
