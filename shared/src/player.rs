@@ -15,6 +15,11 @@ pub enum Direction {
     West,
 }
 
+pub enum Side {
+    Left,
+    Right,
+}
+
 impl Direction {
     const DIRECTIONS: [Direction; 4] = [
         Direction::North,
@@ -26,9 +31,26 @@ impl Direction {
         let mut rng = thread_rng();
         *Direction::DIRECTIONS.choose(&mut rng).unwrap()
     }
+
+    pub fn turn(&self, side: Side) -> Self {
+        match side {
+            Side::Left => match self {
+                Direction::North => Direction::West,
+                Direction::West => Direction::South,
+                Direction::South => Direction::East,
+                Direction::East => Direction::North,
+            },
+            Side::Right => match self {
+                Direction::North => Direction::East,
+                Direction::East => Direction::South,
+                Direction::South => Direction::West,
+                Direction::West => Direction::North,
+            },
+        }
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
@@ -45,7 +67,7 @@ pub struct Player {
     id: u16,
     next_frame: u64,
     commands: VecDeque<Command>,
-    position: Position,
+    pub(crate) position: Position,
 }
 
 impl Player {

@@ -1,9 +1,8 @@
 use crate::args::ServerArgs;
-use shared::player::Player;
+use shared::player::{Player};
 use shared::{Command, Map, ServerCommandToClient, ServerResponse, ZappyError, MAX_COMMANDS};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
-use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 pub struct Server {
@@ -11,8 +10,8 @@ pub struct Server {
     pub(crate) height: usize,
     max_clients: u16,
     pub(crate) tud: u16,
-    teams: HashMap<String, Vec<Arc<Player>>>,
-    clients: HashMap<u16, Arc<Player>>,
+    teams: HashMap<String, HashSet<u16>>,
+    pub(crate) players: HashMap<u16, Player>,
     pub(crate) map: Map,
     pub(crate) frame: u64,
 }
@@ -22,7 +21,7 @@ impl Server {
         let teams = args
             .names
             .iter()
-            .map(|k| (k.clone(), Vec::with_capacity(args.clients as usize)))
+            .map(|k| (k.clone(), HashSet::with_capacity(args.clients as usize)))
             .collect();
         Ok(Self {
             width: args.width,
@@ -30,51 +29,24 @@ impl Server {
             max_clients: args.clients,
             tud: args.tud,
             teams,
-            clients: HashMap::new(),
+            players: HashMap::new(),
             map: Map::new(args.width, args.height),
             frame: 0,
         })
     }
 
-    //TODO: it is launched in the loop that borrows self
-    // so it can't be self, investigate is it the best place for this logic?
-    fn execute(map: &Map, player: &mut Player, command: &Command) -> Option<ServerResponse> {
-        log::debug!("Executing command: {:?} for {:?}", command, player);
-        /*
-        match command {
-            Command::Avance => {
-                match player.direction() {
-                    Direction::North => {
-                    }
-                    Direction::South => {}
-                    Direction::East => {
-                        if *player.x() == map.width - 1 {
-
-                        }
-                    }
-                    Direction::West => {}
-                }
-                Some(ServerResponse::Ok)
-            },
-            _ => Some(ServerResponse::Mort)
-        }
-         */
-        Some(ServerResponse::Mort)
-    }
-
     //TODO: C like approach to send execution results to the player but I can't see now
     // a better way to quit this server lock and don't reallocate memory for responses each teak
     pub fn tick(&mut self, execution_results: &mut Vec<(u16, ServerResponse)>) {
-        //self.map.next_position();
-        for (_, player) in &mut self.clients {
+        let map = &mut self.map;
+        for (_, player) in &mut self.players {
             // TODO: handle 0-time differently
             if !player.commands().is_empty() && self.frame >= *player.next_frame() {
-                let player_mut = Arc::make_mut(player);
-                let command = player_mut.pop_command_from_queue().unwrap();
-                if let Some(resp) = Server::execute(&self.map, player_mut, &command) {
-                    execution_results.push((*player_mut.id(), resp));
+                let command = player.pop_command_from_queue().unwrap();
+                if let Some(resp) = map.apply_cmd(player, &command) {
+                    execution_results.push((*player.id(), resp));
                 }
-                player_mut.set_next_frame(self.frame + command.delay());
+                player.set_next_frame(self.frame + command.delay());
             }
         }
         self.frame += 1;
@@ -90,26 +62,24 @@ impl Server {
         let team_name_trimmed = team.trim().to_string();
         let remaining_clients = self.remaining_clients(&team_name_trimmed)?;
         if remaining_clients > 0 {
-            let player = Arc::new(Player::new(
+            let player = Player::new(
                 communication_channel,
                 player_id,
                 team_name_trimmed.clone(),
                 self.map.random_position(),
-            ));
-            self.map.add_player(Arc::clone(&player));
+            );
+            self.map.add_player(*player.id(), player.position());
             self.teams
                 .get_mut(&team_name_trimmed)
                 .unwrap()
-                .push(Arc::clone(&player));
-            if let Some(_) = self.clients.insert(player_id, Arc::clone(&player)) {
-                //TODO: is it possible? need to handle?
-                log::warn!("Duplicate connection attempted from {player_id}.");
-            }
-            log::info!(
+                .insert(*player.id());
+            let log_successful_insert = format!(
                 "The player with id: {} has successfully joined the \"{}\" team.",
                 player.id(),
                 player.team()
             );
+            self.players.insert(player_id, player);
+            log::info!("{log_successful_insert}");
             Ok((remaining_clients - 1) as usize)
         } else {
             Err(ZappyError::MaxPlayersReached)
@@ -117,13 +87,10 @@ impl Server {
     }
 
     pub fn remove_player(&mut self, player_id: &u16) {
-        if let Some(player) = self.clients.remove(player_id) {
+        if let Some(player) = self.players.remove(player_id) {
             log::debug!("Client {player_id} has been removed from the server");
-            self.map.remove_player(&player);
-            self.teams
-                .get_mut(player.team())
-                .unwrap()
-                .retain(|p| *p.id() != *player_id);
+            self.map.remove_player(player.id(), player.position());
+            self.teams.get_mut(player.team()).unwrap().remove(player_id);
             //player.disconnect().await?;
         }
     }
@@ -141,13 +108,13 @@ impl Server {
         player_id: &u16,
         cmd: Command,
     ) -> Result<Option<ServerResponse>, ZappyError> {
-        if let Some(player) = self.clients.get_mut(player_id) {
+        if let Some(player) = self.players.get_mut(player_id) {
             Ok(if player.commands().len() >= MAX_COMMANDS {
                 // TODO: send message
                 log::debug!("Player {player_id:?} tried to push {cmd:?} in to a full queue.");
                 Some(ServerResponse::ActionQueueIsFull)
             } else {
-                Arc::make_mut(player).push_command_to_queue(cmd);
+                player.push_command_to_queue(cmd);
                 None
             })
         } else {

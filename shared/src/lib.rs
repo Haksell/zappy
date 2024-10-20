@@ -1,11 +1,10 @@
 pub mod player;
 
-use crate::player::{Direction, Position};
+use crate::player::{Direction, Position, Side};
 use player::Player;
 use rand::Rng as _;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug)]
 pub enum ZappyError {
@@ -50,7 +49,7 @@ impl ServerResponse {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Command {
     Avance,
     Droite,
@@ -118,7 +117,7 @@ pub struct Egg {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
-    pub players: Vec<Arc<Player>>,
+    pub players: HashSet<u16>,
     pub resources: HashMap<Resource, usize>,
     pub eggs: Vec<Egg>,
 }
@@ -133,7 +132,7 @@ pub struct Map {
 impl Cell {
     pub fn new() -> Self {
         Self {
-            players: Vec::new(),
+            players: HashSet::new(),
             resources: HashMap::new(),
             eggs: Vec::new(),
         }
@@ -155,20 +154,59 @@ impl Map {
         }
     }
 
-    pub fn add_player(&mut self, player: Arc<Player>) {
-        log::debug!("Adding {} to the game field.", player.id());
-        let player_position = player.position();
-        self.map[player_position.y][player_position.x]
-            .players
-            .push(player);
+    fn handle_avance(&mut self, player: &mut Player) {
+        let current_x = player.position.x;
+        let current_y = player.position.y;
+        let (new_x, new_y) = match player.position.direction {
+            Direction::North => (
+                current_x,
+                if current_y == 0 {
+                    self.height - 1
+                } else {
+                    current_y - 1
+                },
+            ),
+            Direction::South => (current_x, (current_y + 1) % self.height),
+            Direction::East => ((current_x + 1) % self.width, current_y),
+            Direction::West => (
+                if current_x == 0 {
+                    self.width - 1
+                } else {
+                    current_x - 1
+                },
+                current_y,
+            ),
+        };
+        player.position.x = new_x;
+        player.position.y = new_y;
+        self.map[current_y][current_x].players.remove(player.id());
+        self.map[new_y][new_x].players.insert(*player.id());
     }
 
-    pub fn remove_player(&mut self, player: &Arc<Player>) {
-        log::debug!("Removing {} from the game field.", player.id());
-        let player_position = player.position();
-        self.map[player_position.y][player_position.x]
-            .players
-            .retain(|p| p.id() != player.id());
+    pub fn apply_cmd(&mut self, player: &mut Player, command: &Command) -> Option<ServerResponse> {
+        log::debug!("Executing command: {:?} for {:?}", command, player);
+        match command {
+            Command::Avance | Command::Droite | Command::Gauche => {
+                if *command == Command::Droite {
+                    player.position.direction = player.position.direction.turn(Side::Right);
+                } else if *command == Command::Gauche {
+                    player.position.direction = player.position.direction.turn(Side::Left);
+                }
+                self.handle_avance(player);
+                Some(ServerResponse::Ok)
+            }
+            _ => Some(ServerResponse::Mort),
+        }
+    }
+
+    pub fn add_player(&mut self, id: u16, position: &Position) {
+        log::debug!("Adding {} to the game field.", id);
+        self.map[position.y][position.x].players.insert(id);
+    }
+
+    pub fn remove_player(&mut self, id: &u16, position: &Position) {
+        log::debug!("Removing {} from the game field.", id);
+        self.map[position.y][position.x].players.remove(id);
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::server::Server;
-use serde_json::to_string;
+use serde_json::{json, to_string, Value};
 use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
@@ -30,7 +30,14 @@ async fn handle_streaming_client(
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
     loop {
-        let json_data = to_string(&server.lock().await.map)?;
+        let combined: Value = {
+            let server_lock = server.lock().await;
+            json!({
+                "map": server_lock.map,
+                "players": server_lock.players
+            })
+        };
+        let json_data = to_string(&combined)?;
 
         // TODO: don't send if no changes (dirty state or hash)
         socket.write_all(json_data.as_bytes()).await?;

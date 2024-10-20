@@ -9,9 +9,10 @@ use ratatui::{
     layout::{Constraint, Layout},
     Frame,
 };
-use serde_json::from_str;
-use shared::player::Direction;
+use serde_json::{from_str, Value};
+use shared::player::{Direction, Player};
 use shared::{Map, GFX_PORT};
+use std::collections::HashMap;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -31,8 +32,8 @@ fn direction_to_emoji(direction: &Direction) -> &'static str {
     }
 }
 
-fn draw(frame: &mut Frame, data: &mut Option<Map>) {
-    if let Some(data) = data {
+fn draw(frame: &mut Frame, map: &mut Option<Map>, players: &mut Option<HashMap<u16, Player>>) {
+    if let (Some(data), Some(players)) = (map, players) {
         let area = frame.area().inner(Margin {
             vertical: 1,
             horizontal: 1,
@@ -47,8 +48,8 @@ fn draw(frame: &mut Frame, data: &mut Option<Map>) {
                 .to_vec()
         });
 
-        for x in 0..data.width {
-            for y in 0..data.height {
+        for y in 0..data.width {
+            for x in 0..data.height {
                 let col = cols.next().unwrap();
                 let cell = &data.map[y][x];
                 let mapped_resources = cell
@@ -70,15 +71,15 @@ fn draw(frame: &mut Frame, data: &mut Option<Map>) {
                     .map(|p| {
                         format!(
                             "[{}{}]",
-                            p.id(),
-                            direction_to_emoji(&p.position().direction)
+                            p,
+                            direction_to_emoji(&players.get(p).unwrap().position().direction)
                         )
                     })
                     .collect::<String>();
                 let widget = Paragraph::new(format!(
                     "{mapped_player}, {mapped_eggs}, {mapped_resources}"
                 ))
-                .block(Block::bordered().title(format!("x={x} y={y}")));
+                .block(Block::bordered().title(format!("y={y} x={x}")));
                 frame.render_widget(widget, col);
             }
         }
@@ -121,15 +122,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut lines = reader.lines();
 
                     while let Ok(Some(line)) = lines.next_line().await {
-                        match from_str::<Map>(&line) {
-                            Ok(data) => {
-                                if tx.send(data).await.is_err() {
-                                    break;
+                        match from_str::<Value>(&line) {
+                            Ok(json_data) => {
+                                let map: Result<Map, _> =
+                                    serde_json::from_value(json_data["map"].clone());
+                                let players: Result<HashMap<u16, Player>, _> =
+                                    serde_json::from_value(json_data["players"].clone());
+                                if let (Ok(map), Ok(players)) = (map, players) {
+                                    if tx.send((map, players)).await.is_err() {
+                                        break;
+                                    }
+                                } else {
+                                    eprintln!("Failed to deserialize JSON");
                                 }
                             }
-                            Err(e) => {
-                                eprintln!("Failed to deserialize JSON: {}", e);
-                            }
+                            Err(e) => eprintln!("Failed to deserialize JSON: {}", e),
                         }
                     }
                     eprintln!("Connection lost, retrying...");
@@ -143,11 +150,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    let mut data: Option<Map> = None;
+    let mut map: Option<Map> = None;
+    let mut players: Option<HashMap<u16, Player>> = None;
 
     loop {
         terminal.draw(|frame| {
-            draw(frame, &mut data);
+            draw(frame, &mut map, &mut players);
         })?;
 
         tokio::select! {
@@ -157,7 +165,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
             Some(new_data) = rx.recv() => {
-                data = Some(new_data);
+                let all: (Map, HashMap<u16, Player>) = new_data;
+                map = Some(all.0);
+                players = Some(all.1);
             }
             Some(is_connected) = conn_rx.recv() => {
                 if is_connected {
