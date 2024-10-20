@@ -157,6 +157,11 @@ impl Map {
         log::debug!("Adding player to the game field: {player:?}");
         self.map[*player.y()][*player.x()].players.push(player);
     }
+    
+    pub fn remove_player(&mut self, player: &Arc<Player>) {
+        log::debug!("Removing player from the game field: {player:?}");
+        self.map[*player.y()][*player.x()].players.retain(|p| p.id() != player.id());
+    }
 }
 
 pub const GFX_PORT: u16 = 4343;

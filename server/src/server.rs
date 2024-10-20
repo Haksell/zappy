@@ -1,5 +1,5 @@
 use crate::args::ServerArgs;
-use shared::player::Player;
+use shared::player::{Direction, Player};
 use shared::{Command, Map, ServerCommandToClient, ServerResponse, ZappyError, MAX_COMMANDS};
 use std::collections::HashMap;
 use std::error::Error;
@@ -78,6 +78,7 @@ impl Server {
                 team_name_trimmed.clone(),
                 x,
                 y,
+                Direction::random()
             ));
             self.map.add_player(Arc::clone(&player));
             self.teams
@@ -98,6 +99,7 @@ impl Server {
     pub fn remove_player(&mut self, player_id: &u16) {
         if let Some(player) = self.clients.remove(player_id) {
             log::debug!("Client {player_id} has been removed from the server");
+            self.map.remove_player(&player);
             self.teams
                 .get_mut(player.team())
                 .unwrap()

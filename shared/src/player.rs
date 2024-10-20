@@ -3,7 +3,25 @@ use crate::{ServerCommandToClient, ZappyError};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use derive_getters::Getters;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use tokio::sync::mpsc::Sender;
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+pub enum Direction {
+    North,
+    South,
+    East,
+    West
+}
+
+impl Direction {
+    const DIRECTIONS: [Direction; 4] = [Direction::North, Direction::South, Direction::East, Direction::West];
+    pub fn random() -> Self {
+        let mut rng = thread_rng();
+        *Direction::DIRECTIONS.choose(&mut rng).unwrap()
+    }
+}
 
 // TOOD: pos: Pos
 #[derive(Getters, Serialize, Deserialize, Debug, Clone)]
@@ -16,7 +34,8 @@ pub struct Player {
     next_frame: u64,
     commands: VecDeque<Command>,
     x: usize,
-    y: usize
+    y: usize,
+    direction: Direction
 }
 
 impl Player {
@@ -26,6 +45,7 @@ impl Player {
         team: String,
         x: usize,
         y: usize,
+        direction: Direction
     ) -> Self {
         Self {
             communication_channel: Some(communication_channel),
@@ -35,6 +55,7 @@ impl Player {
             commands: VecDeque::with_capacity(MAX_COMMANDS),
             x,
             y,
+            direction
         }
     }
 

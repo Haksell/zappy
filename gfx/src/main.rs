@@ -15,6 +15,21 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::time::Duration;
+use shared::player::Direction;
+
+pub const NORTH_EMOJI: &'static str = "⬆️";
+pub const SOUTH_EMOJI: &'static str = "⬇️";
+pub const EAST_EMOJI: &'static str = "➡️";
+pub const WEST_EMOJI: &'static str = "⬅️";
+
+fn direction_to_emoji(direction: &Direction) -> &'static str {
+    match direction {
+        Direction::North => NORTH_EMOJI,
+        Direction::South => SOUTH_EMOJI,
+        Direction::East => EAST_EMOJI,
+        Direction::West => WEST_EMOJI,
+    }
+}
 
 fn draw(frame: &mut Frame, data: &mut Option<Map>) {
     if let Some(data) = data {
@@ -49,7 +64,7 @@ fn draw(frame: &mut Frame, data: &mut Option<Map>) {
                     .map(|e| e.team_name.get(..1).unwrap())
                     .collect::<Vec<_>>()
                     .concat();
-                let mapped_player = cell.players.iter().map(|_| 'P').collect::<String>();
+                let mapped_player = cell.players.iter().map(|p| format!("[{}{}]", p.id(), direction_to_emoji(p.direction()))).collect::<String>();
                 let widget = Paragraph::new(format!(
                     "{mapped_player}, {mapped_eggs}, {mapped_resources}"
                 ))

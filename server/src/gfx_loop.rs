@@ -14,7 +14,7 @@ pub async fn gfx_loop(
 ) -> Result<(), Box<dyn Error>> {
     loop {
         let (socket, addr) = listener.accept().await?;
-        log::debug!("New streaming client connected: {}", addr);
+        log::debug!("New gfx client connected: {}", addr);
         let server_clone = Arc::clone(&server);
 
         tokio::spawn(async move {
