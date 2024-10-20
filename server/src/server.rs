@@ -49,13 +49,13 @@ impl Server {
         //self.map.next_position();
         for (_, player) in &mut self.clients {
             // TODO: handle 0-time differently
-            if !player.commands.is_empty() && self.frame >= player.next_frame {
+            if !player.commands().is_empty() && self.frame >= *player.next_frame() {
                 let player_mut = Arc::make_mut(player);
-                let command = player_mut.commands.pop_front().unwrap();
+                let command = player_mut.pop_command_from_queue().unwrap();
                 if let Some(resp) = Server::execute(&self.map, player_mut, &command) {
-                    execution_results.push((player_mut.id(), resp));
+                    execution_results.push((*player_mut.id(), resp));
                 }
-                player_mut.next_frame = self.frame + command.delay();
+                player_mut.set_next_frame(self.frame + command.delay());
             }
         }
         self.frame += 1;
@@ -84,10 +84,11 @@ impl Server {
                 .get_mut(&team_name_trimmed)
                 .unwrap()
                 .push(Arc::clone(&player));
-            if let Some(_) = self.clients.insert(player_id, player) {
+            if let Some(_) = self.clients.insert(player_id, Arc::clone(&player)) {
                 //TODO: is it possible? need to handle?
                 log::warn!("Duplicate connection attempted from {player_id}.");
             }
+            log::info!("The player with id: {} has successfully joined the \"{}\" team.", player.id(), player.team());
             Ok((remaining_clients - 1) as usize)
         } else {
             Err(ZappyError::MaxPlayersReached)
@@ -98,9 +99,9 @@ impl Server {
         if let Some(player) = self.clients.remove(player_id) {
             log::debug!("Client {player_id} has been removed from the server");
             self.teams
-                .get_mut(&player.team)
+                .get_mut(player.team())
                 .unwrap()
-                .retain(|p| p.id() != *player_id);
+                .retain(|p| *p.id() != *player_id);
             //player.disconnect().await?;
         }
     }
@@ -115,12 +116,12 @@ impl Server {
 
     pub fn take_command(&mut self, player_id: &u16, cmd: Command) -> Result<Option<ServerResponse>, ZappyError> {
         if let Some(player) = self.clients.get_mut(player_id) {
-            Ok(if player.commands.len() >= MAX_COMMANDS {
+            Ok(if player.commands().len() >= MAX_COMMANDS {
                 // TODO: send message
                 log::debug!("Player {player_id:?} tried to push {cmd:?} in to a full queue.");
                 Some(ServerResponse::ActionQueueIsFull)
             } else {
-                Arc::make_mut(player).commands.push_back(cmd);
+                Arc::make_mut(player).push_command_to_queue(cmd);
                 None
             })
         } else {

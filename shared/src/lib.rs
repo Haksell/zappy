@@ -154,8 +154,8 @@ impl Map {
     }
 
     pub fn add_player(&mut self, player: Arc<Player>) {
-        println!("add_player: {player:?}");
-        self.map[player.y][player.x].players.push(player);
+        log::debug!("Adding player to the game field: {player:?}");
+        self.map[*player.y()][*player.x()].players.push(player);
     }
 }
 

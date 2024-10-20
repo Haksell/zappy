@@ -28,7 +28,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let client_port = args.port;
     let server = Server::from(&args).await?;
     let client_listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
-    let gfx_listener = TcpListener::bind(format!("127.0.0.1:{GFX_PORT}")).await?;
+    let gfx_listener = TcpListener::bind(format!("127.0.0.1:{}", GFX_PORT)).await?;
     let client_connections: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>> = Arc::new(Mutex::new(HashMap::new()));
     let server = Arc::new(Mutex::new(server));
 

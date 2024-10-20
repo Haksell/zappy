@@ -2,20 +2,21 @@ use crate::{Command, MAX_COMMANDS};
 use crate::{ServerCommandToClient, ZappyError};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use derive_getters::Getters;
 use tokio::sync::mpsc::Sender;
 
 // TOOD: pos: Pos
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Getters, Serialize, Deserialize, Debug, Clone)]
 pub struct Player {
     //TODO: communication channel is still unused, can be used in case of die, admin disconnect
     #[serde(skip_serializing, skip_deserializing)]
-    pub communication_channel: Option<Sender<ServerCommandToClient>>,
-    pub team: String,
+    communication_channel: Option<Sender<ServerCommandToClient>>,
+    team: String,
     id: u16,
-    pub next_frame: u64,
-    pub commands: VecDeque<Command>,
-    pub x: usize,
-    pub y: usize
+    next_frame: u64,
+    commands: VecDeque<Command>,
+    x: usize,
+    y: usize
 }
 
 impl Player {
@@ -49,7 +50,15 @@ impl Player {
             })
     }
     
-    pub fn id(&self) -> u16 {
-        self.id
+    pub fn pop_command_from_queue(&mut self) -> Option<Command> {
+        self.commands.pop_front()
+    }
+    
+    pub fn push_command_to_queue(&mut self, command: Command) {
+        self.commands.push_back(command);
+    }
+    
+    pub fn set_next_frame(&mut self, value: u64) {
+        self.next_frame = value;
     }
 }
