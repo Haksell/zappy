@@ -1,3 +1,4 @@
+use clap::Parser;
 use crossterm::event::{self, Event};
 use serde_json::{from_str, Value};
 use shared::player::Player;
@@ -11,8 +12,23 @@ use tokio::time::Duration;
 
 mod engines;
 
+#[derive(Parser, Debug)]
+#[command(name = "gfx", about, long_about = None, about = "Graphical client for zappy.")]
+struct Args {
+    #[arg(short, long, default_value_t = String::from("127.0.0.1"), help = "Address of the server.")]
+    address: String,
+
+    #[arg(short, long, default_value_t = GFX_PORT, help = "Port of the server.")]
+    port: u16,
+
+    #[arg(short, long, default_value_t = String::from("Console"), help = "Engine used for rendering.")]
+    engine: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
+
     let (event_tx, event_rx) = mpsc::channel(100);
     let (tx, rx) = mpsc::channel(100);
     let (conn_tx, conn_rx) = mpsc::channel(10);
@@ -37,8 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tokio::spawn(async move {
         loop {
-            // TODO Adress and port in program parameter, default localhost
-            match TcpStream::connect(format!("127.0.0.1:{}", GFX_PORT)).await {
+            match TcpStream::connect(format!("{}:{}", args.address, args.port)).await {
                 Ok(stream) => {
                     eprintln!("Connected to server");
                     let _ = conn_tx.send(true).await; // Notify connection

@@ -2064,6 +2064,7 @@ name = "gfx"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "clap",
  "crossterm",
  "itertools",
  "ratatui",
