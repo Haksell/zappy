@@ -12,16 +12,21 @@ use shared::Map;
 use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
 
-pub const NORTH_EMOJI: &'static str = "⬆️";
-pub const SOUTH_EMOJI: &'static str = "⬇️";
-pub const EAST_EMOJI: &'static str = "➡️";
-pub const WEST_EMOJI: &'static str = "⬅️";
+// pub const NORTH_EMOJI: &'static str = "↥";
+// pub const EAST_EMOJI: &'static str = "↦";
+// pub const SOUTH_EMOJI: &'static str = "↧";
+// pub const WEST_EMOJI: &'static str = "↤";
+
+pub const NORTH_EMOJI: &'static str = "^";
+pub const EAST_EMOJI: &'static str = ">";
+pub const SOUTH_EMOJI: &'static str = "v";
+pub const WEST_EMOJI: &'static str = "<";
 
 fn direction_to_emoji(direction: &Direction) -> &'static str {
     match direction {
         Direction::North => NORTH_EMOJI,
-        Direction::South => SOUTH_EMOJI,
         Direction::East => EAST_EMOJI,
+        Direction::South => SOUTH_EMOJI,
         Direction::West => WEST_EMOJI,
     }
 }
@@ -33,11 +38,11 @@ fn draw(frame: &mut Frame, map: &mut Option<Map>, players: &mut Option<HashMap<u
             horizontal: 1,
         });
 
-        let rows =
-            Layout::vertical(vec![Constraint::Ratio(1, data.width as u32); data.width]).split(area);
+        let rows = Layout::vertical(vec![Constraint::Ratio(1, data.height as u32); data.height])
+            .split(area);
 
         let mut cols = rows.iter().flat_map(|row| {
-            Layout::horizontal(vec![Constraint::Ratio(1, data.height as u32); data.height])
+            Layout::horizontal(vec![Constraint::Ratio(1, data.width as u32); data.width])
                 .split(*row)
                 .to_vec()
         });
