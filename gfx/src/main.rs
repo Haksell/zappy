@@ -22,7 +22,7 @@ struct Args {
     #[arg(short, long, default_value_t = GFX_PORT, help = "Port of the server.")]
     port: u16,
 
-    #[arg(short, long, value_enum, default_value_t = Engine::Console, help = "Engine used for rendering.")]
+    #[arg(short, long, value_enum, default_value_t = Engine::Torus, help = "Engine used for rendering.")]
     engine: Engine,
 }
 
