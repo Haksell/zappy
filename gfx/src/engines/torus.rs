@@ -72,27 +72,4 @@ fn setup(mut commands: Commands, mut grid: ResMut<Grid>) {
             grid.cells[row][col] = cell_entity;
         }
     }
-
-    // Optionally, establish neighbor relationships with wrapping
-    for row in 0..rows {
-        for col in 0..columns {
-            let cell_entity = grid.cells[row][col];
-
-            // Calculate wrapped indices for neighbors
-            let north_row = (row + rows - 1) % rows;
-            let south_row = (row + 1) % rows;
-            let west_col = (col + columns - 1) % columns;
-            let east_col = (col + 1) % columns;
-
-            let neighbors = vec![
-                grid.cells[north_row][col], // North
-                grid.cells[south_row][col], // South
-                grid.cells[row][west_col],  // West
-                grid.cells[row][east_col],  // East
-            ];
-
-            // Here you can add components or resources to store the neighbors if needed
-            // For now, we're just setting up the structure
-        }
-    }
 }
