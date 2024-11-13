@@ -51,8 +51,8 @@ fn setup(
     });
 
     // TODO: read from server
-    let grid_u = 15;
-    let grid_v = 10;
+    let grid_u = 10;
+    let grid_v = 6;
 
     // TODO: clap arguments
     let ring_radius = 3.0;
@@ -95,6 +95,7 @@ fn generate_torus_cell_mesh(
     v_start: f32,
     v_end: f32,
 ) -> Mesh {
+    // looks cool with 1 too, make it an argument?
     const SUBDIVISIONS: u32 = 10; // TODO: depends on grid width and height, can be different in u and v
 
     let mut positions = Vec::new();
