@@ -2,6 +2,9 @@ use bevy::app::App;
 use bevy::prelude::*;
 use bevy::DefaultPlugins;
 use crossterm::event::KeyEvent;
+use rand::rngs::StdRng;
+use rand::Rng;
+use rand::SeedableRng;
 use shared::player::Player;
 use shared::Map;
 use std::collections::HashMap;
@@ -48,18 +51,24 @@ fn setup(mut commands: Commands, mut grid: ResMut<Grid>) {
     // Initialize the grid cells
     grid.cells = vec![vec![Entity::PLACEHOLDER; columns]; rows];
 
+    // Create a random number generator with a fixed seed
+    let mut rng = StdRng::seed_from_u64(42);
+
     for row in 0..rows {
         for col in 0..columns {
             // Calculate the position of each cell
             let x = col as f32 * cell_size - (columns as f32 * cell_size) / 2.0 + cell_size / 2.0;
             let y = row as f32 * cell_size - (rows as f32 * cell_size) / 2.0 + cell_size / 2.0;
 
+            // Generate a random color
+            let random_color = Color::rgb(rng.gen::<f32>(), rng.gen::<f32>(), rng.gen::<f32>());
+
             // Spawn a sprite for the cell
             let cell_entity = commands
                 .spawn_empty()
                 .insert(SpriteBundle {
                     sprite: Sprite {
-                        color: Color::srgb(0.7, 0.7, 0.7),
+                        color: random_color,
                         custom_size: Some(Vec2::new(cell_size - 2.0, cell_size - 2.0)),
                         ..Default::default()
                     },

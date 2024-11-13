@@ -2067,6 +2067,7 @@ dependencies = [
  "clap",
  "crossterm",
  "itertools",
+ "rand",
  "ratatui",
  "serde_json",
  "shared",

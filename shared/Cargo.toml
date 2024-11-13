@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 log = { workspace = true }
-rand = "0.8.5"
+rand = { workspace = true }
 serde = { workspace = true }
 tokio = "1.40.0"
-derive-getters = {workspace = true}
+derive-getters = { workspace = true }
