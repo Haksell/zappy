@@ -1,7 +1,7 @@
 use crate::client_connection::ClientConnection;
 use crate::server::Server;
-use serde_json::from_str;
-use shared::{Command, ServerCommandToClient, ZappyError, HANDSHAKE_MSG};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use shared::{command::Command, ServerCommandToClient, ZappyError, HANDSHAKE_MSG};
 use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;

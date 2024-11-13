@@ -1,5 +1,4 @@
-use crate::{Command, Resource, MAX_COMMANDS};
-use crate::{ServerCommandToClient, ZappyError};
+use crate::{resource::Resource, Command, ServerCommandToClient, ZappyError, MAX_COMMANDS};
 use derive_getters::Getters;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -78,6 +77,7 @@ pub struct Player {
     next_frame: u64,
     commands: VecDeque<Command>,
     pub(crate) position: Position,
+    inventory: [usize; Resource::SIZE],
 }
 
 impl Player {
@@ -94,6 +94,7 @@ impl Player {
             next_frame: 0,
             commands: VecDeque::with_capacity(MAX_COMMANDS),
             position,
+            inventory: [0; Resource::SIZE],
         }
     }
 
@@ -110,6 +111,7 @@ impl Player {
     }
 
     pub fn pop_command_from_queue(&mut self) -> Option<Command> {
+        // not an Option?
         self.commands.pop_front()
     }
 
@@ -119,5 +121,18 @@ impl Player {
 
     pub fn set_next_frame(&mut self, value: u64) {
         self.next_frame = value;
+    }
+
+    pub fn add_to_inventory(&mut self, resource: Resource) {
+        self.inventory[resource as usize] += 1;
+    }
+
+    pub fn remove_from_inventory(&mut self, resource: Resource) -> bool {
+        if self.inventory[resource as usize] >= 1 {
+            self.inventory[resource as usize] -= 1;
+            true
+        } else {
+            false
+        }
     }
 }

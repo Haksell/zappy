@@ -1,10 +1,14 @@
+pub mod command;
 pub mod player;
+pub mod resource;
 
 use crate::player::{Direction, Position, Side};
+use command::Command;
 use player::Player;
-use rand::{seq::SliceRandom as _, thread_rng, Rng as _};
+use rand::Rng as _;
+use resource::Resource;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 #[derive(Debug)]
 pub enum ZappyError {
@@ -49,81 +53,6 @@ impl ServerResponse {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub enum Command {
-    Avance,
-    Droite,
-    Gauche,
-    Voir,
-    Inventaire,
-    Prend { object_name: String },
-    Pose { object_name: String },
-    Expulse,
-    Broadcast { text: String },
-    Incantation,
-    Fork,
-    ConnectNbr,
-}
-
-impl Command {
-    pub fn delay(&self) -> u64 {
-        match self {
-            Command::Avance => 7,
-            Command::Droite => 7,
-            Command::Gauche => 7,
-            Command::Voir => 7,
-            Command::Inventaire => 1,
-            Command::Prend { .. } => 7,
-            Command::Pose { .. } => 7,
-            Command::Expulse => 7,
-            Command::Broadcast { .. } => 7,
-            Command::Incantation => 300,
-            Command::Fork => 42,
-            Command::ConnectNbr => 0,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
-pub enum Resource {
-    Linemate,
-    Deraumere,
-    Sibur,
-    Mendiane,
-    Phiras,
-    Thystame,
-    Nourriture,
-}
-
-impl Resource {
-    pub fn alias(&self) -> char {
-        match self {
-            Resource::Linemate => 'L',
-            Resource::Deraumere => 'D',
-            Resource::Sibur => 'S',
-            Resource::Mendiane => 'M',
-            Resource::Phiras => 'P',
-            Resource::Thystame => 'T',
-            Resource::Nourriture => 'N',
-        }
-    }
-
-    pub fn random() -> Self {
-        static RESOURCES: [Resource; 7] = [
-            Resource::Linemate,
-            Resource::Deraumere,
-            Resource::Sibur,
-            Resource::Mendiane,
-            Resource::Phiras,
-            Resource::Thystame,
-            Resource::Nourriture,
-        ];
-
-        let mut rng = thread_rng();
-        *RESOURCES.choose(&mut rng).unwrap()
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Egg {
     pub team_name: String,
@@ -133,7 +62,7 @@ pub struct Egg {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
     pub players: HashSet<u16>,
-    pub resources: HashMap<Resource, usize>,
+    pub resources: [usize; Resource::SIZE],
     pub eggs: Vec<Egg>,
 }
 
@@ -148,13 +77,13 @@ impl Cell {
     pub fn new() -> Self {
         Self {
             players: HashSet::new(),
-            resources: HashMap::new(),
+            resources: [0; Resource::SIZE],
             eggs: Vec::new(),
         }
     }
 
     pub fn add_resource(&mut self, resource: Resource) {
-        *self.resources.entry(resource).or_insert(0) += 1;
+        self.resources[resource as usize] += 1;
     }
 }
 
@@ -208,7 +137,34 @@ impl Map {
                 self.handle_avance(player);
                 Some(ServerResponse::Ok)
             }
-            _ => Some(ServerResponse::Mort),
+            Command::Prend { resource_name } => {
+                if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
+                    let cell = &mut self.map[player.position.y][player.position.x];
+                    if cell.resources[resource as usize] >= 1 {
+                        cell.resources[resource as usize] -= 1;
+                        player.add_to_inventory(resource);
+                        return Some(ServerResponse::Ok);
+                    }
+                }
+                Some(ServerResponse::Ko)
+            }
+            Command::Pose { resource_name } => {
+                if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
+                    let cell = &mut self.map[player.position.y][player.position.x];
+                    if player.remove_from_inventory(resource) {
+                        cell.resources[resource as usize] += 1;
+                        return Some(ServerResponse::Ok);
+                    }
+                }
+                Some(ServerResponse::Ko)
+            }
+            Command::Voir => todo!(),
+            Command::Inventaire => todo!(),
+            Command::Expulse => todo!(),
+            Command::Broadcast { text } => todo!(),
+            Command::Incantation => todo!(),
+            Command::Fork => todo!(),
+            Command::ConnectNbr => todo!(),
         }
     }
 

@@ -1,5 +1,4 @@
 use crossterm::event::KeyEvent;
-use itertools::Itertools as _;
 use ratatui::layout::Margin;
 use ratatui::widgets::Paragraph;
 use ratatui::{crossterm::event::KeyCode, widgets::Block};
@@ -8,6 +7,7 @@ use ratatui::{
     Frame,
 };
 use shared::player::{Direction, Player};
+use shared::resource::Resource;
 use shared::Map;
 use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
@@ -54,8 +54,11 @@ fn draw(frame: &mut Frame, map: &mut Option<Map>, players: &mut Option<HashMap<u
                 let mapped_resources = cell
                     .resources
                     .iter()
-                    .map(|(k, &v)| (0..v).map(|_| k.alias()).collect::<String>())
-                    .sorted()
+                    .enumerate()
+                    .map(|(i, &cnt)| {
+                        let c = Resource::try_from(i as u8).unwrap().alias();
+                        (0..cnt).map(|_| c).collect::<String>()
+                    })
                     .collect::<Vec<_>>()
                     .concat();
                 let mapped_eggs = cell
