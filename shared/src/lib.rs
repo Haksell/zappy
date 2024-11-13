@@ -186,12 +186,15 @@ impl Map {
     pub fn apply_cmd(&mut self, player: &mut Player, command: &Command) -> Option<ServerResponse> {
         log::debug!("Executing command: {:?} for {:?}", command, player);
         match command {
-            Command::Avance | Command::Droite | Command::Gauche => {
-                if *command == Command::Droite {
-                    player.position.direction = player.position.direction.turn(Side::Right);
-                } else if *command == Command::Gauche {
-                    player.position.direction = player.position.direction.turn(Side::Left);
-                }
+            Command::Gauche => {
+                player.position.direction = player.position.direction.turn(Side::Left);
+                Some(ServerResponse::Ok)
+            }
+            Command::Droite => {
+                player.position.direction = player.position.direction.turn(Side::Right);
+                Some(ServerResponse::Ok)
+            }
+            Command::Avance => {
                 self.handle_avance(player);
                 Some(ServerResponse::Ok)
             }
