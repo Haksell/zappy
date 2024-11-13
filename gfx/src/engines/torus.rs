@@ -2,6 +2,7 @@
 // TODO: handle mouse wheel
 // TODO: share most of the code with 2D bevy Renderer
 // TODO: button to swap main axis
+// TODO: button to switch from 2D to torus and vice-versa?
 // TODO: rotate by dragging or keyboard shortcuts
 
 use bevy::{
