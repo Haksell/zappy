@@ -1,5 +1,6 @@
 use clap::Parser;
 use crossterm::event::{self, Event};
+use engines::Engine;
 use serde_json::{from_str, Value};
 use shared::player::Player;
 use shared::Map;
@@ -21,8 +22,8 @@ struct Args {
     #[arg(short, long, default_value_t = GFX_PORT, help = "Port of the server.")]
     port: u16,
 
-    #[arg(short, long, default_value_t = String::from("Console"), help = "Engine used for rendering.")]
-    engine: String,
+    #[arg(short, long, value_enum, default_value_t = Engine::Console, help = "Engine used for rendering.")]
+    engine: Engine,
 }
 
 #[tokio::main]
@@ -89,5 +90,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    engines::render(event_rx, rx, conn_rx).await
+    args.engine.render(event_rx, rx, conn_rx).await
 }
