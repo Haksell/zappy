@@ -1,27 +1,22 @@
-use bevy::app::App;
-use bevy::prelude::*;
-use bevy::DefaultPlugins;
+// TODO: better lights
+// TODO: handle mouse wheel
+// TODO: share most of the code with 2D bevy Renderer
+// TODO: button to swap main axis
+// TODO: rotate by dragging or keyboard shortcuts
+
+use bevy::{
+    app::App,
+    prelude::*,
+    render::{
+        mesh::{Indices, PrimitiveTopology},
+        render_asset::RenderAssetUsages,
+    },
+};
 use crossterm::event::KeyEvent;
-use rand::rngs::StdRng;
-use rand::Rng;
-use rand::SeedableRng;
-use shared::player::Player;
-use shared::Map;
+use rand::{rngs::StdRng, Rng, SeedableRng as _};
+use shared::{player::Player, Map};
 use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
-
-#[derive(Component)]
-struct Cell {
-    row: usize,
-    column: usize,
-}
-
-#[derive(Resource)]
-struct Grid {
-    cells: Vec<Vec<Entity>>,
-    rows: usize,
-    columns: usize,
-}
 
 pub async fn render(
     _event_rx: Receiver<KeyEvent>,
@@ -30,55 +25,127 @@ pub async fn render(
 ) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(Grid {
-            cells: Vec::new(),
-            rows: 6,
-            columns: 10,
-        })
         .add_systems(Startup, setup)
         .run();
     Ok(())
 }
 
-fn setup(mut commands: Commands, mut grid: ResMut<Grid>) {
-    // Set up the 2D camera
-    commands.spawn_empty().insert(Camera2dBundle::default());
+fn setup(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 5.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..Default::default()
+    });
 
-    let rows = grid.rows;
-    let columns = grid.columns;
-    let cell_size = 40.0;
+    commands.spawn(PointLightBundle {
+        point_light: PointLight {
+            intensity: 5000.0,
+            shadows_enabled: true,
+            ..Default::default()
+        },
+        transform: Transform::from_xyz(5.0, 8.0, 5.0),
+        ..Default::default()
+    });
 
-    // Initialize the grid cells
-    grid.cells = vec![vec![Entity::PLACEHOLDER; columns]; rows];
+    // TODO: read from server
+    let grid_u = 15;
+    let grid_v = 10;
 
-    // Create a random number generator with a fixed seed
+    // TODO: clap arguments
+    let ring_radius = 3.0;
+    let tube_radius = 1.0;
+
     let mut rng = StdRng::seed_from_u64(42);
 
-    for row in 0..rows {
-        for col in 0..columns {
-            // Calculate the position of each cell
-            let x = col as f32 * cell_size - (columns as f32 * cell_size) / 2.0 + cell_size / 2.0;
-            let y = row as f32 * cell_size - (rows as f32 * cell_size) / 2.0 + cell_size / 2.0;
+    for v in 0..grid_v {
+        let v_start = v as f32 / grid_v as f32;
+        let v_end = (v + 1) as f32 / grid_v as f32;
 
-            // Generate a random color
-            let random_color = Color::rgb(rng.gen::<f32>(), rng.gen::<f32>(), rng.gen::<f32>());
+        for u in 0..grid_u {
+            let u_start = u as f32 / grid_u as f32;
+            let u_end = (u + 1) as f32 / grid_u as f32;
 
-            // Spawn a sprite for the cell
-            let cell_entity = commands
-                .spawn_empty()
-                .insert(SpriteBundle {
-                    sprite: Sprite {
-                        color: random_color,
-                        custom_size: Some(Vec2::new(cell_size - 2.0, cell_size - 2.0)),
-                        ..Default::default()
-                    },
-                    transform: Transform::from_xyz(x, y, 0.0),
-                    ..Default::default()
-                })
-                .insert(Cell { row, column: col })
-                .id();
+            let cell_mesh =
+                generate_torus_cell_mesh(ring_radius, tube_radius, u_start, u_end, v_start, v_end);
 
-            grid.cells[row][col] = cell_entity;
+            let material = StandardMaterial {
+                base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
+                metallic: 0.0,
+                perceptual_roughness: 1.0,
+                ..Default::default()
+            };
+
+            commands.spawn(PbrBundle {
+                mesh: meshes.add(cell_mesh),
+                material: materials.add(material),
+                ..Default::default()
+            });
         }
     }
+}
+
+fn generate_torus_cell_mesh(
+    ring_radius: f32,
+    tube_radius: f32,
+    u_start: f32,
+    u_end: f32,
+    v_start: f32,
+    v_end: f32,
+) -> Mesh {
+    const SUBDIVISIONS: u32 = 10; // TODO: depends on grid width and height, can be different in u and v
+
+    let mut positions = Vec::new();
+    let mut normals = Vec::new();
+    let mut indices = Vec::new();
+    let mut uvs = Vec::new();
+
+    for v in 0..=SUBDIVISIONS {
+        let v_ratio = v_start + (v_end - v_start) * (v as f32 / SUBDIVISIONS as f32);
+        let phi = v_ratio * std::f32::consts::TAU;
+        let (sin_phi, cos_phi) = phi.sin_cos();
+
+        for u in 0..=SUBDIVISIONS {
+            let u_ratio = u_start + (u_end - u_start) * (u as f32 / SUBDIVISIONS as f32);
+            let theta = u_ratio * std::f32::consts::TAU;
+            let (sin_theta, cos_theta) = theta.sin_cos();
+
+            let x = (ring_radius + tube_radius * cos_theta) * cos_phi;
+            let y = (ring_radius + tube_radius * cos_theta) * sin_phi;
+            let z = tube_radius * sin_theta;
+
+            positions.push([x, y, z]);
+            normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
+            uvs.push([u_ratio, v_ratio]);
+        }
+    }
+
+    for v in 0..SUBDIVISIONS {
+        for u in 0..SUBDIVISIONS {
+            let i0 = v * (SUBDIVISIONS + 1) + u;
+            let i1 = v * (SUBDIVISIONS + 1) + u + 1;
+            let i2 = (v + 1) * (SUBDIVISIONS + 1) + u;
+            let i3 = (v + 1) * (SUBDIVISIONS + 1) + u + 1;
+
+            indices.push(i0 as u32);
+            indices.push(i2 as u32);
+            indices.push(i1 as u32);
+
+            indices.push(i1 as u32);
+            indices.push(i2 as u32);
+            indices.push(i3 as u32);
+        }
+    }
+
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_indices(Indices::U32(indices));
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh
 }
