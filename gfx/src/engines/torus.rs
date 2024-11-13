@@ -101,9 +101,7 @@ fn generate_torus_cell_mesh(
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
-    let mut indices = Vec::new();
     let mut uvs = Vec::new();
-
     for v in 0..=SUBDIVISIONS {
         let v_ratio = v_start + (v_end - v_start) * (v as f32 / SUBDIVISIONS as f32);
         let phi = v_ratio * std::f32::consts::TAU;
@@ -124,6 +122,7 @@ fn generate_torus_cell_mesh(
         }
     }
 
+    let mut indices = Vec::new();
     for v in 0..SUBDIVISIONS {
         for u in 0..SUBDIVISIONS {
             let i0 = v * (SUBDIVISIONS + 1) + u;
