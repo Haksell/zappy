@@ -73,8 +73,8 @@ fn setup(
 
             let material = StandardMaterial {
                 base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
-                metallic: 0.0,
-                perceptual_roughness: 1.0,
+                metallic: 0.5,
+                perceptual_roughness: 0.2,
                 ..Default::default()
             };
 
