@@ -1,4 +1,4 @@
-use crate::{Command, MAX_COMMANDS};
+use crate::{Command, Resource, MAX_COMMANDS};
 use crate::{ServerCommandToClient, ZappyError};
 use derive_getters::Getters;
 use rand::seq::SliceRandom;

@@ -2,7 +2,7 @@ pub mod player;
 
 use crate::player::{Direction, Position, Side};
 use player::Player;
-use rand::Rng as _;
+use rand::{seq::SliceRandom as _, thread_rng, Rng as _};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -84,7 +84,7 @@ impl Command {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum Resource {
     Linemate,
     Deraumere,
@@ -106,6 +106,21 @@ impl Resource {
             Resource::Thystame => 'T',
             Resource::Nourriture => 'N',
         }
+    }
+
+    pub fn random() -> Self {
+        static RESOURCES: [Resource; 7] = [
+            Resource::Linemate,
+            Resource::Deraumere,
+            Resource::Sibur,
+            Resource::Mendiane,
+            Resource::Phiras,
+            Resource::Thystame,
+            Resource::Nourriture,
+        ];
+
+        let mut rng = thread_rng();
+        *RESOURCES.choose(&mut rng).unwrap()
     }
 }
 
@@ -137,11 +152,20 @@ impl Cell {
             eggs: Vec::new(),
         }
     }
+
+    pub fn add_resource(&mut self, resource: Resource) {
+        *self.resources.entry(resource).or_insert(0) += 1;
+    }
 }
 
 impl Map {
     pub fn new(width: usize, height: usize) -> Self {
-        let map = vec![vec![Cell::new(); width]; height];
+        let mut map = vec![vec![Cell::new(); width]; height];
+        for y in 0..height {
+            for x in 0..width {
+                map[y][x].add_resource(Resource::random());
+            }
+        }
         Self { map, width, height }
     }
 
