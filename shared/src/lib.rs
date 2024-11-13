@@ -157,30 +157,15 @@ impl Map {
     fn handle_avance(&mut self, player: &mut Player) {
         let current_x = player.position.x;
         let current_y = player.position.y;
-        let (new_x, new_y) = match player.position.direction {
-            Direction::North => (
-                current_x,
-                if current_y == 0 {
-                    self.height - 1
-                } else {
-                    current_y - 1
-                },
-            ),
-            Direction::South => (current_x, (current_y + 1) % self.height),
-            Direction::East => ((current_x + 1) % self.width, current_y),
-            Direction::West => (
-                if current_x == 0 {
-                    self.width - 1
-                } else {
-                    current_x - 1
-                },
-                current_y,
-            ),
-        };
-        player.position.x = new_x;
-        player.position.y = new_y;
+
+        let (dx, dy) = player.position.direction.dx_dy();
+        player.position.x = ((current_x + self.width) as isize + dx) as usize % self.width;
+        player.position.y = ((current_y + self.height) as isize + dy) as usize % self.height;
+
         self.map[current_y][current_x].players.remove(player.id());
-        self.map[new_y][new_x].players.insert(*player.id());
+        self.map[player.position.y][player.position.x]
+            .players
+            .insert(*player.id());
     }
 
     pub fn apply_cmd(&mut self, player: &mut Player, command: &Command) -> Option<ServerResponse> {

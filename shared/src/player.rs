@@ -10,8 +10,8 @@ use tokio::sync::mpsc::Sender;
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum Direction {
     North,
-    South,
     East,
+    South,
     West,
 }
 
@@ -21,15 +21,16 @@ pub enum Side {
 }
 
 impl Direction {
-    const DIRECTIONS: [Direction; 4] = [
-        Direction::North,
-        Direction::South,
-        Direction::East,
-        Direction::West,
-    ];
     pub fn random() -> Self {
+        static DIRECTIONS: [Direction; 4] = [
+            Direction::North,
+            Direction::East,
+            Direction::South,
+            Direction::West,
+        ];
+
         let mut rng = thread_rng();
-        *Direction::DIRECTIONS.choose(&mut rng).unwrap()
+        *DIRECTIONS.choose(&mut rng).unwrap()
     }
 
     pub fn turn(&self, side: Side) -> Self {
@@ -46,6 +47,15 @@ impl Direction {
                 Direction::South => Direction::West,
                 Direction::West => Direction::North,
             },
+        }
+    }
+
+    pub fn dx_dy(&self) -> (isize, isize) {
+        match self {
+            Direction::North => (0, -1),
+            Direction::East => (1, 0),
+            Direction::South => (0, 1),
+            Direction::West => (-1, 0),
         }
     }
 }
