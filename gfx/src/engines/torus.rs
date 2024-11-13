@@ -7,6 +7,7 @@
 
 use bevy::{
     app::App,
+    input::mouse::{MouseScrollUnit, MouseWheel},
     prelude::*,
     render::{
         mesh::{Indices, PrimitiveTopology},
@@ -19,6 +20,12 @@ use shared::{player::Player, Map};
 use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
 
+#[derive(Component)]
+struct CameraOrbit {
+    angle: f32,
+    radius: f32,
+}
+
 pub async fn render(
     _event_rx: Receiver<KeyEvent>,
     _rx: Receiver<(Map, HashMap<u16, Player>)>,
@@ -27,6 +34,7 @@ pub async fn render(
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
+        .add_systems(Update, handle_mouse_wheel)
         .run();
     Ok(())
 }
@@ -36,10 +44,17 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 5.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..Default::default()
-    });
+    let initial_position = Vec3::new(0.0, 5.0, 15.0);
+    let radius = Vec3::new(initial_position.x, 0.0, initial_position.z).length();
+    let angle = initial_position.z.atan2(initial_position.x);
+    commands.spawn((
+        Camera3dBundle {
+            transform: Transform::from_translation(initial_position)
+                .looking_at(Vec3::ZERO, Vec3::Y),
+            ..Default::default()
+        },
+        CameraOrbit { angle, radius },
+    ));
 
     commands.spawn(PointLightBundle {
         point_light: PointLight {
@@ -149,4 +164,34 @@ fn generate_torus_cell_mesh(
     mesh.insert_indices(Indices::U32(indices));
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh
+}
+
+fn handle_mouse_wheel(
+    mut mouse_wheel_events: EventReader<MouseWheel>,
+    mut query: Query<(&mut Transform, &mut CameraOrbit)>,
+) {
+    let rotation_speed = 0.1;
+    for event in mouse_wheel_events.read() {
+        let delta = match event.unit {
+            MouseScrollUnit::Line => event.y,
+            MouseScrollUnit::Pixel => event.y * 0.1,
+        };
+
+        for (mut transform, mut orbit) in query.iter_mut() {
+            orbit.angle += delta * rotation_speed;
+
+            // Keep the angle within 0 to 2π
+            orbit.angle %= std::f32::consts::TAU;
+
+            // Update camera position based on the new angle
+            let x = orbit.radius * orbit.angle.cos();
+            let z = orbit.radius * orbit.angle.sin();
+            let y = transform.translation.y; // Keep the same height
+
+            transform.translation = Vec3::new(x, y, z);
+
+            // Make the camera look at the origin
+            transform.look_at(Vec3::ZERO, Vec3::Y);
+        }
+    }
 }
