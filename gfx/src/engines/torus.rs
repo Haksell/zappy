@@ -178,19 +178,12 @@ fn handle_mouse_wheel(
         };
 
         for (mut transform, mut orbit) in query.iter_mut() {
-            orbit.angle += delta * rotation_speed;
-
-            // Keep the angle within 0 to 2π
-            orbit.angle %= std::f32::consts::TAU;
-
-            // Update camera position based on the new angle
-            let x = orbit.radius * orbit.angle.cos();
-            let z = orbit.radius * orbit.angle.sin();
-            let y = transform.translation.y; // Keep the same height
-
-            transform.translation = Vec3::new(x, y, z);
-
-            // Make the camera look at the origin
+            orbit.angle = (orbit.angle + delta * rotation_speed) % std::f32::consts::TAU;
+            transform.translation = Vec3::new(
+                orbit.radius * orbit.angle.cos(),
+                transform.translation.y,
+                orbit.radius * orbit.angle.sin(),
+            );
             transform.look_at(Vec3::ZERO, Vec3::Y);
         }
     }
