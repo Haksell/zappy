@@ -159,6 +159,7 @@ impl Cell {
 }
 
 impl Map {
+    // TODO: better procedural generation
     pub fn new(width: usize, height: usize) -> Self {
         let mut map = vec![vec![Cell::new(); width]; height];
         for y in 0..height {
