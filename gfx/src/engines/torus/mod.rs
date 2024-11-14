@@ -14,7 +14,7 @@ use bevy::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
     },
-    window::{RequestRedraw, WindowResolution},
+    window::WindowResolution,
 };
 use crossterm::event::KeyEvent;
 use rand::{rngs::StdRng, Rng, SeedableRng as _};
@@ -38,16 +38,16 @@ struct Keys {
 
 #[derive(Resource, Debug)]
 struct TorusTransform {
-    minor: u16,
-    major: u16,
+    minor_angle: u16,
+    major_angle: u16,
     minor_radius: f32,
 }
 
 impl Default for TorusTransform {
     fn default() -> Self {
         Self {
-            minor: 0,
-            major: 0,
+            minor_angle: 0,
+            major_angle: 0,
             minor_radius: 0.4,
         }
     }
@@ -174,10 +174,12 @@ fn generate_torus_mesh(
 }
 
 fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
-    let v_start = v as f32 / GRID_V as f32 + torus_transform.major as f32 / ROTATION_STEPS as f32;
+    let v_start =
+        v as f32 / GRID_V as f32 + torus_transform.major_angle as f32 / ROTATION_STEPS as f32;
     let v_end = v_start + 1.0 / GRID_V as f32;
 
-    let u_start = u as f32 / GRID_U as f32 + torus_transform.minor as f32 / ROTATION_STEPS as f32;
+    let u_start =
+        u as f32 / GRID_U as f32 + torus_transform.minor_angle as f32 / ROTATION_STEPS as f32;
     let u_end = u_start + 1.0 / GRID_U as f32;
 
     // looks cool with 1 too, make it an argument?
@@ -195,10 +197,13 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransfor
             let u_ratio = u_start + (u_end - u_start) * (u as f32 / SUBDIVISIONS as f32);
             let theta = u_ratio * std::f32::consts::TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
-            let minor_radius = torus_transform.minor_radius as f32;
-            let r = 1.0 + minor_radius * cos_theta;
 
-            positions.push([r * cos_phi, r * sin_phi, minor_radius * sin_theta]);
+            let r = 1.0 + torus_transform.minor_radius * cos_theta;
+            let x = r * cos_phi;
+            let y = r * sin_phi;
+            let z = torus_transform.minor_radius * sin_theta;
+
+            positions.push([x, y, z]);
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
             uvs.push([u_ratio, v_ratio]);
         }
@@ -232,29 +237,30 @@ fn update_cell_mesh(
     query: Query<(&Handle<Mesh>, &QuadInfo)>,
     mut meshes: ResMut<Assets<Mesh>>,
     torus_transform: Res<TorusTransform>,
+    // mut window_event: EventWriter<RequestRedraw>,
 ) {
     if torus_transform.is_changed() {
-        for (mesh_handle, quad_info) in query.iter() {
+        for (mesh_handle, quad_info) in &query {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
                 generate_torus_cell_mesh(mesh, &torus_transform, quad_info.u, quad_info.v);
             }
         }
+        // window_event.send(RequestRedraw);
     }
 }
 
 fn handle_mouse_wheel(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut torus_transform: ResMut<TorusTransform>,
-    mut window_event: EventWriter<RequestRedraw>,
 ) {
     for mouse_event in mouse_wheel_events.read() {
         if let MouseScrollUnit::Pixel = mouse_event.unit {
             println!("ACHTUNG !!!!! {:?}", mouse_event); // TODO: test on different computers and remove
         };
-        torus_transform.minor =
-            (torus_transform.minor as i16 + mouse_event.y as i16 + ROTATION_STEPS as i16) as u16
-                % ROTATION_STEPS;
-        window_event.send(RequestRedraw);
+        torus_transform.minor_angle = (torus_transform.minor_angle as i16
+            + mouse_event.y as i16
+            + ROTATION_STEPS as i16) as u16
+            % ROTATION_STEPS;
     }
 }
 
@@ -262,7 +268,6 @@ fn handle_keyboard(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut keys: ResMut<Keys>,
     mut torus_transform: ResMut<TorusTransform>,
-    mut window_event: EventWriter<RequestRedraw>,
     mut exit: EventWriter<AppExit>,
 ) {
     if keyboard.pressed(KeyCode::Escape) {
@@ -278,11 +283,11 @@ fn handle_keyboard(
         return;
     }
 
-    torus_transform.major = (torus_transform.major as i16 + keys.left as i16 - keys.right as i16
+    torus_transform.major_angle = (torus_transform.major_angle as i16 + keys.left as i16
+        - keys.right as i16
         + ROTATION_STEPS as i16) as u16
         % ROTATION_STEPS;
     torus_transform.minor_radius = (torus_transform.minor_radius
         + (keys.up as i64 - keys.down as i64) as f32 * 0.04)
         .clamp(0.05, 0.95);
-    window_event.send(RequestRedraw);
 }
