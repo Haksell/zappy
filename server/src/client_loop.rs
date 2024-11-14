@@ -1,6 +1,5 @@
 use crate::client_connection::ClientConnection;
 use crate::server::Server;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use shared::{command::Command, ServerCommandToClient, ZappyError, HANDSHAKE_MSG};
 use std::collections::HashMap;
 use std::error::Error;
@@ -80,11 +79,11 @@ async fn handle_player(
             result = client.read() => {
                 let n = result?;
                 let trimmed = n.trim_end();
-                match from_str::<Command>(trimmed) {
+                match Command::try_from(trimmed) {
                     Ok(command) => {
                         log::debug!("Received command: {:?}", command);
                         if let Some(e)= server.lock().await.take_command(&client.id(), command)? {
-                            client.writeln(e.get_text()).await?;
+                            client.writeln(&e.to_string()).await?;
                         }
                     },
                     Err(_) => {
@@ -102,8 +101,8 @@ async fn handle_player(
                         return Ok(());
                     }
                     ServerCommandToClient::SendMessage(response) => {
-                        log::debug!("Sending message to client: {}", response.get_text());
-                        client.writeln(response.get_text()).await?;
+                        log::debug!("Sending message to client: {}", response);
+                        client.writeln(&response.to_string()).await?;
                     }
                 }
             }

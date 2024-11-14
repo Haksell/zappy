@@ -31,6 +31,21 @@ fn direction_to_emoji(direction: &Direction) -> &'static str {
     }
 }
 
+fn map_resource_chars(i: usize, cnt: &usize) -> impl Iterator<Item = char> {
+    let c = Resource::try_from(i as u8).unwrap().alias();
+    std::iter::repeat(c).take(*cnt)
+}
+fn map_player_inventory(players: &mut HashMap<u16, Player>, id: &u16) -> String {
+    players
+        .get(id)
+        .unwrap()
+        .inventory()
+        .iter()
+        .enumerate()
+        .flat_map(|(i, cnt)| map_resource_chars(i, cnt))
+        .collect()
+}
+
 fn draw(frame: &mut Frame, map: &mut Option<Map>, players: &mut Option<HashMap<u16, Player>>) {
     if let (Some(data), Some(players)) = (map, players) {
         let area = frame.area().inner(Margin {
@@ -51,7 +66,7 @@ fn draw(frame: &mut Frame, map: &mut Option<Map>, players: &mut Option<HashMap<u
             for x in 0..data.width {
                 let col = cols.next().unwrap();
                 let cell = &data.map[y][x];
-                let mapped_resources = cell
+                let mapped_map_resources = cell
                     .resources
                     .iter()
                     .enumerate()
@@ -72,14 +87,16 @@ fn draw(frame: &mut Frame, map: &mut Option<Map>, players: &mut Option<HashMap<u
                     .iter()
                     .map(|p| {
                         format!(
-                            "[{}{}]",
+                            "[{}{}({})]",
                             p,
-                            direction_to_emoji(&players.get(p).unwrap().position().direction)
+                            direction_to_emoji(&players.get(p).unwrap().position().direction),
+                            map_player_inventory(players, p)
                         )
                     })
                     .collect::<String>();
+
                 let widget = Paragraph::new(format!(
-                    "{mapped_player}, {mapped_eggs}, {mapped_resources}"
+                    "{mapped_player}, {mapped_eggs}, {mapped_map_resources}"
                 ))
                 .block(Block::bordered().title(format!("y={y} x={x}")));
                 frame.render_widget(widget, col);

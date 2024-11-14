@@ -9,6 +9,7 @@ use rand::Rng as _;
 use resource::Resource;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 pub enum ZappyError {
@@ -38,17 +39,19 @@ pub enum ServerResponse {
     ActionQueueIsFull,
 }
 
-impl ServerResponse {
-    pub fn get_text(&self) -> &'static str {
+impl Display for ServerResponse {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ServerResponse::Ok => "Ok",
-            ServerResponse::Ko => "Ko",
+            ServerResponse::Ok => write!(f, "Ok"),
+            ServerResponse::Ko => write!(f, "Ko"),
             ServerResponse::Cases(_) => todo!(),
-            ServerResponse::Inventory(_) => todo!(),
-            ServerResponse::ElevationInProgress => "Elevation InProgress",
+            ServerResponse::Inventory(items) => write!(f, "{{{}}}", items.join(", ")),
+            ServerResponse::ElevationInProgress => write!(f, "Elevation InProgress"),
             ServerResponse::Value(_) => todo!(),
-            ServerResponse::Mort => "Mort",
-            ServerResponse::ActionQueueIsFull => "The action queue is full, please try later.",
+            ServerResponse::Mort => write!(f, "Mort"),
+            ServerResponse::ActionQueueIsFull => {
+                write!(f, "The action queue is full, please try later.")
+            }
         }
     }
 }
@@ -159,7 +162,15 @@ impl Map {
                 Some(ServerResponse::Ko)
             }
             Command::Voir => todo!(),
-            Command::Inventaire => todo!(),
+            Command::Inventaire => {
+                let inventory = player
+                    .inventory()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, b)| format!("{} {}", Resource::try_from(i as u8).unwrap(), b))
+                    .collect::<Vec<String>>();
+                Some(ServerResponse::Inventory(inventory))
+            }
             Command::Expulse => todo!(),
             Command::Broadcast { text } => todo!(),
             Command::Incantation => todo!(),

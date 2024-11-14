@@ -1,6 +1,6 @@
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Command {
     Avance,
     Droite,
@@ -16,79 +16,51 @@ pub enum Command {
     ConnectNbr,
 }
 
-impl Serialize for Command {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            Command::Avance => serializer.serialize_str("Avance"),
-            Command::Droite => serializer.serialize_str("Droite"),
-            Command::Gauche => serializer.serialize_str("Gauche"),
-            Command::Voir => serializer.serialize_str("Voir"),
-            Command::Inventaire => serializer.serialize_str("Inventaire"),
-            Command::Prend { resource_name } => {
-                serializer.serialize_str(&format!("Prend {}", resource_name))
-            }
-            Command::Pose { resource_name } => {
-                serializer.serialize_str(&format!("Pose {}", resource_name))
-            }
-            Command::Expulse => serializer.serialize_str("Expulse"),
-            Command::Broadcast { text } => serializer.serialize_str(&format!("Broadcast {}", text)),
-            Command::Incantation => serializer.serialize_str("Incantation"),
-            Command::Fork => serializer.serialize_str("Fork"),
-            Command::ConnectNbr => serializer.serialize_str("ConnectNbr"),
-        }
-    }
-}
+impl TryFrom<&str> for Command {
+    type Error = String;
 
-impl<'de> Deserialize<'de> for Command {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
+    fn try_from(s: &str) -> Result<Self, String> {
         log::info!("command: {}", s);
         let parts: Vec<&str> = s.splitn(2, ' ').collect();
 
         match parts[0] {
-            "Avance" => Ok(Command::Avance),
-            "Droite" => Ok(Command::Droite),
-            "Gauche" => Ok(Command::Gauche),
-            "Voir" => Ok(Command::Voir),
-            "Inventaire" => Ok(Command::Inventaire),
-            "Prend" => {
+            "avance" => Ok(Command::Avance),
+            "droite" => Ok(Command::Droite),
+            "gauche" => Ok(Command::Gauche),
+            "voir" => Ok(Command::Voir),
+            "inventaire" => Ok(Command::Inventaire),
+            "prend" => {
                 if parts.len() == 2 {
                     Ok(Command::Prend {
                         resource_name: parts[1].to_string(),
                     })
                 } else {
-                    Err(serde::de::Error::custom("Expected resource name for Prend"))
+                    Err("Expected resource name for Prend".to_string())
                 }
             }
-            "Pose" => {
+            "pose" => {
                 if parts.len() == 2 {
                     Ok(Command::Pose {
                         resource_name: parts[1].to_string(),
                     })
                 } else {
-                    Err(serde::de::Error::custom("Expected resource name for Pose"))
+                    Err("Expected resource name for Pose".to_string())
                 }
             }
-            "Expulse" => Ok(Command::Expulse),
-            "Broadcast" => {
+            "expulse" => Ok(Command::Expulse),
+            "broadcast" => {
                 if parts.len() == 2 {
                     Ok(Command::Broadcast {
                         text: parts[1].to_string(),
                     })
                 } else {
-                    Err(serde::de::Error::custom("Expected text for Broadcast"))
+                    Err("Expected text for Broadcast".to_string())
                 }
             }
-            "Incantation" => Ok(Command::Incantation),
-            "Fork" => Ok(Command::Fork),
-            "ConnectNbr" => Ok(Command::ConnectNbr),
-            _ => Err(serde::de::Error::custom("Unknown command")),
+            "incantation" => Ok(Command::Incantation),
+            "fork" => Ok(Command::Fork),
+            "connect_nbr" => Ok(Command::ConnectNbr),
+            _ => Err("Unknown command".to_string()),
         }
     }
 }

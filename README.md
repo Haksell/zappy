@@ -7,13 +7,36 @@ cargo run -p server -- -p 8080 -x 20 -y 10 -n anton axel -c 1 -t 4
 other terminal:
 
 ```
-nc localhost 8080
 BIENVENUE
 axel
-0
-20 10
-"Voir"
-OK
+1
+3 3
+droite
+Ok
+avance
+Ok
+inventaire    
+{Deraumere 0, Linemate 0, Mendiane 0, Nourriture 0, Phiras 0, Sibur 0, Thystame 0}
+prend kaka
+Ko
+prend Thystame
+Ok
+inventaire
+{Deraumere 0, Linemate 0, Mendiane 0, Nourriture 0, Phiras 0, Sibur 0, Thystame 1}
+avance
+Ok
+prend Thystame  
+Ok
+inventaire
+{Deraumere 0, Linemate 0, Mendiane 0, Nourriture 0, Phiras 0, Sibur 0, Thystame 2}
+pose Thystame
+Ok
+pose Thystame
+Ok
+inventaire
+{Deraumere 0, Linemate 0, Mendiane 0, Nourriture 0, Phiras 0, Sibur 0, Thystame 0}
+pose Thystame
+Ko
 ```
 
 Todo client:

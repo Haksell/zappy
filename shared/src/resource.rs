@@ -1,5 +1,6 @@
 use rand::{seq::SliceRandom as _, thread_rng};
 use serde::{Deserialize, Serialize};
+use std::fmt::Display;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
 #[repr(u8)]
@@ -41,6 +42,22 @@ impl Resource {
 
         let mut rng = thread_rng();
         *RESOURCES.choose(&mut rng).unwrap()
+    }
+}
+
+impl Display for Resource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            Resource::Deraumere => "Deraumere",
+            Resource::Linemate => "Linemate",
+            Resource::Mendiane => "Mendiane",
+            Resource::Nourriture => "Nourriture",
+            Resource::Phiras => "Phiras",
+            Resource::Sibur => "Sibur",
+            Resource::Thystame => "Thystame",
+        }
+        .to_string();
+        write!(f, "{}", str)
     }
 }
 
