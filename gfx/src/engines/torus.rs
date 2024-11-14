@@ -1,10 +1,9 @@
 // TODO: better lights
-// TODO: handle mouse wheel
 // TODO: share most of the code with 2D bevy Renderer
-// TODO: button to swap main axis
+// TODO: button to swap main axis (probably a bad idea)
 // TODO: button to switch from 2D to torus and vice-versa?
-// TODO: rotate by dragging or keyboard shortcuts
-// TODO: rotation y
+// TODO: rotations x/y
+// TODO: ESPAAAAAAAAAACE
 
 use bevy::{
     app::App,
@@ -14,7 +13,7 @@ use bevy::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
     },
-    window::RequestRedraw,
+    window::{RequestRedraw, WindowResolution},
 };
 use crossterm::event::KeyEvent;
 use rand::{rngs::StdRng, Rng, SeedableRng as _};
@@ -23,8 +22,8 @@ use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
 
 // TODO: read from server
-const GRID_U: u8 = 50;
-const GRID_V: u8 = 30;
+const GRID_U: u8 = 20;
+const GRID_V: u8 = 12;
 
 // TODO: clap arguments
 const RING_RADIUS: f32 = 3.0;
@@ -90,6 +89,7 @@ pub async fn render(
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "zappy".to_string(), // TODO: constant somewhere
+                resolution: WindowResolution::new(800., 800.),
                 ..Default::default()
             }),
             ..Default::default()
@@ -100,7 +100,8 @@ pub async fn render(
             Update,
             (
                 handle_mouse_wheel,
-                update_cell_mesh.after(handle_mouse_wheel),
+                handle_keyboard.after(handle_mouse_wheel), // TODO: in parallel
+                update_cell_mesh.after(handle_keyboard),
             ),
         )
         .run();
@@ -113,10 +114,8 @@ fn setup(
     materials: ResMut<Assets<StandardMaterial>>,
     rotation: Res<Rotation>,
 ) {
-    println!("setup {:?}", rotation);
-
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 5.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(0.0, 4.0, 12.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 
@@ -156,8 +155,8 @@ fn generate_torus_mesh(
 }
 
 fn generate_torus_cell_mesh(mesh: &mut Mesh, u: u8, v: u8, rotation: &Res<Rotation>) {
-    let v_start = v as f32 / GRID_V as f32;
-    let v_end = (v + 1) as f32 / GRID_V as f32;
+    let v_start = v as f32 / GRID_V as f32 + rotation.major as f32 * ROTATION_SPEED;
+    let v_end = v_start + 1.0 / GRID_V as f32;
 
     let u_start = u as f32 / GRID_U as f32 + rotation.minor as f32 * ROTATION_SPEED;
     let u_end = u_start + 1.0 / GRID_U as f32;
@@ -236,4 +235,19 @@ fn handle_mouse_wheel(
         rotation.minor += mouse_event.y.signum() as i64;
         window_event.send(RequestRedraw);
     }
+}
+
+fn handle_keyboard(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut rotation: ResMut<Rotation>,
+    mut window_event: EventWriter<RequestRedraw>,
+) {
+    if keyboard_input.pressed(KeyCode::ArrowRight) {
+        rotation.major += 1;
+    } else if keyboard_input.pressed(KeyCode::ArrowLeft) {
+        rotation.major -= 1;
+    } else {
+        return;
+    }
+    window_event.send(RequestRedraw);
 }
