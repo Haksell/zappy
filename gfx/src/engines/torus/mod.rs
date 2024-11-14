@@ -26,9 +26,6 @@ use tokio::sync::mpsc::Receiver;
 const GRID_U: u8 = 20;
 const GRID_V: u8 = 12;
 
-// TODO: 1.0
-const MAJOR_RADIUS: f32 = 3.0;
-
 const ROTATION_STEPS: u16 = 60; // TODO: depend on delta time instead
 
 #[derive(Resource, Default, Debug)]
@@ -137,17 +134,17 @@ fn setup(
     torus_transform: Res<TorusTransform>,
 ) {
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 0.0, 13.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(0.0, 0.0, 4.2).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
-    });
+    }); // TODO: depends on minor rotation
 
     commands.spawn(PointLightBundle {
         point_light: PointLight {
-            intensity: 3e6,
+            intensity: 3e5,
             shadows_enabled: true,
             ..Default::default()
         },
-        transform: Transform::from_xyz(5.0, 8.0, 5.0),
+        transform: Transform::from_xyz(2.0, 3.0, 2.0),
         ..Default::default()
     });
 
@@ -188,7 +185,7 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransfor
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
-    let mut uvs = Vec::new();
+    let mut uvs = Vec::new(); // TODO: remove
     for v in 0..=SUBDIVISIONS {
         let v_ratio = v_start + (v_end - v_start) * (v as f32 / SUBDIVISIONS as f32);
         let phi = v_ratio * std::f32::consts::TAU;
@@ -198,14 +195,10 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransfor
             let u_ratio = u_start + (u_end - u_start) * (u as f32 / SUBDIVISIONS as f32);
             let theta = u_ratio * std::f32::consts::TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
+            let minor_radius = torus_transform.minor_radius as f32;
+            let r = 1.0 + minor_radius * cos_theta;
 
-            let minor_radius = MAJOR_RADIUS * torus_transform.minor_radius as f32;
-
-            let x = (MAJOR_RADIUS + minor_radius * cos_theta) * cos_phi;
-            let y = (MAJOR_RADIUS + minor_radius * cos_theta) * sin_phi;
-            let z = minor_radius * sin_theta;
-
-            positions.push([x, y, z]);
+            positions.push([r * cos_phi, r * sin_phi, minor_radius * sin_theta]);
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
             uvs.push([u_ratio, v_ratio]);
         }
