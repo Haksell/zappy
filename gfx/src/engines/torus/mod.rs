@@ -41,13 +41,13 @@ struct Keys {
 }
 
 #[derive(Resource, Debug)]
-struct Rotation {
+struct TorusTransform {
     minor: u16,
     major: u16,
     ratio: i64, // TODO: f32
 }
 
-impl Default for Rotation {
+impl Default for TorusTransform {
     fn default() -> Self {
         Self {
             minor: 0,
@@ -74,7 +74,7 @@ impl QuadBundle {
         rng: &mut StdRng,
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<StandardMaterial>>,
-        rotation: &Res<Rotation>,
+        torus_transform: &Res<TorusTransform>,
         u: u8,
         v: u8,
     ) -> Self {
@@ -83,7 +83,7 @@ impl QuadBundle {
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
         );
-        generate_torus_cell_mesh(&mut mesh, rotation, u, v);
+        generate_torus_cell_mesh(&mut mesh, torus_transform, u, v);
         let material = StandardMaterial {
             base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
             metallic: 0.5,
@@ -114,7 +114,7 @@ pub async fn render(
             }),
             ..Default::default()
         }))
-        .init_resource::<Rotation>()
+        .init_resource::<TorusTransform>()
         .init_resource::<Keys>()
         .add_systems(Startup, setup)
         .add_systems(
@@ -135,7 +135,7 @@ fn setup(
     mut commands: Commands,
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<StandardMaterial>>,
-    rotation: Res<Rotation>,
+    torus_transform: Res<TorusTransform>,
 ) {
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0.0, 0.0, 13.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -152,14 +152,14 @@ fn setup(
         ..Default::default()
     });
 
-    generate_torus_mesh(commands, meshes, materials, rotation);
+    generate_torus_mesh(commands, meshes, materials, torus_transform);
 }
 
 fn generate_torus_mesh(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    rotation: Res<Rotation>,
+    torus_transform: Res<TorusTransform>,
 ) {
     let mut rng = StdRng::seed_from_u64(42);
 
@@ -169,7 +169,7 @@ fn generate_torus_mesh(
                 &mut rng,
                 &mut meshes,
                 &mut materials,
-                &rotation,
+                &torus_transform,
                 u,
                 v,
             ));
@@ -177,11 +177,11 @@ fn generate_torus_mesh(
     }
 }
 
-fn generate_torus_cell_mesh(mesh: &mut Mesh, rotation: &Res<Rotation>, u: u8, v: u8) {
-    let v_start = v as f32 / GRID_V as f32 + rotation.major as f32 / ROTATION_STEPS as f32;
+fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
+    let v_start = v as f32 / GRID_V as f32 + torus_transform.major as f32 / ROTATION_STEPS as f32;
     let v_end = v_start + 1.0 / GRID_V as f32;
 
-    let u_start = u as f32 / GRID_U as f32 + rotation.minor as f32 / ROTATION_STEPS as f32;
+    let u_start = u as f32 / GRID_U as f32 + torus_transform.minor as f32 / ROTATION_STEPS as f32;
     let u_end = u_start + 1.0 / GRID_U as f32;
 
     // looks cool with 1 too, make it an argument?
@@ -200,7 +200,7 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, rotation: &Res<Rotation>, u: u8, v:
             let theta = u_ratio * std::f32::consts::TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
 
-            let minor_radius = MINOR_RADIUS + 0.1 * rotation.ratio as f32;
+            let minor_radius = MINOR_RADIUS + 0.1 * torus_transform.ratio as f32;
 
             let x = (MAJOR_RADIUS + minor_radius * cos_theta) * cos_phi;
             let y = (MAJOR_RADIUS + minor_radius * cos_theta) * sin_phi;
@@ -239,31 +239,29 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, rotation: &Res<Rotation>, u: u8, v:
 fn update_cell_mesh(
     query: Query<(&Handle<Mesh>, &QuadInfo)>,
     mut meshes: ResMut<Assets<Mesh>>,
-    rotation: Res<Rotation>,
+    torus_transform: Res<TorusTransform>,
 ) {
-    println!("{rotation:?}");
-    if !rotation.is_changed() {
-        return;
-    }
-    for (mesh_handle, quad_info) in query.iter() {
-        if let Some(mesh) = meshes.get_mut(mesh_handle) {
-            generate_torus_cell_mesh(mesh, &rotation, quad_info.u, quad_info.v);
+    if torus_transform.is_changed() {
+        for (mesh_handle, quad_info) in query.iter() {
+            if let Some(mesh) = meshes.get_mut(mesh_handle) {
+                generate_torus_cell_mesh(mesh, &torus_transform, quad_info.u, quad_info.v);
+            }
         }
     }
 }
 
 fn handle_mouse_wheel(
     mut mouse_wheel_events: EventReader<MouseWheel>,
-    mut rotation: ResMut<Rotation>,
+    mut torus_transform: ResMut<TorusTransform>,
     mut window_event: EventWriter<RequestRedraw>,
 ) {
     for mouse_event in mouse_wheel_events.read() {
         if let MouseScrollUnit::Pixel = mouse_event.unit {
             println!("ACHTUNG !!!!! {:?}", mouse_event); // TODO: test on different computers and remove
         };
-        rotation.minor = (rotation.minor as i16 + mouse_event.y as i16 + ROTATION_STEPS as i16)
-            as u16
-            % ROTATION_STEPS;
+        torus_transform.minor =
+            (torus_transform.minor as i16 + mouse_event.y as i16 + ROTATION_STEPS as i16) as u16
+                % ROTATION_STEPS;
         window_event.send(RequestRedraw);
     }
 }
@@ -271,7 +269,7 @@ fn handle_mouse_wheel(
 fn handle_keyboard(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut keys: ResMut<Keys>,
-    mut rotation: ResMut<Rotation>,
+    mut torus_transform: ResMut<TorusTransform>,
     mut window_event: EventWriter<RequestRedraw>,
     mut exit: EventWriter<AppExit>,
 ) {
@@ -288,9 +286,9 @@ fn handle_keyboard(
         return;
     }
 
-    rotation.major = (rotation.major as i16 + keys.left as i16 - keys.right as i16
+    torus_transform.major = (torus_transform.major as i16 + keys.left as i16 - keys.right as i16
         + ROTATION_STEPS as i16) as u16
         % ROTATION_STEPS;
-    rotation.ratio += keys.up as i64 - keys.down as i64;
+    torus_transform.ratio += keys.up as i64 - keys.down as i64;
     window_event.send(RequestRedraw);
 }
