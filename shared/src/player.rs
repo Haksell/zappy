@@ -97,6 +97,19 @@ impl Player {
             inventory: [0; Resource::SIZE],
         }
     }
+    
+    pub fn turn(&mut self, side: Side) {
+        self.position.direction = self.position.direction.turn(side);
+    }
+    
+    pub fn set_x(&mut self, x: usize) {
+        self.position.x = x;
+    }
+
+    pub fn set_y(&mut self, y: usize) {
+        self.position.y = y;
+    }
+    
 
     pub async fn disconnect(&self) -> Result<(), ZappyError> {
         self.communication_channel

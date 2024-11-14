@@ -1,4 +1,6 @@
 use crate::args::ServerArgs;
+use shared::player::Side;
+use shared::resource::Resource;
 use shared::{
     command::Command, player::Player, Map, ServerCommandToClient, ServerResponse, ZappyError,
     MAX_COMMANDS,
@@ -37,21 +39,96 @@ impl Server {
         })
     }
 
-    //TODO: C like approach to send execution results to the player but I can't see now
-    // a better way to quit this server lock and don't reallocate memory for responses each teak
-    pub fn tick(&mut self, execution_results: &mut Vec<(u16, ServerResponse)>) {
-        let map = &mut self.map;
-        for (_, player) in &mut self.players {
-            // TODO: handle 0-time differently
-            if !player.commands().is_empty() && self.frame >= *player.next_frame() {
-                let command = player.pop_command_from_queue().unwrap();
-                if let Some(resp) = map.apply_cmd(player, &command) {
-                    execution_results.push((*player.id(), resp));
+    fn handle_avance(&mut self, player_id: u16) {
+        let player = self.players.get_mut(&player_id).unwrap();
+        let current_x = player.position().x;
+        let current_y = player.position().y;
+
+        let (dx, dy) = player.position().direction.dx_dy();
+        player.set_x(((current_x + self.map.width) as isize + dx) as usize % self.map.width);
+        player.set_y(((current_y + self.height) as isize + dy) as usize % self.map.height);
+
+        self.map.field[current_y][current_x]
+            .players
+            .remove(player.id());
+        self.map.field[player.position().y][player.position().x]
+            .players
+            .insert(*player.id());
+    }
+
+    fn apply_cmd(&mut self, player_id: u16, command: &Command) -> Option<ServerResponse> {
+        let player = self.players.get_mut(&player_id).unwrap();
+        log::debug!("Executing command: {:?} for {:?}", command, player);
+        match command {
+            Command::Gauche => {
+                player.turn(Side::Left);
+                Some(ServerResponse::Ok)
+            }
+            Command::Droite => {
+                player.turn(Side::Right);
+                Some(ServerResponse::Ok)
+            }
+            Command::Avance => {
+                self.handle_avance(player_id);
+                Some(ServerResponse::Ok)
+            }
+            Command::Prend { resource_name } => {
+                if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
+                    let cell = &mut self.map.field[player.position().y][player.position().x];
+                    if cell.resources[resource as usize] >= 1 {
+                        cell.resources[resource as usize] -= 1;
+                        player.add_to_inventory(resource);
+                        return Some(ServerResponse::Ok);
+                    }
                 }
-                player.set_next_frame(self.frame + command.delay());
+                Some(ServerResponse::Ko)
+            }
+            Command::Pose { resource_name } => {
+                if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
+                    let cell = &mut self.map.field[player.position().y][player.position().x];
+                    if player.remove_from_inventory(resource) {
+                        cell.resources[resource as usize] += 1;
+                        return Some(ServerResponse::Ok);
+                    }
+                }
+                Some(ServerResponse::Ko)
+            }
+            Command::Voir => todo!(),
+            Command::Inventaire => {
+                let inventory = player
+                    .inventory()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, b)| format!("{} {}", Resource::try_from(i as u8).unwrap(), b))
+                    .collect::<Vec<String>>();
+                Some(ServerResponse::Inventory(inventory))
+            }
+            Command::Expulse => todo!(),
+            Command::Broadcast { text } => todo!(),
+            Command::Incantation => todo!(),
+            Command::Fork => todo!(),
+            Command::ConnectNbr => todo!(),
+        }
+    }
+
+    pub fn tick(&mut self, execution_results: &mut Vec<(u16, ServerResponse)>) {
+        self.frame += 1;
+        let current_frame = self.frame;
+
+        let mut commands_to_process = Vec::new();
+        for (id, player) in &mut self.players {
+            if !player.commands().is_empty() && current_frame >= *player.next_frame() {
+                let command = player.pop_command_from_queue().unwrap();
+                player.set_next_frame(current_frame + command.delay());
+                commands_to_process.push((*id, command));
             }
         }
-        self.frame += 1;
+
+        for (player_id, command) in commands_to_process {
+            if let Some(resp) = self.apply_cmd(player_id, &command) {
+                execution_results.push((player_id, resp));
+            }
+        }
     }
 
     pub fn add_player(

@@ -15,7 +15,7 @@ pub enum Resource {
 }
 
 impl Resource {
-    pub const SIZE: usize = 7; // TOOD: dynamic
+    pub const SIZE: usize = 7; // TODO: dynamic
 
     pub fn alias(&self) -> char {
         match self {

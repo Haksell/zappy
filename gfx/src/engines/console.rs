@@ -65,7 +65,7 @@ fn draw(frame: &mut Frame, map: &mut Option<Map>, players: &mut Option<HashMap<u
         for y in 0..data.height {
             for x in 0..data.width {
                 let col = cols.next().unwrap();
-                let cell = &data.map[y][x];
+                let cell = &data.field[y][x];
                 let mapped_map_resources = cell
                     .resources
                     .iter()
