@@ -1,6 +1,8 @@
 use crate::args::ServerArgs;
-use shared::player::{Player};
-use shared::{Command, Map, ServerCommandToClient, ServerResponse, ZappyError, MAX_COMMANDS};
+use shared::{
+    command::Command, player::Player, Map, ServerCommandToClient, ServerResponse, ZappyError,
+    MAX_COMMANDS,
+};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use tokio::sync::mpsc::Sender;

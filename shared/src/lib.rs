@@ -1,10 +1,15 @@
+pub mod command;
 pub mod player;
+pub mod resource;
 
 use crate::player::{Direction, Position, Side};
+use command::Command;
 use player::Player;
 use rand::Rng as _;
+use resource::Resource;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
 pub enum ZappyError {
@@ -34,77 +39,19 @@ pub enum ServerResponse {
     ActionQueueIsFull,
 }
 
-impl ServerResponse {
-    pub fn get_text(&self) -> &'static str {
+impl Display for ServerResponse {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            ServerResponse::Ok => "Ok",
-            ServerResponse::Ko => "Ko",
+            ServerResponse::Ok => write!(f, "Ok"),
+            ServerResponse::Ko => write!(f, "Ko"),
             ServerResponse::Cases(_) => todo!(),
-            ServerResponse::Inventory(_) => todo!(),
-            ServerResponse::ElevationInProgress => "Elevation InProgress",
+            ServerResponse::Inventory(items) => write!(f, "{{{}}}", items.join(", ")),
+            ServerResponse::ElevationInProgress => write!(f, "Elevation InProgress"),
             ServerResponse::Value(_) => todo!(),
-            ServerResponse::Mort => "Mort",
-            ServerResponse::ActionQueueIsFull => "The action queue is full, please try later.",
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub enum Command {
-    Avance,
-    Droite,
-    Gauche,
-    Voir,
-    Inventaire,
-    Prend { object_name: String },
-    Pose { object_name: String },
-    Expulse,
-    Broadcast { text: String },
-    Incantation,
-    Fork,
-    ConnectNbr,
-}
-
-impl Command {
-    pub fn delay(&self) -> u64 {
-        match self {
-            Command::Avance => 7,
-            Command::Droite => 7,
-            Command::Gauche => 7,
-            Command::Voir => 7,
-            Command::Inventaire => 1,
-            Command::Prend { .. } => 7,
-            Command::Pose { .. } => 7,
-            Command::Expulse => 7,
-            Command::Broadcast { .. } => 7,
-            Command::Incantation => 300,
-            Command::Fork => 42,
-            Command::ConnectNbr => 0,
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
-pub enum Resource {
-    Linemate,
-    Deraumere,
-    Sibur,
-    Mendiane,
-    Phiras,
-    Thystame,
-    Nourriture,
-}
-
-impl Resource {
-    pub fn alias(&self) -> char {
-        match self {
-            Resource::Linemate => 'L',
-            Resource::Deraumere => 'D',
-            Resource::Sibur => 'S',
-            Resource::Mendiane => 'M',
-            Resource::Phiras => 'P',
-            Resource::Thystame => 'T',
-            Resource::Nourriture => 'N',
+            ServerResponse::Mort => write!(f, "Mort"),
+            ServerResponse::ActionQueueIsFull => {
+                write!(f, "The action queue is full, please try later.")
+            }
         }
     }
 }
@@ -118,7 +65,7 @@ pub struct Egg {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
     pub players: HashSet<u16>,
-    pub resources: HashMap<Resource, usize>,
+    pub resources: [usize; Resource::SIZE],
     pub eggs: Vec<Egg>,
 }
 
@@ -133,15 +80,25 @@ impl Cell {
     pub fn new() -> Self {
         Self {
             players: HashSet::new(),
-            resources: HashMap::new(),
+            resources: [0; Resource::SIZE],
             eggs: Vec::new(),
         }
+    }
+
+    pub fn add_resource(&mut self, resource: Resource) {
+        self.resources[resource as usize] += 1;
     }
 }
 
 impl Map {
+    // TODO: better procedural generation
     pub fn new(width: usize, height: usize) -> Self {
-        let map = vec![vec![Cell::new(); width]; height];
+        let mut map = vec![vec![Cell::new(); width]; height];
+        for y in 0..height {
+            for x in 0..width {
+                map[y][x].add_resource(Resource::random());
+            }
+        }
         Self { map, width, height }
     }
 
@@ -183,7 +140,42 @@ impl Map {
                 self.handle_avance(player);
                 Some(ServerResponse::Ok)
             }
-            _ => Some(ServerResponse::Mort),
+            Command::Prend { resource_name } => {
+                if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
+                    let cell = &mut self.map[player.position.y][player.position.x];
+                    if cell.resources[resource as usize] >= 1 {
+                        cell.resources[resource as usize] -= 1;
+                        player.add_to_inventory(resource);
+                        return Some(ServerResponse::Ok);
+                    }
+                }
+                Some(ServerResponse::Ko)
+            }
+            Command::Pose { resource_name } => {
+                if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
+                    let cell = &mut self.map[player.position.y][player.position.x];
+                    if player.remove_from_inventory(resource) {
+                        cell.resources[resource as usize] += 1;
+                        return Some(ServerResponse::Ok);
+                    }
+                }
+                Some(ServerResponse::Ko)
+            }
+            Command::Voir => todo!(),
+            Command::Inventaire => {
+                let inventory = player
+                    .inventory()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, b)| format!("{} {}", Resource::try_from(i as u8).unwrap(), b))
+                    .collect::<Vec<String>>();
+                Some(ServerResponse::Inventory(inventory))
+            }
+            Command::Expulse => todo!(),
+            Command::Broadcast { text } => todo!(),
+            Command::Incantation => todo!(),
+            Command::Fork => todo!(),
+            Command::ConnectNbr => todo!(),
         }
     }
 
