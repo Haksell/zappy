@@ -15,7 +15,7 @@ pub struct Server {
     pub(crate) height: usize,
     max_clients: u16,
     pub(crate) tud: u16,
-    teams: HashMap<String, HashSet<u16>>,
+    pub teams: HashMap<String, HashSet<u16>>,
     pub(crate) players: HashMap<u16, Player>,
     pub(crate) map: Map,
     pub(crate) frame: u64,

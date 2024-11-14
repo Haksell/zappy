@@ -32,7 +32,13 @@ async fn handle_streaming_client(
     loop {
         let combined: Value = {
             let server_lock = server.lock().await;
+            let teams = server_lock
+                .teams
+                .iter()
+                .map(|(k, v)| (k.clone(), v.len()))
+                .collect::<Vec<(String, usize)>>();
             json!({
+                "teams": teams,
                 "map": server_lock.map,
                 "players": server_lock.players
             })

@@ -18,7 +18,7 @@ impl Engine {
     pub async fn render(
         &self,
         event_rx: Receiver<KeyEvent>,
-        rx: Receiver<(Map, HashMap<u16, Player>)>,
+        rx: Receiver<(Map, HashMap<u16, Player>, Vec<(String, usize)>)>,
         conn_rx: Receiver<bool>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         match self {

@@ -78,6 +78,7 @@ pub struct Player {
     commands: VecDeque<Command>,
     pub(crate) position: Position,
     inventory: [usize; Resource::SIZE],
+    level: u8
 }
 
 impl Player {
@@ -95,6 +96,7 @@ impl Player {
             commands: VecDeque::with_capacity(MAX_COMMANDS),
             position,
             inventory: [0; Resource::SIZE],
+            level: 1,
         }
     }
     
@@ -108,6 +110,10 @@ impl Player {
 
     pub fn set_y(&mut self, y: usize) {
         self.position.y = y;
+    }
+    
+    pub fn level_up(&mut self) {
+        self.level += 1
     }
     
 

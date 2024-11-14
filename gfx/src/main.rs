@@ -68,8 +68,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     serde_json::from_value(json_data["map"].clone());
                                 let players: Result<HashMap<u16, Player>, _> =
                                     serde_json::from_value(json_data["players"].clone());
-                                if let (Ok(map), Ok(players)) = (map, players) {
-                                    if tx.send((map, players)).await.is_err() {
+                                let teams: Result<Vec<(String, usize)>, _> = serde_json::from_value(json_data["teams"].clone());
+                                if let (Ok(map), Ok(players), Ok(teams)) = (map, players, teams) {
+                                    if tx.send((map, players, teams)).await.is_err() {
                                         break;
                                     }
                                 } else {
