@@ -4,6 +4,7 @@
 // TODO: button to switch from 2D to torus and vice-versa?
 // TODO: rotations x/y
 // TODO: ESPAAAAAAAAAACE
+// TODO: optimize mesh (right now every corner appears 4 times) (mabe unimportant for reasons)
 
 use bevy::{
     app::App,
@@ -26,8 +27,8 @@ const GRID_U: u8 = 20;
 const GRID_V: u8 = 12;
 
 // TODO: clap arguments
-const RING_RADIUS: f32 = 3.0;
-const TUBE_RADIUS: f32 = 1.0;
+const MAJOR_RADIUS: f32 = 3.0;
+const MINOR_RADIUS: f32 = 1.0;
 
 const ROTATION_SPEED: f32 = std::f32::consts::TAU / 320.0;
 
@@ -124,7 +125,7 @@ fn setup(
     rotation: Res<Rotation>,
 ) {
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 4.0, 12.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(0.0, 0.0, 13.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 
@@ -135,16 +136,6 @@ fn setup(
             ..Default::default()
         },
         transform: Transform::from_xyz(5.0, 8.0, 5.0),
-        ..Default::default()
-    });
-
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 3e5,
-            shadows_enabled: true,
-            ..Default::default()
-        },
-        transform: Transform::from_xyz(0.0, 0.0, -1.0),
         ..Default::default()
     });
 
@@ -196,9 +187,9 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, u: u8, v: u8, rotation: &Res<Rotati
             let theta = u_ratio * std::f32::consts::TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
 
-            let x = (RING_RADIUS + TUBE_RADIUS * cos_theta) * cos_phi;
-            let y = (RING_RADIUS + TUBE_RADIUS * cos_theta) * sin_phi;
-            let z = TUBE_RADIUS * sin_theta;
+            let x = (MAJOR_RADIUS + MINOR_RADIUS * cos_theta) * cos_phi;
+            let y = (MAJOR_RADIUS + MINOR_RADIUS * cos_theta) * sin_phi;
+            let z = MINOR_RADIUS * sin_theta;
 
             positions.push([x, y, z]);
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
