@@ -243,7 +243,7 @@ fn handle_mouse_wheel(
             println!("ACHTUNG !!!!! {:?}", mouse_event); // TODO: test on different computers and remove
         };
         torus_transform.minor_radius =
-            (torus_transform.minor_radius + (mouse_event.y * 0.04)).clamp(0.05, 0.95);
+            (torus_transform.minor_radius + (mouse_event.y * 0.03)).clamp(0.01, 0.99);
     }
 }
 
