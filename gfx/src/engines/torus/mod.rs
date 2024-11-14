@@ -180,16 +180,12 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
     let mut normals = Vec::new();
     for v in 0..=SUBDIVISIONS {
         let v_ratio = lerp(v_start, v_end, v as f32 / SUBDIVISIONS as f32);
-        let phi = ((v_ratio * std::f32::consts::TAU) % std::f32::consts::TAU
-            + std::f32::consts::TAU)
-            % std::f32::consts::TAU;
+        let phi = v_ratio * std::f32::consts::TAU;
         let (sin_phi, cos_phi) = phi.sin_cos();
 
         for u in 0..=SUBDIVISIONS {
             let u_ratio = lerp(u_start, u_end, u as f32 / SUBDIVISIONS as f32);
-            let theta = ((u_ratio * std::f32::consts::TAU) % std::f32::consts::TAU
-                + std::f32::consts::TAU)
-                % std::f32::consts::TAU;
+            let theta = u_ratio * std::f32::consts::TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
             let r = 1.0 + torus_transform.minor_radius * cos_theta;
             let tx = r * cos_phi;
