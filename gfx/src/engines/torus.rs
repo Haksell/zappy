@@ -4,6 +4,7 @@
 // TODO: button to swap main axis
 // TODO: button to switch from 2D to torus and vice-versa?
 // TODO: rotate by dragging or keyboard shortcuts
+// TODO: rotation y
 
 use bevy::{
     app::App,
@@ -22,17 +23,19 @@ use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
 
 // TODO: read from server
-const GRID_U: u8 = 10;
-const GRID_V: u8 = 6;
+const GRID_U: u8 = 50;
+const GRID_V: u8 = 30;
 
 // TODO: clap arguments
 const RING_RADIUS: f32 = 3.0;
 const TUBE_RADIUS: f32 = 1.0;
 
+const ROTATION_SPEED: f32 = std::f32::consts::TAU / 320.0;
+
 #[derive(Resource, Default, Debug, Clone, Copy)]
 struct Rotation {
-    minor: f32,
-    major: f32,
+    minor: i64,
+    major: i64,
 }
 
 #[derive(Component, Debug)]
@@ -48,7 +51,7 @@ struct QuadBundle {
 }
 
 impl QuadBundle {
-    fn spawn(
+    fn new(
         rng: &mut StdRng,
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<StandardMaterial>>,
@@ -61,7 +64,7 @@ impl QuadBundle {
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
         );
-        generate_torus_cell_mesh(&mut mesh, RING_RADIUS, TUBE_RADIUS, u, v, rotation);
+        generate_torus_cell_mesh(&mut mesh, u, v, rotation);
         let material = StandardMaterial {
             base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
             metallic: 0.5,
@@ -140,7 +143,7 @@ fn generate_torus_mesh(
 
     for v in 0..GRID_V {
         for u in 0..GRID_U {
-            commands.spawn(QuadBundle::spawn(
+            commands.spawn(QuadBundle::new(
                 &mut rng,
                 &mut meshes,
                 &mut materials,
@@ -152,19 +155,12 @@ fn generate_torus_mesh(
     }
 }
 
-fn generate_torus_cell_mesh(
-    mesh: &mut Mesh,
-    ring_radius: f32,
-    tube_radius: f32,
-    u: u8,
-    v: u8,
-    rotation: &Res<Rotation>,
-) {
-    let v_start = v as f32 / GRID_V as f32 + rotation.minor;
-    let v_end = (v + 1) as f32 / GRID_V as f32 + rotation.minor;
+fn generate_torus_cell_mesh(mesh: &mut Mesh, u: u8, v: u8, rotation: &Res<Rotation>) {
+    let v_start = v as f32 / GRID_V as f32;
+    let v_end = (v + 1) as f32 / GRID_V as f32;
 
-    let u_start = u as f32 / GRID_U as f32;
-    let u_end = (u + 1) as f32 / GRID_U as f32;
+    let u_start = u as f32 / GRID_U as f32 + rotation.minor as f32 * ROTATION_SPEED;
+    let u_end = u_start + 1.0 / GRID_U as f32;
 
     // looks cool with 1 too, make it an argument?
     const SUBDIVISIONS: u32 = 10; // TODO: depends on grid width and height, can be different in u and v
@@ -182,9 +178,9 @@ fn generate_torus_cell_mesh(
             let theta = u_ratio * std::f32::consts::TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
 
-            let x = (ring_radius + tube_radius * cos_theta) * cos_phi;
-            let y = (ring_radius + tube_radius * cos_theta) * sin_phi;
-            let z = tube_radius * sin_theta;
+            let x = (RING_RADIUS + TUBE_RADIUS * cos_theta) * cos_phi;
+            let y = (RING_RADIUS + TUBE_RADIUS * cos_theta) * sin_phi;
+            let z = TUBE_RADIUS * sin_theta;
 
             positions.push([x, y, z]);
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
@@ -216,15 +212,18 @@ fn generate_torus_cell_mesh(
     mesh.insert_indices(Indices::U32(indices));
 }
 
-fn update_cell_mesh(mut query: Query<(&mut Handle<Mesh>, &QuadInfo)>, rotation: Res<Rotation>) {
+fn update_cell_mesh(
+    query: Query<(&Handle<Mesh>, &QuadInfo)>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    rotation: Res<Rotation>,
+) {
     if !rotation.is_changed() {
         return;
     }
-    if let Ok((mesh, quad_info)) = query.get_single_mut() {
-        println!("{:?}", mesh);
-        println!("{:?}", quad_info);
-        println!("{:?}", rotation);
-        // generate_torus_mesh()
+    for (mesh_handle, quad_info) in query.iter() {
+        if let Some(mesh) = meshes.get_mut(mesh_handle) {
+            generate_torus_cell_mesh(mesh, quad_info.u, quad_info.v, &rotation);
+        }
     }
 }
 
@@ -233,10 +232,8 @@ fn handle_mouse_wheel(
     mut rotation: ResMut<Rotation>,
     mut window_event: EventWriter<RequestRedraw>,
 ) {
-    const ROTATION_SPEED: f32 = 0.1;
-
     for mouse_event in mouse_wheel_events.read() {
-        rotation.minor += ROTATION_SPEED * mouse_event.y.signum();
+        rotation.minor += mouse_event.y.signum() as i64;
         window_event.send(RequestRedraw);
     }
 }
