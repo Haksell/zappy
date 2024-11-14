@@ -5,6 +5,7 @@
 // TODO: rotations x/y
 // TODO: ESPAAAAAAAAAACE
 // TODO: optimize mesh (right now every corner appears 4 times) (mabe unimportant for reasons)
+// TODO: do everything with respect to delta time
 
 use bevy::{
     app::App,
@@ -23,8 +24,11 @@ use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
 
 // TODO: read from server
-const GRID_U: u8 = 20;
-const GRID_V: u8 = 12;
+const GRID_U: u8 = 12;
+const GRID_V: u8 = 8;
+
+// looks cool with 1 too, make it an argument?
+const SUBDIVISIONS: u32 = 10; // TODO: depends on grid width and height, can be different in u and v
 
 const ROTATION_STEPS: u16 = 60; // TODO: depend on delta time instead
 
@@ -79,7 +83,7 @@ impl QuadBundle {
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
         );
-        generate_torus_cell_mesh(&mut mesh, torus_transform, u, v);
+        fill_torus_cell_mesh(&mut mesh, torus_transform, u, v);
         let material = StandardMaterial {
             base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
             metallic: 0.5,
@@ -129,8 +133,8 @@ pub async fn render(
 
 fn setup(
     mut commands: Commands,
-    meshes: ResMut<Assets<Mesh>>,
-    materials: ResMut<Assets<StandardMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
     torus_transform: Res<TorusTransform>,
 ) {
     commands.spawn(Camera3dBundle {
@@ -148,17 +152,7 @@ fn setup(
         ..Default::default()
     });
 
-    generate_torus_mesh(commands, meshes, materials, torus_transform);
-}
-
-fn generate_torus_mesh(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    torus_transform: Res<TorusTransform>,
-) {
     let mut rng = StdRng::seed_from_u64(42);
-
     for v in 0..GRID_V {
         for u in 0..GRID_U {
             commands.spawn(QuadBundle::new(
@@ -173,7 +167,12 @@ fn generate_torus_mesh(
     }
 }
 
-fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
+// TODO: shared
+fn lerp(a: f32, b: f32, p: f32) -> f32 {
+    a + p * (b - a)
+}
+
+fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
     let v_start =
         v as f32 / GRID_V as f32 + torus_transform.major_angle as f32 / ROTATION_STEPS as f32;
     let v_end = v_start + 1.0 / GRID_V as f32;
@@ -182,27 +181,27 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransfor
         u as f32 / GRID_U as f32 + torus_transform.minor_angle as f32 / ROTATION_STEPS as f32;
     let u_end = u_start + 1.0 / GRID_U as f32;
 
-    // looks cool with 1 too, make it an argument?
-    const SUBDIVISIONS: u32 = 10; // TODO: depends on grid width and height, can be different in u and v
-
     let mut positions = Vec::new();
     let mut normals = Vec::new();
     for v in 0..=SUBDIVISIONS {
-        let v_ratio = v_start + (v_end - v_start) * (v as f32 / SUBDIVISIONS as f32);
-        let phi = v_ratio * std::f32::consts::TAU;
+        let v_ratio = lerp(v_start, v_end, v as f32 / SUBDIVISIONS as f32);
+        let phi = ((v_ratio * std::f32::consts::TAU) % std::f32::consts::TAU
+            + std::f32::consts::TAU)
+            % std::f32::consts::TAU;
         let (sin_phi, cos_phi) = phi.sin_cos();
 
         for u in 0..=SUBDIVISIONS {
-            let u_ratio = u_start + (u_end - u_start) * (u as f32 / SUBDIVISIONS as f32);
-            let theta = u_ratio * std::f32::consts::TAU;
+            let u_ratio = lerp(u_start, u_end, u as f32 / SUBDIVISIONS as f32);
+            let theta = ((u_ratio * std::f32::consts::TAU) % std::f32::consts::TAU
+                + std::f32::consts::TAU)
+                % std::f32::consts::TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
-
             let r = 1.0 + torus_transform.minor_radius * cos_theta;
-            let x = r * cos_phi;
-            let y = r * sin_phi;
-            let z = torus_transform.minor_radius * sin_theta;
+            let tx = r * cos_phi;
+            let ty = r * sin_phi;
+            let tz = torus_transform.minor_radius * sin_theta;
 
-            positions.push([x, y, z]);
+            positions.push([tx, ty, tz]);
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
         }
     }
@@ -234,15 +233,13 @@ fn update_cell_mesh(
     query: Query<(&Handle<Mesh>, &QuadInfo)>,
     mut meshes: ResMut<Assets<Mesh>>,
     torus_transform: Res<TorusTransform>,
-    // mut window_event: EventWriter<RequestRedraw>,
 ) {
     if torus_transform.is_changed() {
         for (mesh_handle, quad_info) in &query {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
-                generate_torus_cell_mesh(mesh, &torus_transform, quad_info.u, quad_info.v);
+                fill_torus_cell_mesh(mesh, &torus_transform, quad_info.u, quad_info.v);
             }
         }
-        // window_event.send(RequestRedraw);
     }
 }
 
