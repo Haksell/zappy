@@ -1,4 +1,5 @@
 pub mod player;
+pub mod utils;
 
 use crate::player::{Direction, Position, Side};
 use player::Player;

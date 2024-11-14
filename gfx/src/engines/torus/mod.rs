@@ -19,7 +19,7 @@ use bevy::{
 };
 use crossterm::event::KeyEvent;
 use rand::{rngs::StdRng, Rng, SeedableRng as _};
-use shared::{player::Player, Map};
+use shared::{player::Player, utils::lerp, Map};
 use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
 
@@ -165,11 +165,6 @@ fn setup(
             ));
         }
     }
-}
-
-// TODO: shared
-fn lerp(a: f32, b: f32, p: f32) -> f32 {
-    a + p * (b - a)
 }
 
 fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
