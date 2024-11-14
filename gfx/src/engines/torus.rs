@@ -7,12 +7,13 @@
 
 use bevy::{
     app::App,
-    input::mouse::{MouseScrollUnit, MouseWheel},
+    input::mouse::MouseWheel,
     prelude::*,
     render::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
     },
+    window::RequestRedraw,
 };
 use crossterm::event::KeyEvent;
 use rand::{rngs::StdRng, Rng, SeedableRng as _};
@@ -20,16 +21,61 @@ use shared::{player::Player, Map};
 use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
 
-#[derive(Resource, Default, Debug)]
+// TODO: read from server
+const GRID_U: u8 = 10;
+const GRID_V: u8 = 6;
+
+// TODO: clap arguments
+const RING_RADIUS: f32 = 3.0;
+const TUBE_RADIUS: f32 = 1.0;
+
+#[derive(Resource, Default, Debug, Clone, Copy)]
 struct Rotation {
     minor: f32,
     major: f32,
 }
 
-#[derive(Component)]
-struct CameraOrbit {
-    angle: f32,
-    radius: f32,
+#[derive(Component, Debug)]
+struct QuadInfo {
+    u: u8,
+    v: u8,
+}
+
+#[derive(Bundle)]
+struct QuadBundle {
+    pbr: PbrBundle,
+    quad_info: QuadInfo,
+}
+
+impl QuadBundle {
+    fn spawn(
+        rng: &mut StdRng,
+        meshes: &mut ResMut<Assets<Mesh>>,
+        materials: &mut ResMut<Assets<StandardMaterial>>,
+        rotation: &Res<Rotation>,
+        u: u8,
+        v: u8,
+    ) -> Self {
+        // TODO: refactor
+        let mut mesh = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::default(),
+        );
+        generate_torus_cell_mesh(&mut mesh, RING_RADIUS, TUBE_RADIUS, u, v, rotation);
+        let material = StandardMaterial {
+            base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
+            metallic: 0.5,
+            perceptual_roughness: 0.2,
+            ..Default::default()
+        };
+        let pbr = PbrBundle {
+            mesh: meshes.add(mesh),
+            material: materials.add(material),
+            ..Default::default()
+        };
+        let quad_info = QuadInfo { u, v };
+        Self { pbr, quad_info }
+    }
 }
 
 pub async fn render(
@@ -38,30 +84,38 @@ pub async fn render(
     _conn_rx: Receiver<bool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "zappy".to_string(), // TODO: constant somewhere
+                ..Default::default()
+            }),
+            ..Default::default()
+        }))
         .init_resource::<Rotation>()
         .add_systems(Startup, setup)
-        .add_systems(Update, handle_mouse_wheel)
+        .add_systems(
+            Update,
+            (
+                handle_mouse_wheel,
+                update_cell_mesh.after(handle_mouse_wheel),
+            ),
+        )
         .run();
     Ok(())
 }
 
 fn setup(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    meshes: ResMut<Assets<Mesh>>,
+    materials: ResMut<Assets<StandardMaterial>>,
+    rotation: Res<Rotation>,
 ) {
-    let initial_position = Vec3::new(0.0, 5.0, 15.0);
-    let radius = Vec3::new(initial_position.x, 0.0, initial_position.z).length();
-    let angle = initial_position.z.atan2(initial_position.x);
-    commands.spawn((
-        Camera3dBundle {
-            transform: Transform::from_translation(initial_position)
-                .looking_at(Vec3::ZERO, Vec3::Y),
-            ..Default::default()
-        },
-        CameraOrbit { angle, radius },
-    ));
+    println!("setup {:?}", rotation);
+
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(0.0, 5.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..Default::default()
+    });
 
     commands.spawn(PointLightBundle {
         point_light: PointLight {
@@ -73,51 +127,45 @@ fn setup(
         ..Default::default()
     });
 
-    // TODO: read from server
-    let grid_u = 10;
-    let grid_v = 6;
+    generate_torus_mesh(commands, meshes, materials, rotation);
+}
 
-    // TODO: clap arguments
-    let ring_radius = 3.0;
-    let tube_radius = 1.0;
-
+fn generate_torus_mesh(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    rotation: Res<Rotation>,
+) {
     let mut rng = StdRng::seed_from_u64(42);
 
-    for v in 0..grid_v {
-        let v_start = v as f32 / grid_v as f32;
-        let v_end = (v + 1) as f32 / grid_v as f32;
-
-        for u in 0..grid_u {
-            let u_start = u as f32 / grid_u as f32;
-            let u_end = (u + 1) as f32 / grid_u as f32;
-
-            let cell_mesh =
-                generate_torus_cell_mesh(ring_radius, tube_radius, u_start, u_end, v_start, v_end);
-
-            let material = StandardMaterial {
-                base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
-                metallic: 0.5,
-                perceptual_roughness: 0.2,
-                ..Default::default()
-            };
-
-            commands.spawn(PbrBundle {
-                mesh: meshes.add(cell_mesh),
-                material: materials.add(material),
-                ..Default::default()
-            });
+    for v in 0..GRID_V {
+        for u in 0..GRID_U {
+            commands.spawn(QuadBundle::spawn(
+                &mut rng,
+                &mut meshes,
+                &mut materials,
+                &rotation,
+                u,
+                v,
+            ));
         }
     }
 }
 
 fn generate_torus_cell_mesh(
+    mesh: &mut Mesh,
     ring_radius: f32,
     tube_radius: f32,
-    u_start: f32,
-    u_end: f32,
-    v_start: f32,
-    v_end: f32,
-) -> Mesh {
+    u: u8,
+    v: u8,
+    rotation: &Res<Rotation>,
+) {
+    let v_start = v as f32 / GRID_V as f32 + rotation.minor;
+    let v_end = (v + 1) as f32 / GRID_V as f32 + rotation.minor;
+
+    let u_start = u as f32 / GRID_U as f32;
+    let u_end = (u + 1) as f32 / GRID_U as f32;
+
     // looks cool with 1 too, make it an argument?
     const SUBDIVISIONS: u32 = 10; // TODO: depends on grid width and height, can be different in u and v
 
@@ -162,53 +210,33 @@ fn generate_torus_cell_mesh(
         }
     }
 
-    let mut mesh = Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
-    );
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.insert_indices(Indices::U32(indices));
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-    mesh
+    mesh.insert_indices(Indices::U32(indices));
 }
 
-// fn update_score(mut score: ResMut<Score>, mut events: EventReader<Scored>) {
-//     for event in events.read() {
-//         match event.0 {
-//             Scorer::Ai => score.ai += 1,
-//             Scorer::Player => score.player += 1,
-//         }
-//     }
-
-//     println!("Score: {} - {}", score.player, score.ai);
-// }
+fn update_cell_mesh(mut query: Query<(&mut Handle<Mesh>, &QuadInfo)>, rotation: Res<Rotation>) {
+    if !rotation.is_changed() {
+        return;
+    }
+    if let Ok((mesh, quad_info)) = query.get_single_mut() {
+        println!("{:?}", mesh);
+        println!("{:?}", quad_info);
+        println!("{:?}", rotation);
+        // generate_torus_mesh()
+    }
+}
 
 fn handle_mouse_wheel(
     mut mouse_wheel_events: EventReader<MouseWheel>,
-    mut querya: Query<(&mut Transform, &mut CameraOrbit)>,
     mut rotation: ResMut<Rotation>,
+    mut window_event: EventWriter<RequestRedraw>,
 ) {
-    let rotation_speed = 0.1;
+    const ROTATION_SPEED: f32 = 0.1;
 
-    for event in mouse_wheel_events.read() {
-        println!("{:?}", event.unit);
-        let delta = match event.unit {
-            MouseScrollUnit::Line => event.y,
-            MouseScrollUnit::Pixel => event.y * 0.1,
-        };
-        rotation.minor += rotation_speed * delta;
-
-        for (mut transform, mut orbit) in querya.iter_mut() {
-            orbit.angle = (orbit.angle + delta * rotation_speed) % std::f32::consts::TAU;
-            transform.translation = Vec3::new(
-                orbit.radius * orbit.angle.cos(),
-                transform.translation.y,
-                orbit.radius * orbit.angle.sin(),
-            );
-            transform.look_at(Vec3::ZERO, Vec3::Y);
-        }
+    for mouse_event in mouse_wheel_events.read() {
+        rotation.minor += ROTATION_SPEED * mouse_event.y.signum();
+        window_event.send(RequestRedraw);
     }
-
-    println!("{:?}", rotation);
 }
