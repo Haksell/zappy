@@ -151,7 +151,7 @@ fn setup(
     // Take inspiration from this commit for camera bundle usage:
     // https://github.com/Haksell/zappy/commit/423b6ccff892d1b3dff3f48058f5eb85f5d56521
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(1.0, 1.0, 4.2).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(0.0, 0.0, 4.2).looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 
