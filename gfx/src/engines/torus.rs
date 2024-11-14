@@ -20,6 +20,12 @@ use shared::{player::Player, Map};
 use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
 
+#[derive(Resource, Default, Debug)]
+struct Rotation {
+    minor: f32,
+    major: f32,
+}
+
 #[derive(Component)]
 struct CameraOrbit {
     angle: f32,
@@ -33,6 +39,7 @@ pub async fn render(
 ) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
         .add_plugins(DefaultPlugins)
+        .init_resource::<Rotation>()
         .add_systems(Startup, setup)
         .add_systems(Update, handle_mouse_wheel)
         .run();
@@ -166,18 +173,33 @@ fn generate_torus_cell_mesh(
     mesh
 }
 
+// fn update_score(mut score: ResMut<Score>, mut events: EventReader<Scored>) {
+//     for event in events.read() {
+//         match event.0 {
+//             Scorer::Ai => score.ai += 1,
+//             Scorer::Player => score.player += 1,
+//         }
+//     }
+
+//     println!("Score: {} - {}", score.player, score.ai);
+// }
+
 fn handle_mouse_wheel(
     mut mouse_wheel_events: EventReader<MouseWheel>,
-    mut query: Query<(&mut Transform, &mut CameraOrbit)>,
+    mut querya: Query<(&mut Transform, &mut CameraOrbit)>,
+    mut rotation: ResMut<Rotation>,
 ) {
     let rotation_speed = 0.1;
+
     for event in mouse_wheel_events.read() {
+        println!("{:?}", event.unit);
         let delta = match event.unit {
             MouseScrollUnit::Line => event.y,
             MouseScrollUnit::Pixel => event.y * 0.1,
         };
+        rotation.minor += rotation_speed * delta;
 
-        for (mut transform, mut orbit) in query.iter_mut() {
+        for (mut transform, mut orbit) in querya.iter_mut() {
             orbit.angle = (orbit.angle + delta * rotation_speed) % std::f32::consts::TAU;
             transform.translation = Vec3::new(
                 orbit.radius * orbit.angle.cos(),
@@ -187,4 +209,6 @@ fn handle_mouse_wheel(
             transform.look_at(Vec3::ZERO, Vec3::Y);
         }
     }
+
+    println!("{:?}", rotation);
 }
