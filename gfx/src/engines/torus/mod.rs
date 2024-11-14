@@ -30,7 +30,7 @@ const GRID_V: u8 = 12;
 const MAJOR_RADIUS: f32 = 3.0;
 const MINOR_RADIUS: f32 = 1.0;
 
-const ROTATION_STEPS: u16 = 320;
+const ROTATION_STEPS: u16 = 60; // TODO: depend on delta time instead
 
 #[derive(Resource, Default, Debug)]
 struct Keys {
@@ -40,23 +40,21 @@ struct Keys {
     left: bool,
 }
 
-// TODO: parameters instead of several resources
-
 #[derive(Resource, Debug)]
 struct Rotation {
     minor: u16,
     major: u16,
+    ratio: i64, // TODO: f32
 }
 
 impl Default for Rotation {
     fn default() -> Self {
-        Self { minor: 0, major: 0 }
+        Self {
+            minor: 0,
+            major: 0,
+            ratio: 0,
+        }
     }
-}
-
-#[derive(Resource, Default, Debug)]
-struct Ratio {
-    n: i64,
 }
 
 #[derive(Component, Debug)]
@@ -77,7 +75,6 @@ impl QuadBundle {
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<StandardMaterial>>,
         rotation: &Res<Rotation>,
-        ratio: &Res<Ratio>,
         u: u8,
         v: u8,
     ) -> Self {
@@ -86,7 +83,7 @@ impl QuadBundle {
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
         );
-        generate_torus_cell_mesh(&mut mesh, rotation, ratio, u, v);
+        generate_torus_cell_mesh(&mut mesh, rotation, u, v);
         let material = StandardMaterial {
             base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
             metallic: 0.5,
@@ -119,7 +116,6 @@ pub async fn render(
         }))
         .init_resource::<Rotation>()
         .init_resource::<Keys>()
-        .init_resource::<Ratio>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -140,7 +136,6 @@ fn setup(
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<StandardMaterial>>,
     rotation: Res<Rotation>,
-    ratio: Res<Ratio>,
 ) {
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0.0, 0.0, 13.0).looking_at(Vec3::ZERO, Vec3::Y),
@@ -157,7 +152,7 @@ fn setup(
         ..Default::default()
     });
 
-    generate_torus_mesh(commands, meshes, materials, rotation, ratio);
+    generate_torus_mesh(commands, meshes, materials, rotation);
 }
 
 fn generate_torus_mesh(
@@ -165,7 +160,6 @@ fn generate_torus_mesh(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     rotation: Res<Rotation>,
-    ratio: Res<Ratio>,
 ) {
     let mut rng = StdRng::seed_from_u64(42);
 
@@ -176,7 +170,6 @@ fn generate_torus_mesh(
                 &mut meshes,
                 &mut materials,
                 &rotation,
-                &ratio,
                 u,
                 v,
             ));
@@ -184,13 +177,7 @@ fn generate_torus_mesh(
     }
 }
 
-fn generate_torus_cell_mesh(
-    mesh: &mut Mesh,
-    rotation: &Res<Rotation>,
-    ratio: &Res<Ratio>,
-    u: u8,
-    v: u8,
-) {
+fn generate_torus_cell_mesh(mesh: &mut Mesh, rotation: &Res<Rotation>, u: u8, v: u8) {
     let v_start = v as f32 / GRID_V as f32 + rotation.major as f32 / ROTATION_STEPS as f32;
     let v_end = v_start + 1.0 / GRID_V as f32;
 
@@ -213,7 +200,7 @@ fn generate_torus_cell_mesh(
             let theta = u_ratio * std::f32::consts::TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
 
-            let minor_radius = MINOR_RADIUS + 0.1 * ratio.n as f32;
+            let minor_radius = MINOR_RADIUS + 0.1 * rotation.ratio as f32;
 
             let x = (MAJOR_RADIUS + minor_radius * cos_theta) * cos_phi;
             let y = (MAJOR_RADIUS + minor_radius * cos_theta) * sin_phi;
@@ -253,7 +240,6 @@ fn update_cell_mesh(
     query: Query<(&Handle<Mesh>, &QuadInfo)>,
     mut meshes: ResMut<Assets<Mesh>>,
     rotation: Res<Rotation>,
-    ratio: Res<Ratio>,
 ) {
     println!("{rotation:?}");
     if !rotation.is_changed() {
@@ -261,7 +247,7 @@ fn update_cell_mesh(
     }
     for (mesh_handle, quad_info) in query.iter() {
         if let Some(mesh) = meshes.get_mut(mesh_handle) {
-            generate_torus_cell_mesh(mesh, &rotation, &ratio, quad_info.u, quad_info.v);
+            generate_torus_cell_mesh(mesh, &rotation, quad_info.u, quad_info.v);
         }
     }
 }
@@ -283,22 +269,28 @@ fn handle_mouse_wheel(
 }
 
 fn handle_keyboard(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut keys: ResMut<Keys>,
     mut rotation: ResMut<Rotation>,
-    mut ratio: ResMut<Ratio>,
     mut window_event: EventWriter<RequestRedraw>,
+    mut exit: EventWriter<AppExit>,
 ) {
-    keys.up = keyboard_input.pressed(KeyCode::ArrowUp);
-    keys.right = keyboard_input.pressed(KeyCode::ArrowRight);
-    keys.down = keyboard_input.pressed(KeyCode::ArrowDown);
-    keys.left = keyboard_input.pressed(KeyCode::ArrowLeft);
+    if keyboard.pressed(KeyCode::Escape) {
+        exit.send(AppExit::Success);
+        return;
+    }
+
+    keys.up = keyboard.pressed(KeyCode::ArrowUp);
+    keys.right = keyboard.pressed(KeyCode::ArrowRight);
+    keys.down = keyboard.pressed(KeyCode::ArrowDown);
+    keys.left = keyboard.pressed(KeyCode::ArrowLeft);
     if keys.left == keys.right && keys.up == keys.down {
         return;
     }
+
     rotation.major = (rotation.major as i16 + keys.left as i16 - keys.right as i16
         + ROTATION_STEPS as i16) as u16
         % ROTATION_STEPS;
-    ratio.n += keys.up as i64 - keys.down as i64;
+    rotation.ratio += keys.up as i64 - keys.down as i64;
     window_event.send(RequestRedraw);
 }
