@@ -187,7 +187,6 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransfor
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
-    let mut uvs = Vec::new(); // TODO: remove
     for v in 0..=SUBDIVISIONS {
         let v_ratio = v_start + (v_end - v_start) * (v as f32 / SUBDIVISIONS as f32);
         let phi = v_ratio * std::f32::consts::TAU;
@@ -205,7 +204,6 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransfor
 
             positions.push([x, y, z]);
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
-            uvs.push([u_ratio, v_ratio]);
         }
     }
 
@@ -229,7 +227,6 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransfor
 
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.insert_indices(Indices::U32(indices));
 }
 
