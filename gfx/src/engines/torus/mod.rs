@@ -26,9 +26,8 @@ use tokio::sync::mpsc::Receiver;
 const GRID_U: u8 = 20;
 const GRID_V: u8 = 12;
 
-// TODO: clap arguments
+// TODO: 1.0
 const MAJOR_RADIUS: f32 = 3.0;
-const MINOR_RADIUS: f32 = 1.0;
 
 const ROTATION_STEPS: u16 = 60; // TODO: depend on delta time instead
 
@@ -44,7 +43,7 @@ struct Keys {
 struct TorusTransform {
     minor: u16,
     major: u16,
-    ratio: i64, // TODO: f32
+    minor_radius: f32,
 }
 
 impl Default for TorusTransform {
@@ -52,7 +51,7 @@ impl Default for TorusTransform {
         Self {
             minor: 0,
             major: 0,
-            ratio: 0,
+            minor_radius: 0.4,
         }
     }
 }
@@ -200,7 +199,7 @@ fn generate_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransfor
             let theta = u_ratio * std::f32::consts::TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
 
-            let minor_radius = MINOR_RADIUS + 0.1 * torus_transform.ratio as f32;
+            let minor_radius = MAJOR_RADIUS * torus_transform.minor_radius as f32;
 
             let x = (MAJOR_RADIUS + minor_radius * cos_theta) * cos_phi;
             let y = (MAJOR_RADIUS + minor_radius * cos_theta) * sin_phi;
@@ -289,6 +288,8 @@ fn handle_keyboard(
     torus_transform.major = (torus_transform.major as i16 + keys.left as i16 - keys.right as i16
         + ROTATION_STEPS as i16) as u16
         % ROTATION_STEPS;
-    torus_transform.ratio += keys.up as i64 - keys.down as i64;
+    torus_transform.minor_radius = (torus_transform.minor_radius
+        + (keys.up as i64 - keys.down as i64) as f32 * 0.04)
+        .clamp(0.05, 0.95);
     window_event.send(RequestRedraw);
 }
