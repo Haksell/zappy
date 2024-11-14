@@ -251,10 +251,8 @@ fn handle_mouse_wheel(
         if let MouseScrollUnit::Pixel = mouse_event.unit {
             println!("ACHTUNG !!!!! {:?}", mouse_event); // TODO: test on different computers and remove
         };
-        torus_transform.minor_angle = (torus_transform.minor_angle as i16
-            + mouse_event.y as i16
-            + ROTATION_STEPS as i16) as u16
-            % ROTATION_STEPS;
+        torus_transform.minor_radius =
+            (torus_transform.minor_radius + (mouse_event.y * 0.04)).clamp(0.05, 0.95);
     }
 }
 
@@ -281,7 +279,8 @@ fn handle_keyboard(
         - keys.right as i16
         + ROTATION_STEPS as i16) as u16
         % ROTATION_STEPS;
-    torus_transform.minor_radius = (torus_transform.minor_radius
-        + (keys.up as i64 - keys.down as i64) as f32 * 0.04)
-        .clamp(0.05, 0.95);
+    torus_transform.minor_angle = (torus_transform.minor_angle as i16 + keys.up as i16
+        - keys.down as i16
+        + ROTATION_STEPS as i16) as u16
+        % ROTATION_STEPS;
 }
