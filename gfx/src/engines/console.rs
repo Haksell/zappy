@@ -6,12 +6,11 @@ use ratatui::{
     layout::{Constraint, Layout},
     Frame,
 };
+use shared::map::Map;
 use shared::player::{Direction, Player};
 use shared::resource::Resource;
-use shared::Map;
 use std::collections::HashMap;
 use tokio::sync::mpsc::Receiver;
-
 // pub const NORTH_EMOJI: &'static str = "↥";
 // pub const EAST_EMOJI: &'static str = "↦";
 // pub const SOUTH_EMOJI: &'static str = "↧";

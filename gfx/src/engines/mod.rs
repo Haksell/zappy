@@ -1,7 +1,7 @@
 use clap::ValueEnum;
 use crossterm::event::KeyEvent;
+use shared::map::Map;
 use shared::player::Player;
-use shared::Map;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use tokio::sync::mpsc::Receiver;

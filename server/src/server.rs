@@ -1,8 +1,9 @@
 use crate::args::ServerArgs;
+use shared::map::Map;
 use shared::player::Side;
 use shared::resource::Resource;
 use shared::{
-    command::Command, player::Player, Map, ServerCommandToClient, ServerResponse, ZappyError,
+    command::Command, player::Player, ServerCommandToClient, ServerResponse, ZappyError,
     MAX_COMMANDS,
 };
 use std::collections::{HashMap, HashSet};

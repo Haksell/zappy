@@ -1,14 +1,10 @@
 pub mod command;
+pub mod map;
 pub mod player;
 pub mod resource;
 
-use crate::player::{Direction, Position, Side};
 use command::Command;
-use player::Player;
-use rand::Rng as _;
-use resource::Resource;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug)]
@@ -60,68 +56,6 @@ impl Display for ServerResponse {
 pub struct Egg {
     pub team_name: String,
     pub start_frame: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Cell {
-    pub players: HashSet<u16>,
-    pub resources: [usize; Resource::SIZE],
-    pub eggs: Vec<Egg>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Map {
-    pub field: Vec<Vec<Cell>>,
-    pub width: usize,
-    pub height: usize,
-}
-
-impl Cell {
-    pub fn new() -> Self {
-        Self {
-            players: HashSet::new(),
-            resources: [0; Resource::SIZE],
-            eggs: Vec::new(),
-        }
-    }
-
-    pub fn add_resource(&mut self, resource: Resource) {
-        self.resources[resource as usize] += 1;
-    }
-}
-
-impl Map {
-    // TODO: better procedural generation
-    pub fn new(width: usize, height: usize) -> Self {
-        let mut map = vec![vec![Cell::new(); width]; height];
-        for y in 0..height {
-            for x in 0..width {
-                map[y][x].add_resource(Resource::random());
-            }
-        }
-        Self { field: map, width, height }
-    }
-
-    pub fn random_position(&self) -> Position {
-        let mut thread_rng = rand::thread_rng();
-        Position {
-            x: thread_rng.gen_range(0..self.width),
-            y: thread_rng.gen_range(0..self.height),
-            direction: Direction::random(),
-        }
-    }
-
-    
-
-    pub fn add_player(&mut self, id: u16, position: &Position) {
-        log::debug!("Adding {} to the game field.", id);
-        self.field[position.y][position.x].players.insert(id);
-    }
-
-    pub fn remove_player(&mut self, id: &u16, position: &Position) {
-        log::debug!("Removing {} from the game field.", id);
-        self.field[position.y][position.x].players.remove(id);
-    }
 }
 
 pub const GFX_PORT: u16 = 4343; // TODO configurable port
