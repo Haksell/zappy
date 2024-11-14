@@ -1,12 +1,21 @@
-example:
+## Quickstart
 
-```
+### server:
+
+```shell
 cargo run -p server -- -p 8080 -x 20 -y 10 -n anton axel -c 1 -t 4
 ```
 
-other terminal:
+### terminal ui:
+
+```shell
+cargo run --bin gfx
+```
+
+### raw nc client:
 
 ```
+nc localhost 8080
 BIENVENUE
 axel
 1
@@ -39,10 +48,33 @@ pose Thystame
 Ko
 ```
 
+---
+
+## Commands
+
+| Command     | Status |
+|-------------|--------|
+| avance      | ✅      |
+| droite      | ✅      |
+| gauche      | ✅      |
+| voir        | ❌      |
+| inventaire  | ✅      |
+| prend       | ✅      |
+| pose        | ✅      |
+| expulse     | ❌      |
+| broadcast   | ❌      |
+| incantation | ❌      |
+| fork        | ❌      |
+| connect_nbr | ❌      |
+
+---
+
+
+
 Todo client:
 
 - serialize Command enum using serde_json from workspace cargo.toml
-- when read responses serialize ServerResponse enum from workspace cargo.toml 
+- when read responses serialize ServerResponse enum from workspace cargo.toml
 
 ## misc
 
@@ -87,5 +119,6 @@ does it break incantations?
 ## evaluation stuff
 
 Circular buffers were implemented for read and write?
-There is a global action list using an insertion soft so that actions requiring the shortest execution time are at the beginning of the list?
+There is a global action list using an insertion soft so that actions requiring the shortest execution time are at the
+beginning of the list?
 The slots managemeng is correct (-c flag and fork)?
