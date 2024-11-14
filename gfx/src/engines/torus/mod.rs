@@ -5,7 +5,6 @@
 // TODO: rotations x/y
 // TODO: ESPAAAAAAAAAACE
 // TODO: optimize mesh (right now every corner appears 4 times) (mabe unimportant for reasons)
-// TODO: do everything with respect to delta time
 
 use bevy::{
     app::App,
@@ -19,8 +18,8 @@ use bevy::{
 };
 use crossterm::event::KeyEvent;
 use rand::{rngs::StdRng, Rng, SeedableRng as _};
-use shared::{player::Player, utils::lerp, Map};
-use std::collections::HashMap;
+use shared::{player::Player, utils::lerp, Map, PROJECT_NAME};
+use std::{collections::HashMap, f32::consts::TAU};
 use tokio::sync::mpsc::Receiver;
 
 // TODO: read from server
@@ -30,7 +29,8 @@ const GRID_V: u8 = 8;
 // looks cool with 1 too, make it an argument?
 const SUBDIVISIONS: u32 = 10; // TODO: depends on grid width and height, can be different in u and v
 
-const ROTATION_STEPS: u16 = 60; // TODO: depend on delta time instead
+const ROTATION_SPEED: f32 = 0.8;
+const MOUSE_WHEEL_SPEED: f32 = 3.0;
 
 #[derive(Resource, Default, Debug)]
 struct Keys {
@@ -40,18 +40,28 @@ struct Keys {
     left: bool,
 }
 
+impl Keys {
+    fn dy(&self) -> f32 {
+        self.down as u32 as f32 - self.up as u32 as f32
+    }
+
+    fn dx(&self) -> f32 {
+        self.right as u32 as f32 - self.left as u32 as f32
+    }
+}
+
 #[derive(Resource, Debug)]
 struct TorusTransform {
-    minor_angle: u16,
-    major_angle: u16,
+    minor_shift: f32,
+    major_shift: f32,
     minor_radius: f32,
 }
 
 impl Default for TorusTransform {
     fn default() -> Self {
         Self {
-            minor_angle: 0,
-            major_angle: 0,
+            minor_shift: 0.0,
+            major_shift: 0.0,
             minor_radius: 0.4,
         }
     }
@@ -108,7 +118,7 @@ pub async fn render(
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: "zappy".to_string(), // TODO: constant somewhere
+                title: PROJECT_NAME.into(),
                 resolution: WindowResolution::new(800., 800.),
                 ..Default::default()
             }),
@@ -168,24 +178,22 @@ fn setup(
 }
 
 fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
-    let v_start =
-        v as f32 / GRID_V as f32 + torus_transform.major_angle as f32 / ROTATION_STEPS as f32;
+    let v_start = v as f32 / GRID_V as f32 + torus_transform.major_shift;
     let v_end = v_start + 1.0 / GRID_V as f32;
 
-    let u_start =
-        u as f32 / GRID_U as f32 + torus_transform.minor_angle as f32 / ROTATION_STEPS as f32;
+    let u_start = u as f32 / GRID_U as f32 + torus_transform.minor_shift;
     let u_end = u_start + 1.0 / GRID_U as f32;
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
     for v in 0..=SUBDIVISIONS {
         let v_ratio = lerp(v_start, v_end, v as f32 / SUBDIVISIONS as f32);
-        let phi = v_ratio * std::f32::consts::TAU;
+        let phi = v_ratio * TAU;
         let (sin_phi, cos_phi) = phi.sin_cos();
 
         for u in 0..=SUBDIVISIONS {
             let u_ratio = lerp(u_start, u_end, u as f32 / SUBDIVISIONS as f32);
-            let theta = u_ratio * std::f32::consts::TAU;
+            let theta = u_ratio * TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
             let r = 1.0 + torus_transform.minor_radius * cos_theta;
             let tx = r * cos_phi;
@@ -196,6 +204,8 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
         }
     }
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
     let mut indices = Vec::new();
     for v in 0..SUBDIVISIONS {
@@ -214,9 +224,6 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
             indices.push(i3 as u32);
         }
     }
-
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_indices(Indices::U32(indices));
 }
 
@@ -237,13 +244,16 @@ fn update_cell_mesh(
 fn handle_mouse_wheel(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut torus_transform: ResMut<TorusTransform>,
+    time: Res<Time>,
 ) {
+    let dt = time.delta_seconds();
     for mouse_event in mouse_wheel_events.read() {
         if let MouseScrollUnit::Pixel = mouse_event.unit {
             println!("ACHTUNG !!!!! {:?}", mouse_event); // TODO: test on different computers and remove
         };
-        torus_transform.minor_radius =
-            (torus_transform.minor_radius + (mouse_event.y * 0.03)).clamp(0.01, 0.99);
+        torus_transform.minor_radius = (torus_transform.minor_radius
+            + (mouse_event.y * dt * MOUSE_WHEEL_SPEED))
+            .clamp(0.01, 0.99);
     }
 }
 
@@ -252,6 +262,7 @@ fn handle_keyboard(
     mut keys: ResMut<Keys>,
     mut torus_transform: ResMut<TorusTransform>,
     mut exit: EventWriter<AppExit>,
+    time: Res<Time>,
 ) {
     if keyboard.pressed(KeyCode::Escape) {
         exit.send(AppExit::Success);
@@ -266,12 +277,9 @@ fn handle_keyboard(
         return;
     }
 
-    torus_transform.major_angle = (torus_transform.major_angle as i16 + keys.left as i16
-        - keys.right as i16
-        + ROTATION_STEPS as i16) as u16
-        % ROTATION_STEPS;
-    torus_transform.minor_angle = (torus_transform.minor_angle as i16 + keys.up as i16
-        - keys.down as i16
-        + ROTATION_STEPS as i16) as u16
-        % ROTATION_STEPS;
+    let dt = time.delta_seconds();
+    torus_transform.major_shift =
+        (torus_transform.major_shift + 1.0 - keys.dx() * dt * ROTATION_SPEED).fract();
+    torus_transform.minor_shift =
+        (torus_transform.minor_shift + 1.0 - keys.dy() * dt * ROTATION_SPEED).fract();
 }

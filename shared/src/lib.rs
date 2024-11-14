@@ -7,6 +7,8 @@ use rand::Rng as _;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+pub const PROJECT_NAME: &'static str = "zappy";
+
 #[derive(Debug)]
 pub enum ZappyError {
     ConnectionClosedByClient,
