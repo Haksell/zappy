@@ -7,7 +7,7 @@
 
 use bevy::{
     app::App,
-    input::mouse::MouseWheel,
+    input::mouse::{MouseScrollUnit, MouseWheel},
     prelude::*,
     render::{
         mesh::{Indices, PrimitiveTopology},
@@ -31,10 +31,16 @@ const TUBE_RADIUS: f32 = 1.0;
 
 const ROTATION_SPEED: f32 = std::f32::consts::TAU / 320.0;
 
-#[derive(Resource, Default, Debug, Clone, Copy)]
+#[derive(Resource, Default, Debug)]
 struct Rotation {
     minor: i64,
     major: i64,
+}
+
+#[derive(Resource, Default, Debug)]
+struct Keys {
+    left: bool,
+    right: bool,
 }
 
 #[derive(Component, Debug)]
@@ -95,6 +101,7 @@ pub async fn render(
             ..Default::default()
         }))
         .init_resource::<Rotation>()
+        .init_resource::<Keys>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -232,22 +239,25 @@ fn handle_mouse_wheel(
     mut window_event: EventWriter<RequestRedraw>,
 ) {
     for mouse_event in mouse_wheel_events.read() {
-        rotation.minor += mouse_event.y.signum() as i64;
+        if let MouseScrollUnit::Pixel = mouse_event.unit {
+            println!("ACHTUNG !!!!! {:?}", mouse_event); // TODO: test on different computers and remove
+        };
+        rotation.minor += mouse_event.y as i64;
         window_event.send(RequestRedraw);
     }
 }
 
 fn handle_keyboard(
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut keys: ResMut<Keys>,
     mut rotation: ResMut<Rotation>,
     mut window_event: EventWriter<RequestRedraw>,
 ) {
-    if keyboard_input.pressed(KeyCode::ArrowRight) {
-        rotation.major += 1;
-    } else if keyboard_input.pressed(KeyCode::ArrowLeft) {
-        rotation.major -= 1;
-    } else {
+    keys.left = keyboard_input.pressed(KeyCode::ArrowLeft);
+    keys.right = keyboard_input.pressed(KeyCode::ArrowRight);
+    if keys.left == keys.right {
         return;
     }
+    rotation.major += keys.left as i64 - keys.right as i64;
     window_event.send(RequestRedraw);
 }
