@@ -30,7 +30,7 @@ const GRID_V: u8 = 12;
 const MAJOR_RADIUS: f32 = 3.0;
 const MINOR_RADIUS: f32 = 1.0;
 
-const ROTATION_SPEED: f32 = std::f32::consts::TAU / 320.0;
+const ROTATION_STEPS: u16 = 320;
 
 #[derive(Resource, Default, Debug)]
 struct Keys {
@@ -42,10 +42,16 @@ struct Keys {
 
 // TODO: parameters instead of several resources
 
-#[derive(Resource, Default, Debug)]
+#[derive(Resource, Debug)]
 struct Rotation {
-    minor: i64,
-    major: i64,
+    minor: u16,
+    major: u16,
+}
+
+impl Default for Rotation {
+    fn default() -> Self {
+        Self { minor: 0, major: 0 }
+    }
 }
 
 #[derive(Resource, Default, Debug)]
@@ -80,7 +86,7 @@ impl QuadBundle {
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
         );
-        generate_torus_cell_mesh(&mut mesh, u, v, rotation, ratio);
+        generate_torus_cell_mesh(&mut mesh, rotation, ratio, u, v);
         let material = StandardMaterial {
             base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
             metallic: 0.5,
@@ -180,15 +186,15 @@ fn generate_torus_mesh(
 
 fn generate_torus_cell_mesh(
     mesh: &mut Mesh,
-    u: u8,
-    v: u8,
     rotation: &Res<Rotation>,
     ratio: &Res<Ratio>,
+    u: u8,
+    v: u8,
 ) {
-    let v_start = v as f32 / GRID_V as f32 + rotation.major as f32 * ROTATION_SPEED;
+    let v_start = v as f32 / GRID_V as f32 + rotation.major as f32 / ROTATION_STEPS as f32;
     let v_end = v_start + 1.0 / GRID_V as f32;
 
-    let u_start = u as f32 / GRID_U as f32 + rotation.minor as f32 * ROTATION_SPEED;
+    let u_start = u as f32 / GRID_U as f32 + rotation.minor as f32 / ROTATION_STEPS as f32;
     let u_end = u_start + 1.0 / GRID_U as f32;
 
     // looks cool with 1 too, make it an argument?
@@ -249,12 +255,13 @@ fn update_cell_mesh(
     rotation: Res<Rotation>,
     ratio: Res<Ratio>,
 ) {
+    println!("{rotation:?}");
     if !rotation.is_changed() {
         return;
     }
     for (mesh_handle, quad_info) in query.iter() {
         if let Some(mesh) = meshes.get_mut(mesh_handle) {
-            generate_torus_cell_mesh(mesh, quad_info.u, quad_info.v, &rotation, &ratio);
+            generate_torus_cell_mesh(mesh, &rotation, &ratio, quad_info.u, quad_info.v);
         }
     }
 }
@@ -268,7 +275,9 @@ fn handle_mouse_wheel(
         if let MouseScrollUnit::Pixel = mouse_event.unit {
             println!("ACHTUNG !!!!! {:?}", mouse_event); // TODO: test on different computers and remove
         };
-        rotation.minor += mouse_event.y as i64;
+        rotation.minor = (rotation.minor as i16 + mouse_event.y as i16 + ROTATION_STEPS as i16)
+            as u16
+            % ROTATION_STEPS;
         window_event.send(RequestRedraw);
     }
 }
@@ -287,7 +296,9 @@ fn handle_keyboard(
     if keys.left == keys.right && keys.up == keys.down {
         return;
     }
-    rotation.major += keys.left as i64 - keys.right as i64;
+    rotation.major = (rotation.major as i16 + keys.left as i16 - keys.right as i16
+        + ROTATION_STEPS as i16) as u16
+        % ROTATION_STEPS;
     ratio.n += keys.up as i64 - keys.down as i64;
     window_event.send(RequestRedraw);
 }
