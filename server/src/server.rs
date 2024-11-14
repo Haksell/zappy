@@ -1,5 +1,5 @@
 use crate::args::ServerArgs;
-use shared::player::{Player};
+use shared::player::Player;
 use shared::{Command, Map, ServerCommandToClient, ServerResponse, ZappyError, MAX_COMMANDS};
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
@@ -9,7 +9,7 @@ pub struct Server {
     pub(crate) width: usize,
     pub(crate) height: usize,
     max_clients: u16,
-    pub(crate) tud: u16,
+    pub(crate) _tud: u16,
     teams: HashMap<String, HashSet<u16>>,
     pub(crate) players: HashMap<u16, Player>,
     pub(crate) map: Map,
@@ -27,7 +27,7 @@ impl Server {
             width: args.width,
             height: args.height,
             max_clients: args.clients,
-            tud: args.tud,
+            _tud: args.tud,
             teams,
             players: HashMap::new(),
             map: Map::new(args.width, args.height),
