@@ -107,8 +107,10 @@ pub async fn render(
             Update,
             (
                 handle_mouse_wheel,
-                handle_keyboard.after(handle_mouse_wheel), // TODO: in parallel
-                update_cell_mesh.after(handle_keyboard),
+                handle_keyboard,
+                update_cell_mesh
+                    .after(handle_mouse_wheel)
+                    .after(handle_keyboard),
             ),
         )
         .run();
@@ -133,6 +135,16 @@ fn setup(
             ..Default::default()
         },
         transform: Transform::from_xyz(5.0, 8.0, 5.0),
+        ..Default::default()
+    });
+
+    commands.spawn(PointLightBundle {
+        point_light: PointLight {
+            intensity: 3e5,
+            shadows_enabled: true,
+            ..Default::default()
+        },
+        transform: Transform::from_xyz(0.0, 0.0, -1.0),
         ..Default::default()
     });
 
