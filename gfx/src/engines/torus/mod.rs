@@ -33,18 +33,6 @@ const SUBDIVISIONS: &[u16] = &[1, 2, 3, 5, 8, 13, 21, 34];
 const ROTATION_SPEED: f32 = 0.8;
 const MOUSE_WHEEL_SPEED: f32 = 3.0;
 
-#[derive(Resource, Default, Debug)]
-struct Keys {
-    up: bool,
-    right: bool,
-    down: bool,
-    left: bool,
-    w: bool,
-    a: bool,
-    s: bool,
-    d: bool,
-}
-
 #[derive(Resource, Debug)]
 struct TorusTransform {
     minor_shift: f32,
@@ -127,7 +115,6 @@ pub async fn render(
             ..Default::default()
         }))
         .init_resource::<TorusTransform>()
-        .init_resource::<Keys>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -275,44 +262,42 @@ fn handle_mouse_wheel(
 }
 
 fn handle_keyboard(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut keys: ResMut<Keys>,
-    mut transform: ResMut<TorusTransform>,
+    kb: Res<ButtonInput<KeyCode>>,
+    mut tt: ResMut<TorusTransform>,
     mut exit: EventWriter<AppExit>,
     time: Res<Time>,
 ) {
-    if keyboard.pressed(KeyCode::Escape) {
+    use KeyCode::*;
+
+    if kb.pressed(Escape) {
         exit.send(AppExit::Success);
         return;
     }
 
-    let q = keyboard.just_pressed(KeyCode::KeyQ);
-    let e = keyboard.just_pressed(KeyCode::KeyE);
+    let q = kb.just_pressed(KeyQ);
+    let e = kb.just_pressed(KeyE);
     if q != e {
-        transform.subdiv_idx = (transform.subdiv_idx as isize - q as isize + e as isize)
+        tt.subdiv_idx = (tt.subdiv_idx as isize - q as isize + e as isize)
             .clamp(0, (SUBDIVISIONS.len() - 1) as isize) as usize;
     }
 
-    keys.up = keyboard.pressed(KeyCode::ArrowUp);
-    keys.right = keyboard.pressed(KeyCode::ArrowRight);
-    keys.down = keyboard.pressed(KeyCode::ArrowDown);
-    keys.left = keyboard.pressed(KeyCode::ArrowLeft);
-    keys.w = keyboard.pressed(KeyCode::KeyW);
-    keys.a = keyboard.pressed(KeyCode::KeyA);
-    keys.s = keyboard.pressed(KeyCode::KeyS);
-    keys.d = keyboard.pressed(KeyCode::KeyD);
-
-    let dt = time.delta_seconds();
-
-    fn update_value(val: &mut f32, key_add: bool, key_sub: bool, dt: f32, modulo: f32) {
-        let change = key_add as u32 as f32 - key_sub as u32 as f32;
+    fn update_value(
+        val: &mut f32,
+        kb: &Res<ButtonInput<KeyCode>>,
+        key_add: KeyCode,
+        key_sub: KeyCode,
+        dt: f32,
+        modulo: f32,
+    ) {
+        let change = kb.pressed(key_add) as u32 as f32 - kb.pressed(key_sub) as u32 as f32;
         if change != 0. {
             *val = (*val - change * dt * ROTATION_SPEED * modulo + modulo) % modulo;
         }
     }
 
-    update_value(&mut transform.major_shift, keys.right, keys.left, dt, 1.0);
-    update_value(&mut transform.minor_shift, keys.down, keys.up, dt, 1.0);
-    update_value(&mut transform.rotate_x, keys.w, keys.s, dt, TAU);
-    update_value(&mut transform.rotate_y, keys.a, keys.d, dt, TAU);
+    let dt = time.delta_seconds();
+    update_value(&mut tt.major_shift, &kb, ArrowRight, ArrowLeft, dt, 1.0);
+    update_value(&mut tt.minor_shift, &kb, ArrowDown, ArrowUp, dt, 1.0);
+    update_value(&mut tt.rotate_x, &kb, KeyW, KeyS, dt, TAU);
+    update_value(&mut tt.rotate_y, &kb, KeyA, KeyD, dt, TAU);
 }
