@@ -35,8 +35,8 @@ const MOUSE_WHEEL_SPEED: f32 = 3.0;
 
 #[derive(Resource, Debug)]
 struct TorusTransform {
-    minor_shift: f32,
-    major_shift: f32,
+    shift_minor: f32,
+    shift_major: f32,
     minor_radius: f32,
     subdiv_idx: usize,
     rotate_x: f32,
@@ -46,8 +46,8 @@ struct TorusTransform {
 impl Default for TorusTransform {
     fn default() -> Self {
         Self {
-            minor_shift: 0.,
-            major_shift: 0.,
+            shift_minor: 0.,
+            shift_major: 0.,
             // TODO: next two values depend on grid size
             minor_radius: 0.42,
             subdiv_idx: 4,
@@ -174,10 +174,10 @@ fn setup(
 fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
     let ttsd = SUBDIVISIONS[torus_transform.subdiv_idx];
 
-    let v_start = v as f32 / GRID_V as f32 + torus_transform.major_shift;
+    let v_start = v as f32 / GRID_V as f32 + torus_transform.shift_major;
     let v_end = v_start + 1. / GRID_V as f32;
 
-    let u_start = u as f32 / GRID_U as f32 + torus_transform.minor_shift;
+    let u_start = u as f32 / GRID_U as f32 + torus_transform.shift_minor;
     let u_end = u_start + 1. / GRID_U as f32;
 
     let mut positions = Vec::new();
@@ -296,8 +296,8 @@ fn handle_keyboard(
     }
 
     let dt = time.delta_seconds();
-    update_value(&mut tt.major_shift, &kb, ArrowRight, ArrowLeft, dt, 1.0);
-    update_value(&mut tt.minor_shift, &kb, ArrowDown, ArrowUp, dt, 1.0);
+    update_value(&mut tt.shift_major, &kb, ArrowRight, ArrowLeft, dt, 1.0);
+    update_value(&mut tt.shift_minor, &kb, ArrowDown, ArrowUp, dt, 1.0);
     update_value(&mut tt.rotate_x, &kb, KeyW, KeyS, dt, TAU);
     update_value(&mut tt.rotate_y, &kb, KeyA, KeyD, dt, TAU);
 }
