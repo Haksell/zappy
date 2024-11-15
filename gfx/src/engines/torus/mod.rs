@@ -6,6 +6,7 @@
 // TODO: ESPAAAAAAAAAACE
 // TODO: optimize mesh (right now every corner appears 4 times) (mabe unimportant for reasons)
 
+use super::ServerData;
 use bevy::{
     app::App,
     input::mouse::{MouseScrollUnit, MouseWheel},
@@ -23,13 +24,11 @@ use shared::{utils::lerp, PROJECT_NAME};
 use std::f32::consts::TAU;
 use tokio::sync::mpsc::Receiver;
 
-use super::ServerData;
-
 // TODO: read from server
 const GRID_U: u8 = 12;
 const GRID_V: u8 = 8;
 
-const MAX_SUBDIVISIONS: u16 = 25;
+const SUBDIVISIONS: &[u16] = &[1, 2, 3, 5, 8, 13, 21, 34];
 
 const ROTATION_SPEED: f32 = 0.8;
 const MOUSE_WHEEL_SPEED: f32 = 3.0;
@@ -42,32 +41,22 @@ struct Keys {
     left: bool,
 }
 
-impl Keys {
-    fn dy(&self) -> f32 {
-        self.down as u32 as f32 - self.up as u32 as f32
-    }
-
-    fn dx(&self) -> f32 {
-        self.right as u32 as f32 - self.left as u32 as f32
-    }
-}
-
 #[derive(Resource, Debug)]
 struct TorusTransform {
     minor_shift: f32,
     major_shift: f32,
     minor_radius: f32,
-    subdivisions: u16,
+    subdiv_idx: usize,
 }
 
 impl Default for TorusTransform {
     fn default() -> Self {
         Self {
-            minor_shift: 0.0,
-            major_shift: 0.0,
+            minor_shift: 0.,
+            major_shift: 0.,
             // TODO: next two values depend on grid size
             minor_radius: 0.42,
-            subdivisions: 10,
+            subdiv_idx: 4,
         }
     }
 }
@@ -147,7 +136,7 @@ pub async fn render(
 }
 
 fn camera_distance(minor_radius: f32) -> f32 {
-    2.8 * (1.0 + minor_radius)
+    2.8 * (1. + minor_radius)
 }
 
 fn setup(
@@ -157,7 +146,7 @@ fn setup(
     torus_transform: Res<TorusTransform>,
 ) {
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 0.0, camera_distance(torus_transform.minor_radius))
+        transform: Transform::from_xyz(0., 0., camera_distance(torus_transform.minor_radius))
             .looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
@@ -188,13 +177,13 @@ fn setup(
 }
 
 fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
-    let ttsd = torus_transform.subdivisions;
+    let ttsd = SUBDIVISIONS[torus_transform.subdiv_idx];
 
     let v_start = v as f32 / GRID_V as f32 + torus_transform.major_shift;
-    let v_end = v_start + 1.0 / GRID_V as f32;
+    let v_end = v_start + 1. / GRID_V as f32;
 
     let u_start = u as f32 / GRID_U as f32 + torus_transform.minor_shift;
-    let u_end = u_start + 1.0 / GRID_U as f32;
+    let u_end = u_start + 1. / GRID_U as f32;
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
@@ -207,7 +196,7 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
             let u_ratio = lerp(u_start, u_end, u as f32 / ttsd as f32);
             let theta = u_ratio * TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
-            let r = 1.0 + torus_transform.minor_radius * cos_theta;
+            let r = 1. + torus_transform.minor_radius * cos_theta;
             let tx = r * cos_phi;
             let ty = r * sin_phi;
             let tz = torus_transform.minor_radius * sin_theta;
@@ -286,24 +275,30 @@ fn handle_keyboard(
         return;
     }
 
-    if keyboard.just_pressed(KeyCode::KeyQ) && torus_transform.subdivisions != 1 {
-        torus_transform.subdivisions -= 1;
-    }
-    if keyboard.just_pressed(KeyCode::KeyE) && torus_transform.subdivisions != MAX_SUBDIVISIONS {
-        torus_transform.subdivisions += 1;
+    let q = keyboard.just_pressed(KeyCode::KeyQ);
+    let e = keyboard.just_pressed(KeyCode::KeyE);
+    if q != e {
+        torus_transform.subdiv_idx = (torus_transform.subdiv_idx as isize - q as isize + e as isize)
+            .clamp(0, (SUBDIVISIONS.len() - 1) as isize)
+            as usize;
     }
 
     keys.up = keyboard.pressed(KeyCode::ArrowUp);
     keys.right = keyboard.pressed(KeyCode::ArrowRight);
     keys.down = keyboard.pressed(KeyCode::ArrowDown);
     keys.left = keyboard.pressed(KeyCode::ArrowLeft);
-    if keys.left == keys.right && keys.up == keys.down {
-        return;
-    }
 
     let dt = time.delta_seconds();
-    torus_transform.major_shift =
-        (torus_transform.major_shift + 1.0 - keys.dx() * dt * ROTATION_SPEED).fract();
-    torus_transform.minor_shift =
-        (torus_transform.minor_shift + 1.0 - keys.dy() * dt * ROTATION_SPEED).fract();
+
+    let dx = keys.right as u32 as f32 - keys.left as u32 as f32;
+    if dx != 0. {
+        torus_transform.major_shift =
+            (torus_transform.major_shift + 1. - dx * dt * ROTATION_SPEED).fract();
+    }
+
+    let dy = keys.down as u32 as f32 - keys.up as u32 as f32;
+    if dy != 0. {
+        torus_transform.minor_shift =
+            (torus_transform.minor_shift + 1. - dy * dt * ROTATION_SPEED).fract();
+    }
 }
