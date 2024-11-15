@@ -11,6 +11,7 @@ use bevy::{
     input::mouse::{MouseScrollUnit, MouseWheel},
     prelude::*,
     render::{
+        camera::CameraRenderGraph,
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
     },
@@ -141,6 +142,10 @@ pub async fn render(
     Ok(())
 }
 
+fn camera_distance(minor_radius: f32) -> f32 {
+    2.8 * (1.0 + minor_radius)
+}
+
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -151,7 +156,8 @@ fn setup(
     // Take inspiration from this commit for camera bundle usage:
     // https://github.com/Haksell/zappy/commit/423b6ccff892d1b3dff3f48058f5eb85f5d56521
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 0.0, 4.2).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(0.0, 0.0, camera_distance(torus_transform.minor_radius))
+            .looking_at(Vec3::ZERO, Vec3::Y),
         ..Default::default()
     });
 
@@ -247,6 +253,7 @@ fn update_cell_mesh(
 fn handle_mouse_wheel(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut torus_transform: ResMut<TorusTransform>,
+    mut camera_query: Query<&mut Transform, With<CameraRenderGraph>>,
     time: Res<Time>,
 ) {
     let dt = time.delta_seconds();
@@ -256,7 +263,11 @@ fn handle_mouse_wheel(
         };
         torus_transform.minor_radius = (torus_transform.minor_radius
             + (mouse_event.y * dt * MOUSE_WHEEL_SPEED))
-            .clamp(0.01, 0.99);
+            .clamp(0.05, 0.95);
+
+        if let Ok(mut transform) = camera_query.get_single_mut() {
+            transform.translation.z = camera_distance(torus_transform.minor_radius);
+        }
     }
 }
 
