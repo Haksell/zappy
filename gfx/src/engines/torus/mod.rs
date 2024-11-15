@@ -39,6 +39,10 @@ struct Keys {
     right: bool,
     down: bool,
     left: bool,
+    w: bool,
+    a: bool,
+    s: bool,
+    d: bool,
 }
 
 #[derive(Resource, Debug)]
@@ -47,6 +51,8 @@ struct TorusTransform {
     major_shift: f32,
     minor_radius: f32,
     subdiv_idx: usize,
+    rotate_x: f32,
+    rotate_y: f32,
 }
 
 impl Default for TorusTransform {
@@ -57,6 +63,8 @@ impl Default for TorusTransform {
             // TODO: next two values depend on grid size
             minor_radius: 0.42,
             subdiv_idx: 4,
+            rotate_x: 0.,
+            rotate_y: 0.,
         }
     }
 }
@@ -197,6 +205,7 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
             let theta = u_ratio * TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
             let r = 1. + torus_transform.minor_radius * cos_theta;
+
             let tx = r * cos_phi;
             let ty = r * sin_phi;
             let tz = torus_transform.minor_radius * sin_theta;
@@ -226,6 +235,8 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
         }
     }
     mesh.insert_indices(Indices::U32(indices));
+    mesh.rotate_by(Quat::from_axis_angle(Vec3::X, torus_transform.rotate_x));
+    mesh.rotate_by(Quat::from_axis_angle(Vec3::Y, torus_transform.rotate_y));
 }
 
 fn update_cell_mesh(
@@ -266,7 +277,7 @@ fn handle_mouse_wheel(
 fn handle_keyboard(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut keys: ResMut<Keys>,
-    mut torus_transform: ResMut<TorusTransform>,
+    mut transform: ResMut<TorusTransform>,
     mut exit: EventWriter<AppExit>,
     time: Res<Time>,
 ) {
@@ -278,27 +289,30 @@ fn handle_keyboard(
     let q = keyboard.just_pressed(KeyCode::KeyQ);
     let e = keyboard.just_pressed(KeyCode::KeyE);
     if q != e {
-        torus_transform.subdiv_idx = (torus_transform.subdiv_idx as isize - q as isize + e as isize)
-            .clamp(0, (SUBDIVISIONS.len() - 1) as isize)
-            as usize;
+        transform.subdiv_idx = (transform.subdiv_idx as isize - q as isize + e as isize)
+            .clamp(0, (SUBDIVISIONS.len() - 1) as isize) as usize;
     }
 
     keys.up = keyboard.pressed(KeyCode::ArrowUp);
     keys.right = keyboard.pressed(KeyCode::ArrowRight);
     keys.down = keyboard.pressed(KeyCode::ArrowDown);
     keys.left = keyboard.pressed(KeyCode::ArrowLeft);
+    keys.w = keyboard.pressed(KeyCode::KeyW);
+    keys.a = keyboard.pressed(KeyCode::KeyA);
+    keys.s = keyboard.pressed(KeyCode::KeyS);
+    keys.d = keyboard.pressed(KeyCode::KeyD);
 
     let dt = time.delta_seconds();
 
-    let dx = keys.right as u32 as f32 - keys.left as u32 as f32;
-    if dx != 0. {
-        torus_transform.major_shift =
-            (torus_transform.major_shift + 1. - dx * dt * ROTATION_SPEED).fract();
+    fn update_value(val: &mut f32, key_add: bool, key_sub: bool, dt: f32, modulo: f32) {
+        let change = key_add as u32 as f32 - key_sub as u32 as f32;
+        if change != 0. {
+            *val = (*val - change * dt * ROTATION_SPEED * modulo + modulo) % modulo;
+        }
     }
 
-    let dy = keys.down as u32 as f32 - keys.up as u32 as f32;
-    if dy != 0. {
-        torus_transform.minor_shift =
-            (torus_transform.minor_shift + 1. - dy * dt * ROTATION_SPEED).fract();
-    }
+    update_value(&mut transform.major_shift, keys.right, keys.left, dt, 1.0);
+    update_value(&mut transform.minor_shift, keys.down, keys.up, dt, 1.0);
+    update_value(&mut transform.rotate_x, keys.w, keys.s, dt, TAU);
+    update_value(&mut transform.rotate_y, keys.a, keys.d, dt, TAU);
 }
