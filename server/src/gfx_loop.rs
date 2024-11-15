@@ -1,5 +1,6 @@
 use crate::server::Server;
 use serde_json::{json, to_string, Value};
+use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
@@ -36,7 +37,7 @@ async fn handle_streaming_client(
                 .teams
                 .iter()
                 .map(|(k, v)| (k.clone(), v.len()))
-                .collect::<Vec<(String, usize)>>();
+                .collect::<HashMap<String, usize>>();
             json!({
                 "teams": teams,
                 "map": server_lock.map,
