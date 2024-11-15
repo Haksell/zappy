@@ -207,7 +207,7 @@ pub async fn render(
 
         tokio::select! {
             Some(key) = event_rx.recv() => {
-                if key.code == KeyCode::Char('q') {
+                if key.code == KeyCode::Esc {
                     break;
                 }
             }
