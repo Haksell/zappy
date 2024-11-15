@@ -63,7 +63,7 @@ impl Default for TorusTransform {
         Self {
             minor_shift: 0.0,
             major_shift: 0.0,
-            minor_radius: 0.4,
+            minor_radius: 0.42,
         }
     }
 }
