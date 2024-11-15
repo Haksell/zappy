@@ -152,9 +152,6 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
     torus_transform: Res<TorusTransform>,
 ) {
-    // TODO: Full radius is 1.0 + minor_radius. Camera distance from origin should be based on that
-    // Take inspiration from this commit for camera bundle usage:
-    // https://github.com/Haksell/zappy/commit/423b6ccff892d1b3dff3f48058f5eb85f5d56521
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0.0, 0.0, camera_distance(torus_transform.minor_radius))
             .looking_at(Vec3::ZERO, Vec3::Y),
