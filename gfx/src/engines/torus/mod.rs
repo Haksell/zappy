@@ -27,8 +27,7 @@ use tokio::sync::mpsc::Receiver;
 const GRID_U: u8 = 12;
 const GRID_V: u8 = 8;
 
-// looks cool with 1 too, make it an argument?
-const SUBDIVISIONS: u32 = 10; // TODO: depends on grid width and height, can be different in u and v
+const MAX_SUBDIVISIONS: u16 = 25;
 
 const ROTATION_SPEED: f32 = 0.8;
 const MOUSE_WHEEL_SPEED: f32 = 3.0;
@@ -56,6 +55,7 @@ struct TorusTransform {
     minor_shift: f32,
     major_shift: f32,
     minor_radius: f32,
+    subdivisions: u16,
 }
 
 impl Default for TorusTransform {
@@ -63,7 +63,9 @@ impl Default for TorusTransform {
         Self {
             minor_shift: 0.0,
             major_shift: 0.0,
+            // TODO: next two values depend on grid size
             minor_radius: 0.42,
+            subdivisions: 10,
         }
     }
 }
@@ -168,7 +170,7 @@ fn setup(
         ..Default::default()
     });
 
-    let mut rng = StdRng::seed_from_u64(42);
+    let mut rng = StdRng::seed_from_u64(0);
     for v in 0..GRID_V {
         for u in 0..GRID_U {
             commands.spawn(QuadBundle::new(
@@ -184,6 +186,8 @@ fn setup(
 }
 
 fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
+    let ttsd = torus_transform.subdivisions;
+
     let v_start = v as f32 / GRID_V as f32 + torus_transform.major_shift;
     let v_end = v_start + 1.0 / GRID_V as f32;
 
@@ -192,13 +196,13 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
-    for v in 0..=SUBDIVISIONS {
-        let v_ratio = lerp(v_start, v_end, v as f32 / SUBDIVISIONS as f32);
+    for v in 0..=ttsd {
+        let v_ratio = lerp(v_start, v_end, v as f32 / ttsd as f32);
         let phi = v_ratio * TAU;
         let (sin_phi, cos_phi) = phi.sin_cos();
 
-        for u in 0..=SUBDIVISIONS {
-            let u_ratio = lerp(u_start, u_end, u as f32 / SUBDIVISIONS as f32);
+        for u in 0..=ttsd {
+            let u_ratio = lerp(u_start, u_end, u as f32 / ttsd as f32);
             let theta = u_ratio * TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
             let r = 1.0 + torus_transform.minor_radius * cos_theta;
@@ -214,12 +218,12 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
     let mut indices = Vec::new();
-    for v in 0..SUBDIVISIONS {
-        for u in 0..SUBDIVISIONS {
-            let i0 = v * (SUBDIVISIONS + 1) + u;
-            let i1 = v * (SUBDIVISIONS + 1) + u + 1;
-            let i2 = (v + 1) * (SUBDIVISIONS + 1) + u;
-            let i3 = (v + 1) * (SUBDIVISIONS + 1) + u + 1;
+    for v in 0..ttsd {
+        for u in 0..ttsd {
+            let i0 = v * (ttsd + 1) + u;
+            let i1 = v * (ttsd + 1) + u + 1;
+            let i2 = (v + 1) * (ttsd + 1) + u;
+            let i3 = (v + 1) * (ttsd + 1) + u + 1;
 
             indices.push(i0 as u32);
             indices.push(i2 as u32);
@@ -278,6 +282,13 @@ fn handle_keyboard(
     if keyboard.pressed(KeyCode::Escape) {
         exit.send(AppExit::Success);
         return;
+    }
+
+    if keyboard.just_pressed(KeyCode::KeyQ) && torus_transform.subdivisions != 1 {
+        torus_transform.subdivisions -= 1;
+    }
+    if keyboard.just_pressed(KeyCode::KeyE) && torus_transform.subdivisions != MAX_SUBDIVISIONS {
+        torus_transform.subdivisions += 1;
     }
 
     keys.up = keyboard.pressed(KeyCode::ArrowUp);
