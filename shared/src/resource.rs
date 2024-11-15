@@ -82,14 +82,14 @@ impl TryFrom<&str> for Resource {
     type Error = ();
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "Deraumere" => Ok(Resource::Deraumere),
-            "Linemate" => Ok(Resource::Linemate),
-            "Mendiane" => Ok(Resource::Mendiane),
-            "Nourriture" => Ok(Resource::Nourriture),
-            "Phiras" => Ok(Resource::Phiras),
-            "Sibur" => Ok(Resource::Sibur),
-            "Thystame" => Ok(Resource::Thystame),
+        match value.to_ascii_lowercase().as_str() {
+            "deraumere" | "d" => Ok(Resource::Deraumere),
+            "linemate" | "l" => Ok(Resource::Linemate),
+            "mendiane" | "m" => Ok(Resource::Mendiane),
+            "nourriture" | "n" => Ok(Resource::Nourriture),
+            "phiras" | "p" => Ok(Resource::Phiras),
+            "sibur" | "s" => Ok(Resource::Sibur),
+            "thystame" | "t" => Ok(Resource::Thystame),
             _ => Err(()),
         }
     }

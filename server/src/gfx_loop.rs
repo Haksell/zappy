@@ -31,6 +31,7 @@ async fn handle_streaming_client(
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
     loop {
+        //TODO: there is a way to not copy everything but write directly to reduce memory consumption here
         let combined: Value = {
             let server_lock = server.lock().await;
             let teams = server_lock

@@ -8,10 +8,10 @@ use ratatui::{
 
 use crate::engines::ServerData;
 use itertools::Itertools;
-use ratatui::prelude::{Color, Line, Rect, Span, Style};
+use ratatui::prelude::{Color, Line, Rect, Span, Style, Stylize};
 use shared::player::{Direction, Player};
 use shared::resource::Resource;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use tokio::sync::mpsc::Receiver;
 
 pub const NORTH_EMOJI: &'static str = "^";
@@ -39,7 +39,8 @@ fn map_resource_to_vec_span(resources: &[usize; 7]) -> Vec<Span> {
                 Span::styled(
                     resource_str,
                     Style::default()
-                        .fg(ServerData::COLORS[i % ServerData::COLORS.len()].to_ratatui_value()),
+                        .fg(ServerData::COLORS[i % ServerData::COLORS.len()].to_ratatui_value())
+                        .bold(),
                 )
             } else {
                 Span::raw("")
@@ -130,7 +131,7 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
     }
 }
 
-fn draw_players_bar(data: ServerData, frame: &mut Frame, area: Rect) {
+fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .title("Players Stats")
         .borders(Borders::ALL);
@@ -144,52 +145,59 @@ fn draw_players_bar(data: ServerData, frame: &mut Frame, area: Rect) {
     ])
     .split(inner_area);
 
-    //let mut parsed_teams = HashMap::with_capacity(data.teams.len());
+    let mut teams_data = data
+        .teams
+        .keys()
+        .map(|team_name| {
+            //TODO: make function that return color to avoid unwrap and .0 every time
+            let team_color = data.teams.get(team_name).unwrap().0.to_ratatui_value();
+            (
+                team_name.clone(),
+                vec![vec![Span::styled(
+                    team_name,
+                    Style::default().fg(team_color),
+                )]],
+            )
+        })
+        .collect::<BTreeMap<String, Vec<Vec<Span>>>>();
 
-    for p in data.players {}
+    for (_, player) in &data.players {
+        if let Some(details) = teams_data.get_mut(player.team()) {
+            let mut current_player_details: Vec<Span> = Vec::new();
+            current_player_details.push(Span::styled(
+                player.id().to_string(),
+                Style::default().fg(data.teams.get(player.team()).unwrap().0.to_ratatui_value()),
+            ));
+            current_player_details.push(Span::raw(" | "));
+            current_player_details.push(Span::raw("⭐".repeat(*player.level() as usize)));
+            current_player_details.push(Span::raw(" | 🎒 "));
+            current_player_details.extend(map_resource_to_vec_span(player.inventory()));
+            current_player_details.push(Span::raw(" |"));
 
-    let teams_data = vec![
-        (Color::Red, vec!["team 1", "player 1"]),
-        (
-            Color::Blue,
-            vec!["team 2", "player 2", "player 3", "player 4"],
-        ),
-        (Color::Green, vec!["team 3", "player 5", "player 6"]),
-    ];
+            details.push(current_player_details);
+        }
+    }
 
-    for (i, row) in rows.iter().enumerate() {
-        if i < teams_data.len() {
-            let (team_color, team_members) = &teams_data[i];
+    for (i, (_, member_details)) in teams_data.iter().enumerate() {
+        if i < rows.len() {
             let mut constraints = vec![Constraint::Length(15)];
             constraints.extend(vec![
-                Constraint::Ratio(1, (team_members.len() - 1) as u32);
-                team_members.len() - 1
+                Constraint::Ratio(1, (member_details.len() - 1) as u32);
+                member_details.len().max(1) - 1
             ]);
 
-            let cols = Layout::horizontal(constraints).split(*row);
+            let cols = Layout::horizontal(constraints).split(rows[i]);
 
             for (col_idx, col) in cols.iter().enumerate() {
-                let text = team_members[col_idx];
-                let spans: Vec<Span> = text
-                    .chars()
-                    .enumerate()
-                    .map(|(i, c)| {
-                        let color = match i % 3 {
-                            0 => *team_color,
-                            1 => Color::Yellow,
-                            _ => Color::White,
-                        };
-                        Span::styled(c.to_string(), Style::default().fg(color))
-                    })
-                    .collect();
+                if col_idx < member_details.len() {
+                    let cell = Paragraph::new(Line::from(member_details[col_idx].clone())).block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Plain),
+                    );
 
-                let cell = Paragraph::new(Line::from(spans)).block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Plain),
-                );
-
-                frame.render_widget(cell, *col);
+                    frame.render_widget(cell, *col);
+                }
             }
         }
     }
@@ -210,17 +218,8 @@ pub async fn render(
 
             if let Some(data) = &data {
                 draw_field(data, frame, layout[0]);
+                draw_players_bar(data, frame, layout[1]);
             }
-            /*
-            draw_players_bar(
-                frame,
-                &mut map,
-                &mut players,
-                &mut teams,
-                &team_colors,
-                layout[1],
-            );
-             */
         })?;
 
         tokio::select! {
