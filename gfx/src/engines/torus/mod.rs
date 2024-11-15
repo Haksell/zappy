@@ -51,6 +51,7 @@ impl Default for TorusTransform {
             // TODO: next two values depend on grid size
             minor_radius: 0.42,
             subdiv_idx: 4,
+            // TODO Mouse drag update
             rotate_x: 0.,
             rotate_y: 0.,
         }
