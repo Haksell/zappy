@@ -2,7 +2,6 @@
 // TODO: share most of the code with 2D bevy Renderer
 // TODO: button to swap main axis (probably a bad idea)
 // TODO: button to switch from 2D to torus and vice-versa?
-// TODO: torus x and y rotation with WASD
 // TODO: ESPAAAAAAAAAACE
 // TODO: optimize mesh (right now every corner appears 4 times) (mabe unimportant for reasons)
 
@@ -263,20 +262,20 @@ fn handle_mouse_wheel(
 }
 
 fn handle_keyboard(
-    kb: Res<ButtonInput<KeyCode>>,
+    keys: Res<ButtonInput<KeyCode>>,
     mut tt: ResMut<TorusTransform>,
     mut exit: EventWriter<AppExit>,
     time: Res<Time>,
 ) {
     use KeyCode::*;
 
-    if kb.pressed(Escape) {
+    if keys.pressed(Escape) {
         exit.send(AppExit::Success);
         return;
     }
 
-    let q = kb.just_pressed(KeyQ);
-    let e = kb.just_pressed(KeyE);
+    let q = keys.just_pressed(KeyQ);
+    let e = keys.just_pressed(KeyE);
     if q != e {
         tt.subdiv_idx = (tt.subdiv_idx as isize - q as isize + e as isize)
             .clamp(0, (SUBDIVISIONS.len() - 1) as isize) as usize;
@@ -284,21 +283,21 @@ fn handle_keyboard(
 
     fn update_value(
         val: &mut f32,
-        kb: &Res<ButtonInput<KeyCode>>,
+        keys: &Res<ButtonInput<KeyCode>>,
         key_add: KeyCode,
         key_sub: KeyCode,
         dt: f32,
         modulo: f32,
     ) {
-        let change = kb.pressed(key_add) as u32 as f32 - kb.pressed(key_sub) as u32 as f32;
+        let change = keys.pressed(key_add) as u32 as f32 - keys.pressed(key_sub) as u32 as f32;
         if change != 0. {
             *val = (*val - change * dt * ROTATION_SPEED * modulo + modulo) % modulo;
         }
     }
 
     let dt = time.delta_seconds();
-    update_value(&mut tt.shift_major, &kb, ArrowRight, ArrowLeft, dt, 1.0);
-    update_value(&mut tt.shift_minor, &kb, ArrowDown, ArrowUp, dt, 1.0);
-    update_value(&mut tt.rotate_x, &kb, KeyW, KeyS, dt, TAU);
-    update_value(&mut tt.rotate_y, &kb, KeyA, KeyD, dt, TAU);
+    update_value(&mut tt.shift_major, &keys, ArrowRight, ArrowLeft, dt, 1.);
+    update_value(&mut tt.shift_minor, &keys, ArrowDown, ArrowUp, dt, 1.);
+    update_value(&mut tt.rotate_x, &keys, KeyW, KeyS, dt, TAU);
+    update_value(&mut tt.rotate_y, &keys, KeyA, KeyD, dt, TAU);
 }
