@@ -11,7 +11,7 @@ use itertools::Itertools;
 use ratatui::prelude::{Color, Line, Rect, Span, Style, Stylize};
 use shared::player::{Direction, Player};
 use shared::resource::Resource;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use tokio::sync::mpsc::Receiver;
 
 pub const NORTH_EMOJI: &'static str = "^";
@@ -58,21 +58,6 @@ fn map_player_to_span(color: Color, player: &Player) -> Span {
         ),
         Style::default().fg(color),
     )
-}
-
-fn map_resource_chars(i: usize, cnt: &usize) -> impl Iterator<Item = char> {
-    let c = Resource::try_from(i as u8).unwrap().alias();
-    std::iter::repeat(c).take(*cnt)
-}
-fn map_player_inventory(players: &mut HashMap<u16, Player>, id: &u16) -> String {
-    players
-        .get(id)
-        .unwrap()
-        .inventory()
-        .iter()
-        .enumerate()
-        .flat_map(|(i, cnt)| map_resource_chars(i, cnt))
-        .collect()
 }
 
 fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
