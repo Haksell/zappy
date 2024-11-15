@@ -6,7 +6,6 @@ mod gfx_loop;
 mod logger;
 mod server;
 
-use std::collections::HashMap;
 use crate::args::ServerArgs;
 use crate::game_loop::game_loop;
 use crate::logger::init_logger;
@@ -15,6 +14,7 @@ use clap::Parser;
 use client_loop::client_loop;
 use gfx_loop::gfx_loop;
 use shared::{ServerCommandToClient, GFX_PORT};
+use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -29,7 +29,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let server = Server::from(&args).await?;
     let client_listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let gfx_listener = TcpListener::bind(format!("127.0.0.1:{}", GFX_PORT)).await?;
-    let client_connections: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let client_connections: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
     let server = Arc::new(Mutex::new(server));
 
     log::info!("Server running on 127.0.0.1:{client_port} (client) and 127.0.0.1:{GFX_PORT} (gfx)");

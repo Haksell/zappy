@@ -1,21 +1,18 @@
 use crossterm::event::KeyEvent;
-use itertools::Itertools as _;
-use ratatui::layout::Margin;
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{BorderType, Borders, Paragraph};
 use ratatui::{crossterm::event::KeyCode, widgets::Block};
 use ratatui::{
     layout::{Constraint, Layout},
     Frame,
 };
-use shared::player::{Direction, Player};
-use shared::Map;
-use std::collections::HashMap;
-use tokio::sync::mpsc::Receiver;
 
-// pub const NORTH_EMOJI: &'static str = "↥";
-// pub const EAST_EMOJI: &'static str = "↦";
-// pub const SOUTH_EMOJI: &'static str = "↧";
-// pub const WEST_EMOJI: &'static str = "↤";
+use crate::engines::ServerData;
+use itertools::Itertools;
+use ratatui::prelude::{Alignment, Color, Line, Rect, Span, Style, Stylize};
+use shared::player::{Direction, Player};
+use shared::resource::Resource;
+use std::collections::BTreeMap;
+use tokio::sync::mpsc::Receiver;
 
 pub const NORTH_EMOJI: &'static str = "^";
 pub const EAST_EMOJI: &'static str = ">";
@@ -31,55 +28,159 @@ fn direction_to_emoji(direction: &Direction) -> &'static str {
     }
 }
 
-fn draw(frame: &mut Frame, map: &mut Option<Map>, players: &mut Option<HashMap<u16, Player>>) {
-    if let (Some(data), Some(players)) = (map, players) {
-        let area = frame.area().inner(Margin {
-            vertical: 1,
-            horizontal: 1,
-        });
+fn map_resource_to_vec_span(resources: &[usize; 7]) -> Vec<Span> {
+    resources
+        .iter()
+        .enumerate()
+        .map(|(i, &cnt)| {
+            let c = Resource::try_from(i as u8).unwrap().alias();
+            let resource_str = (0..cnt).map(|_| c).collect::<String>();
+            if !resource_str.is_empty() {
+                Span::styled(
+                    resource_str,
+                    Style::default()
+                        .fg(ServerData::COLORS[i % ServerData::COLORS.len()].to_ratatui_value())
+                        .bold(),
+                )
+            } else {
+                Span::raw("")
+            }
+        })
+        .collect::<Vec<Span>>()
+}
 
-        let rows = Layout::vertical(vec![Constraint::Ratio(1, data.height as u32); data.height])
-            .split(area);
+fn map_player_to_span(color: Color, player: &Player) -> Span {
+    Span::styled(
+        format!(
+            "[{}{}]",
+            player.id(),
+            direction_to_emoji(&player.position().direction),
+        ),
+        Style::default().fg(color),
+    )
+}
 
-        let mut cols = rows.iter().flat_map(|row| {
-            Layout::horizontal(vec![Constraint::Ratio(1, data.width as u32); data.width])
-                .split(*row)
-                .to_vec()
-        });
+fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
+    let rows = Layout::vertical(vec![
+        Constraint::Ratio(1, data.map.height as u32);
+        data.map.height
+    ])
+    .split(area);
 
-        for y in 0..data.height {
-            for x in 0..data.width {
-                let col = cols.next().unwrap();
-                let cell = &data.map[y][x];
-                let mapped_resources = cell
-                    .resources
-                    .iter()
-                    .map(|(k, &v)| (0..v).map(|_| k.alias()).collect::<String>())
-                    .sorted()
-                    .collect::<Vec<_>>()
-                    .concat();
-                let mapped_eggs = cell
-                    .eggs
-                    .iter()
-                    .map(|e| e.team_name.get(..1).unwrap())
-                    .collect::<Vec<_>>()
-                    .concat();
-                let mapped_player = cell
-                    .players
-                    .iter()
-                    .map(|p| {
-                        format!(
-                            "[{}{}]",
-                            p,
-                            direction_to_emoji(&players.get(p).unwrap().position().direction)
-                        )
-                    })
-                    .collect::<String>();
-                let widget = Paragraph::new(format!(
-                    "{mapped_player}, {mapped_eggs}, {mapped_resources}"
-                ))
+    let mut cols = rows.iter().flat_map(|row| {
+        Layout::horizontal(vec![
+            Constraint::Ratio(1, data.map.width as u32);
+            data.map.width
+        ])
+        .split(*row)
+        .to_vec()
+    });
+
+    for y in 0..data.map.height {
+        for x in 0..data.map.width {
+            let col = cols.next().unwrap();
+            let cell = &data.map.field[y][x];
+            let mapped_map_resources = map_resource_to_vec_span(&cell.resources);
+            let mapped_eggs = cell
+                .eggs
+                .iter()
+                .map(|e| e.team_name.get(..1).unwrap())
+                .collect::<Vec<_>>()
+                .concat();
+            let mapped_player = cell
+                .players
+                .iter()
+                .sorted()
+                .map(|p| {
+                    let player = data.players.get(p).unwrap();
+                    map_player_to_span(
+                        data.teams.get(player.team()).unwrap().0.to_ratatui_value(),
+                        player,
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            let mut spans = vec![];
+            spans.extend(mapped_player);
+            spans.push(Span::raw(format!(", {mapped_eggs}")));
+
+            if !mapped_map_resources.is_empty() {
+                spans.push(Span::raw(", "));
+                spans.extend(mapped_map_resources);
+            }
+
+            let widget = Paragraph::new(Line::from(spans))
                 .block(Block::bordered().title(format!("y={y} x={x}")));
-                frame.render_widget(widget, col);
+            frame.render_widget(widget, col);
+        }
+    }
+}
+
+fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
+    let block = Block::default()
+        .title("Players Stats")
+        .borders(Borders::ALL);
+
+    let inner_area = block.inner(area);
+    frame.render_widget(block, area);
+
+    let rows = Layout::vertical(vec![Constraint::Length(3); data.teams.len()]).split(inner_area);
+
+    let mut teams_data = data
+        .teams
+        .keys()
+        .map(|team_name| {
+            //TODO: make function that return color to avoid unwrap and .0 every time
+            let team_color = data.teams.get(team_name).unwrap().0.to_ratatui_value();
+            (
+                team_name.clone(),
+                vec![vec![Span::styled(
+                    team_name,
+                    Style::default().fg(team_color),
+                )]],
+            )
+        })
+        .collect::<BTreeMap<String, Vec<Vec<Span>>>>();
+
+    for (_, player) in &data.players {
+        if let Some(details) = teams_data.get_mut(player.team()) {
+            let mut current_player_details: Vec<Span> = Vec::new();
+            current_player_details.push(Span::styled(
+                player.id().to_string(),
+                Style::default().fg(data.teams.get(player.team()).unwrap().0.to_ratatui_value()),
+            ));
+            current_player_details.push(Span::raw(" | "));
+            current_player_details.push(Span::raw("⭐".repeat(*player.level() as usize)));
+            current_player_details.push(Span::raw(" | 🎒 "));
+            current_player_details.extend(map_resource_to_vec_span(player.inventory()));
+            current_player_details.push(Span::raw(" |"));
+
+            details.push(current_player_details);
+        }
+    }
+
+    for (i, (_, member_details)) in teams_data.iter().enumerate() {
+        if i < rows.len() {
+            let mut constraints = vec![Constraint::Length(10)];
+            constraints.extend(vec![
+                Constraint::Ratio(1, (member_details.len() - 1) as u32);
+                member_details.len().max(1) - 1
+            ]);
+
+            let cols = Layout::horizontal(constraints).split(rows[i]);
+
+            for (col_idx, col) in cols.iter().enumerate() {
+                if col_idx < member_details.len() {
+                    let cell = Paragraph::new(Line::from(member_details[col_idx].clone()))
+                        .block(
+                            Block::default()
+                                .borders(Borders::ALL)
+                                .border_type(BorderType::Plain),
+                        )
+                        .alignment(Alignment::Center);
+
+                    frame.render_widget(cell, *col);
+                }
             }
         }
     }
@@ -87,16 +188,21 @@ fn draw(frame: &mut Frame, map: &mut Option<Map>, players: &mut Option<HashMap<u
 
 pub async fn render(
     mut event_rx: Receiver<KeyEvent>,
-    mut rx: Receiver<(Map, HashMap<u16, Player>)>,
+    mut rx: Receiver<ServerData>,
     mut conn_rx: Receiver<bool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = ratatui::init();
-    let mut map: Option<Map> = None;
-    let mut players: Option<HashMap<u16, Player>> = None;
+    let mut data: Option<ServerData> = None;
 
     loop {
         terminal.draw(|frame| {
-            draw(frame, &mut map, &mut players);
+            let layout = Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
+                .split(frame.area());
+
+            if let Some(data) = &data {
+                draw_field(data, frame, layout[0]);
+                draw_players_bar(data, frame, layout[1]);
+            }
         })?;
 
         tokio::select! {
@@ -106,9 +212,7 @@ pub async fn render(
                 }
             }
             Some(new_data) = rx.recv() => {
-                let all: (Map, HashMap<u16, Player>) = new_data;
-                map = Some(all.0);
-                players = Some(all.1);
+                data = Some(new_data);
             }
             Some(is_connected) = conn_rx.recv() => {
                 if is_connected {

@@ -1,11 +1,12 @@
+use crate::engines::ServerData;
 use clap::Parser;
 use crossterm::event::{self, Event};
 use engines::Engine;
 use serde_json::{from_str, Value};
+use shared::map::Map;
 use shared::player::Player;
-use shared::Map;
 use shared::GFX_PORT;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -66,10 +67,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             Ok(json_data) => {
                                 let map: Result<Map, _> =
                                     serde_json::from_value(json_data["map"].clone());
-                                let players: Result<HashMap<u16, Player>, _> =
+                                let players: Result<BTreeMap<u16, Player>, _> =
                                     serde_json::from_value(json_data["players"].clone());
-                                if let (Ok(map), Ok(players)) = (map, players) {
-                                    if tx.send((map, players)).await.is_err() {
+                                let teams: Result<BTreeMap<String, usize>, _> =
+                                    serde_json::from_value(json_data["teams"].clone());
+                                if let (Ok(map), Ok(players), Ok(teams)) = (map, players, teams) {
+                                    if tx.send(ServerData::new(map, players, teams)).await.is_err()
+                                    {
                                         break;
                                     }
                                 } else {

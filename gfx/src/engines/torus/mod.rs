@@ -19,9 +19,11 @@ use bevy::{
 };
 use crossterm::event::KeyEvent;
 use rand::{rngs::StdRng, Rng, SeedableRng as _};
-use shared::{player::Player, utils::lerp, Map, PROJECT_NAME};
-use std::{collections::HashMap, f32::consts::TAU};
+use shared::{utils::lerp, PROJECT_NAME};
+use std::f32::consts::TAU;
 use tokio::sync::mpsc::Receiver;
+
+use super::ServerData;
 
 // TODO: read from server
 const GRID_U: u8 = 12;
@@ -114,9 +116,9 @@ impl QuadBundle {
 }
 
 pub async fn render(
-    _event_rx: Receiver<KeyEvent>,
-    _rx: Receiver<(Map, HashMap<u16, Player>)>,
-    _conn_rx: Receiver<bool>,
+    mut _event_rx: Receiver<KeyEvent>,
+    mut _rx: Receiver<ServerData>,
+    mut _conn_rx: Receiver<bool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
