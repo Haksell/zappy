@@ -3,7 +3,7 @@
 ### server:
 
 ```shell
-cargo run -p server -- -p 8080 -x 20 -y 10 -n anton axel -c 1 -t 4
+cargo run -p server -- -p 8080 -x 20 -y 10 -n anton axel victor -c 1 -t 4
 ```
 
 ### terminal ui:

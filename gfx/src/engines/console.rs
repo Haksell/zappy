@@ -8,7 +8,7 @@ use ratatui::{
 
 use crate::engines::ServerData;
 use itertools::Itertools;
-use ratatui::prelude::{Color, Line, Rect, Span, Style, Stylize};
+use ratatui::prelude::{Alignment, Color, Line, Rect, Span, Style, Stylize};
 use shared::player::{Direction, Player};
 use shared::resource::Resource;
 use std::collections::BTreeMap;
@@ -124,11 +124,7 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
     let inner_area = block.inner(area);
     frame.render_widget(block, area);
 
-    let rows = Layout::vertical(vec![
-        Constraint::Ratio(1, data.teams.len() as u32);
-        data.teams.len()
-    ])
-    .split(inner_area);
+    let rows = Layout::vertical(vec![Constraint::Length(3); data.teams.len()]).split(inner_area);
 
     let mut teams_data = data
         .teams
@@ -165,7 +161,7 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
 
     for (i, (_, member_details)) in teams_data.iter().enumerate() {
         if i < rows.len() {
-            let mut constraints = vec![Constraint::Length(15)];
+            let mut constraints = vec![Constraint::Length(10)];
             constraints.extend(vec![
                 Constraint::Ratio(1, (member_details.len() - 1) as u32);
                 member_details.len().max(1) - 1
@@ -175,11 +171,13 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
 
             for (col_idx, col) in cols.iter().enumerate() {
                 if col_idx < member_details.len() {
-                    let cell = Paragraph::new(Line::from(member_details[col_idx].clone())).block(
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .border_type(BorderType::Plain),
-                    );
+                    let cell = Paragraph::new(Line::from(member_details[col_idx].clone()))
+                        .block(
+                            Block::default()
+                                .borders(Borders::ALL)
+                                .border_type(BorderType::Plain),
+                        )
+                        .alignment(Alignment::Center);
 
                     frame.render_widget(cell, *col);
                 }
