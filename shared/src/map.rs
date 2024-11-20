@@ -1,9 +1,11 @@
 use crate::player::{Direction, Position};
 use crate::resource::Resource;
 use crate::Egg;
+use itertools::Itertools;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::hash::{Hash, Hasher};
 
 //TODO: change fields to private?
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -13,8 +15,22 @@ pub struct Cell {
     pub eggs: Vec<Egg>,
 }
 
+impl Hash for Cell {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let sorted_players: Vec<_> = self.players.iter().sorted().collect();
+
+        for player_id in sorted_players {
+            player_id.hash(state);
+        }
+        self.resources.hash(state);
+
+        //TODO: eggs need to track as well
+        //self.eggs.hash(state);
+    }
+}
+
 //TODO: change fields to private?
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Hash)]
 pub struct Map {
     pub field: Vec<Vec<Cell>>,
     pub width: usize,

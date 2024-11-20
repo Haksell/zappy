@@ -1,7 +1,9 @@
 use crate::server::Server;
-use serde_json::{json, to_string, Value};
+use serde_json::{json, to_string};
 use std::collections::HashMap;
 use std::error::Error;
+use std::hash::{DefaultHasher, Hash, Hasher};
+use std::io::IoSlice;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
@@ -30,27 +32,33 @@ async fn handle_streaming_client(
     server: Arc<Mutex<Server>>,
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
+    let mut last_hash = 0;
+
     loop {
-        //TODO: there is a way to not copy everything but write directly to reduce memory consumption here
-        let combined: Value = {
-            let server_lock = server.lock().await;
-            let teams = server_lock
-                .teams
-                .iter()
-                .map(|(k, v)| (k.clone(), v.len()))
-                .collect::<HashMap<String, usize>>();
-            json!({
-                "teams": teams,
-                "map": server_lock.map,
-                "players": server_lock.players
-            })
-        };
-        let json_data = to_string(&combined)?;
-
-        // TODO: don't send if no changes (dirty state or hash)
-        socket.write_all(json_data.as_bytes()).await?;
-        socket.write_all(b"\n").await?;
-
         sleep(Duration::from_millis(1000)).await;
+        let (json_data, new_hash) = {
+            let mut hasher = DefaultHasher::new();
+            let server_lock = server.lock().await;
+            server_lock.hash(&mut hasher);
+            let new_hash = hasher.finish();
+            if new_hash == last_hash {
+                continue;
+            }
+            let state = json!({
+                "teams": server_lock.teams().iter()
+                    .map(|(k, v)| (k.clone(), v.len()))
+                    .collect::<HashMap<String, usize>>(),
+                "map": server_lock.map(),
+                "players": server_lock.players()
+            });
+
+            (to_string(&state)?, new_hash)
+        };
+
+        last_hash = new_hash;
+
+        socket
+            .write_vectored(&[IoSlice::new(json_data.as_bytes()), IoSlice::new(b"\n")])
+            .await?;
     }
 }

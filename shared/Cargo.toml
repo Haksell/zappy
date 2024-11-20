@@ -8,4 +8,5 @@ log = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 tokio = "1.40.0"
+itertools = "0.13.0"
 derive-getters = { workspace = true }

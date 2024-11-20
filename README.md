@@ -6,10 +6,16 @@
 cargo run -p server -- -p 8080 -x 20 -y 10 -n anton axel victor -c 1 -t 4
 ```
 
+### 3d GUI:
+
+```shell
+cargo run -p gfx
+```
+
 ### terminal ui:
 
 ```shell
-cargo run --bin gfx
+cargo run -p gfx -- -e console
 ```
 
 ### raw nc client:

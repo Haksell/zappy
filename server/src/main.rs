@@ -25,7 +25,6 @@ use tokio::sync::Mutex;
 async fn main() -> Result<(), Box<dyn Error>> {
     init_logger();
     let args = ServerArgs::parse();
-    let client_port = args.port;
     let server = Server::from(&args).await?;
     let client_listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let gfx_listener = TcpListener::bind(format!("127.0.0.1:{}", GFX_PORT)).await?;
@@ -33,7 +32,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         Arc::new(Mutex::new(HashMap::new()));
     let server = Arc::new(Mutex::new(server));
 
-    log::info!("Server running on 127.0.0.1:{client_port} (client) and 127.0.0.1:{GFX_PORT} (gfx)");
+    log::info!(
+        "Server running on 127.0.0.1:{} (client) and 127.0.0.1:{GFX_PORT} (gfx)",
+        args.port
+    );
 
     tokio::select! {
         _ = client_loop(Arc::clone(&server), Arc::clone(&client_connections), client_listener) => {},

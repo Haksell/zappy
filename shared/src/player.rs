@@ -1,12 +1,16 @@
+use crate::TechnicalError::ConnectionCorrupted;
+use crate::ZappyError::Technical;
 use crate::{resource::Resource, Command, ServerCommandToClient, ZappyError, MAX_COMMANDS};
 use derive_getters::Getters;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
+use std::fmt::{Display, Formatter};
+use std::hash::{Hash, Hasher};
 use tokio::sync::mpsc::Sender;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash)]
 pub enum Direction {
     North,
     East,
@@ -59,14 +63,19 @@ impl Direction {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
     pub direction: Direction,
 }
 
-// TOOD: pos: Pos
+impl Display for Position {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "({}, {}, {:?})", self.x, self.y, self.direction)
+    }
+}
+
 #[derive(Getters, Serialize, Deserialize, Debug, Clone)]
 pub struct Player {
     //TODO: communication channel is still unused, can be used in case of die, admin disconnect
@@ -78,7 +87,7 @@ pub struct Player {
     commands: VecDeque<Command>,
     pub(crate) position: Position,
     inventory: [usize; Resource::SIZE],
-    level: u8
+    level: u8,
 }
 
 impl Player {
@@ -99,11 +108,11 @@ impl Player {
             level: 1,
         }
     }
-    
+
     pub fn turn(&mut self, side: Side) {
         self.position.direction = self.position.direction.turn(side);
     }
-    
+
     pub fn set_x(&mut self, x: usize) {
         self.position.x = x;
     }
@@ -111,11 +120,10 @@ impl Player {
     pub fn set_y(&mut self, y: usize) {
         self.position.y = y;
     }
-    
+
     pub fn level_up(&mut self) {
         self.level += 1
     }
-    
 
     pub async fn disconnect(&self) -> Result<(), ZappyError> {
         self.communication_channel
@@ -123,10 +131,7 @@ impl Player {
             .unwrap()
             .send(ServerCommandToClient::Shutdown)
             .await
-            .map_err(|e| {
-                log::error!("[err while disconnect] {}", e);
-                ZappyError::ConnectionCorrupted
-            })
+            .map_err(|e| Technical(ConnectionCorrupted(self.id, e.to_string())))
     }
 
     pub fn pop_command_from_queue(&mut self) -> Option<Command> {
@@ -153,5 +158,23 @@ impl Player {
         } else {
             false
         }
+    }
+}
+
+impl Display for Player {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Player(team: {}, id: {}, position: {}, inventory: {:?}, level: {})",
+            self.team, self.id, self.position, self.inventory, self.level
+        )
+    }
+}
+
+impl Hash for Player {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.position.hash(state);
+        self.inventory.hash(state);
+        self.level.hash(state);
     }
 }

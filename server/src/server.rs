@@ -1,4 +1,7 @@
 use crate::args::ServerArgs;
+use shared::LogicalError::{MaxPlayersReached, TeamDoesntExist};
+use shared::TechnicalError::IsNotConnectedToServer;
+use shared::ZappyError::{Logical, Technical};
 use shared::{
     command::Command,
     map::Map,
@@ -6,6 +9,7 @@ use shared::{
     resource::Resource,
     ServerCommandToClient, ServerResponse, ZappyError, MAX_COMMANDS,
 };
+use std::hash::{Hash, Hasher};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
@@ -13,14 +17,14 @@ use std::{
 use tokio::sync::mpsc::Sender;
 
 pub struct Server {
-    pub(crate) width: usize,
-    pub(crate) height: usize,
+    width: usize,
+    height: usize,
     max_clients: u16,
-    pub(crate) _tud: u16,
-    pub teams: HashMap<String, HashSet<u16>>,
-    pub(crate) players: HashMap<u16, Player>,
-    pub(crate) map: Map,
-    pub(crate) frame: u64,
+    _tud: u16,
+    teams: HashMap<String, HashSet<u16>>,
+    players: HashMap<u16, Player>,
+    map: Map,
+    frame: u64,
 }
 
 impl Server {
@@ -61,7 +65,7 @@ impl Server {
 
     fn apply_cmd(&mut self, player_id: u16, command: &Command) -> Option<ServerResponse> {
         let player = self.players.get_mut(&player_id).unwrap();
-        log::debug!("Executing command: {:?} for {:?}", command, player);
+        log::debug!("Executing command: {:?} for {}", command, player);
         match command {
             Command::Gauche => {
                 player.turn(Side::Left);
@@ -164,7 +168,7 @@ impl Server {
             log::info!("{log_successful_insert}");
             Ok((remaining_clients - 1) as usize)
         } else {
-            Err(ZappyError::MaxPlayersReached)
+            Err(Logical(MaxPlayersReached(player_id, remaining_clients)))
         }
     }
 
@@ -173,7 +177,6 @@ impl Server {
             log::debug!("Client {player_id} has been removed from the server");
             self.map.remove_player(player.id(), player.position());
             self.teams.get_mut(player.team()).unwrap().remove(player_id);
-            //player.disconnect().await?;
         }
     }
 
@@ -181,7 +184,7 @@ impl Server {
         if let Some(players_in_team) = self.teams.get(team_name) {
             Ok(self.max_clients - players_in_team.len() as u16)
         } else {
-            Err(ZappyError::TeamDoesntExist(team_name.to_string()))
+            Err(Logical(TeamDoesntExist(team_name.to_string())))
         }
     }
 
@@ -192,15 +195,63 @@ impl Server {
     ) -> Result<Option<ServerResponse>, ZappyError> {
         if let Some(player) = self.players.get_mut(player_id) {
             Ok(if player.commands().len() >= MAX_COMMANDS {
-                // TODO: send message
-                log::debug!("Player {player_id:?} tried to push {cmd:?} in to a full queue.");
                 Some(ServerResponse::ActionQueueIsFull)
             } else {
                 player.push_command_to_queue(cmd);
                 None
             })
         } else {
-            Err(ZappyError::IsNotConnectedToServer)
+            Err(Technical(IsNotConnectedToServer(*player_id)))
         }
+    }
+
+    //TODO: replace by derive getters
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
+    pub fn teams(&self) -> &HashMap<String, HashSet<u16>> {
+        &self.teams
+    }
+
+    pub fn map(&self) -> &Map {
+        &self.map
+    }
+
+    pub fn players(&self) -> &HashMap<u16, Player> {
+        &self.players
+    }
+
+    pub fn frame(&self) -> u64 {
+        self.frame
+    }
+}
+
+impl Hash for Server {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let mut sorted_teams: Vec<_> = self.teams.iter().collect();
+        sorted_teams.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
+        for (team_name, players) in sorted_teams {
+            team_name.hash(state);
+            let mut sorted_players: Vec<_> = players.iter().collect();
+            sorted_players.sort();
+            for player_id in sorted_players {
+                player_id.hash(state);
+            }
+        }
+
+        let mut sorted_players: Vec<_> = self.players.iter().collect();
+        sorted_players.sort_by_key(|(k, _)| *k);
+        for (id, player) in sorted_players {
+            id.hash(state);
+            player.hash(state);
+        }
+
+        self.map.hash(state);
     }
 }

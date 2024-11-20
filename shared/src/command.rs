@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
 pub enum Command {
     Avance,
     Droite,
@@ -20,7 +20,6 @@ impl TryFrom<&str> for Command {
     type Error = String;
 
     fn try_from(s: &str) -> Result<Self, String> {
-        log::info!("command: {}", s);
         let parts: Vec<&str> = s.splitn(2, ' ').collect();
 
         match parts[0] {
@@ -60,7 +59,7 @@ impl TryFrom<&str> for Command {
             "incantation" => Ok(Command::Incantation),
             "fork" => Ok(Command::Fork),
             "connect_nbr" => Ok(Command::ConnectNbr),
-            _ => Err("Unknown command".to_string()),
+            _ => Err(format!("Unknown command: \"{s}\"")),
         }
     }
 }

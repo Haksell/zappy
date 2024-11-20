@@ -18,7 +18,7 @@ pub async fn game_loop(
         let frame = {
             let mut server_lock = server.lock().await;
             server_lock.tick(&mut action_execution_results);
-            server_lock.frame
+            server_lock.frame()
         };
 
         let client_connections_lock = client_connections.lock().await;

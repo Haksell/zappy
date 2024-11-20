@@ -8,6 +8,26 @@ use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::{mpsc, Mutex};
 
+pub async fn do_handshake(
+    client: &mut ClientConnection,
+    server: &Arc<Mutex<Server>>,
+    cmd_tx: Sender<ServerCommandToClient>,
+) -> Result<(), ZappyError> {
+    client.write(HANDSHAKE_MSG).await?;
+    let team_name = client.read().await?;
+    let (width, height, remaining_clients) = {
+        let mut server_lock = server.lock().await;
+        let remaining_clients_count = server_lock.add_player(client.id(), cmd_tx, team_name)?;
+        (
+            server_lock.width(),
+            server_lock.height(),
+            remaining_clients_count,
+        )
+    };
+    client.writeln(&remaining_clients.to_string()).await?;
+    client.writeln(&format!("{} {}", width, height)).await
+}
+
 pub async fn client_loop(
     server: Arc<Mutex<Server>>,
     client_connections: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
@@ -18,51 +38,37 @@ pub async fn client_loop(
         log::info!("New connection, assigned id: {}", addr.port());
         let mut client = ClientConnection::new(socket, addr.port());
 
-        // FIXME
         let server = Arc::clone(&server);
-        let server2 = Arc::clone(&server);
+        let server_arc_for_disconnect = Arc::clone(&server);
         let client_connections = Arc::clone(&client_connections);
 
         tokio::spawn(async move {
             let handle_result: Result<(), ZappyError> = async {
                 let (cmd_tx, cmd_rx) = mpsc::channel::<ServerCommandToClient>(32);
-                client.write(HANDSHAKE_MSG).await?;
-                let team_name = client.read().await?;
-                let (width, height, remaining_clients) = {
-                    let mut server_lock = server.lock().await;
-                    let remaining_clients =
-                        server_lock.add_player(client.id(), cmd_tx.clone(), team_name)?;
-                    (server_lock.width, server_lock.height, remaining_clients)
-                };
+                do_handshake(&mut client, &server, cmd_tx.clone()).await?;
                 client_connections.lock().await.insert(client.id(), cmd_tx);
-                client.writeln(&remaining_clients.to_string()).await?;
-                client.writeln(&format!("{} {}", width, height)).await?;
-
                 return handle_player(server, &mut client, cmd_rx).await;
             }
             .await;
 
             //Specific client loop ends here, cleanup before quiting async task
-
             client_connections.lock().await.remove(&client.id());
-            server2.lock().await.remove_player(&client.id());
+            server_arc_for_disconnect
+                .lock()
+                .await
+                .remove_player(&client.id());
+            log::debug!("{} has been deleted by server", client.id());
             if let Err(err) = handle_result {
-                //TODO: put log level and message to the impl error block of ZappyError
                 match err {
-                    ZappyError::ConnectionClosedByClient => {
-                        log::info!("{}: client disconnected", client.id())
+                    ZappyError::Technical(err) => {
+                        log::error!("{err}");
                     }
-                    ZappyError::MaxPlayersReached => {
-                        log::debug!("Max players reached");
-                        let _ = client.writeln("Max players reached").await;
+                    ZappyError::Logical(err) => {
+                        let msg = err.to_string();
+                        //TODO: handle?
+                        let _ = client.writeln(msg.as_str()).await;
+                        log::info!("{}", err);
                     }
-                    ZappyError::TeamDoesntExist(name) => {
-                        log::debug!("{name}: team doesn't exist");
-                        let _ = client
-                            .writeln("Team doesn't exist. You are disconnected")
-                            .await;
-                    }
-                    err => log::error!("{:?}", err),
                 }
             }
         });
@@ -81,17 +87,18 @@ async fn handle_player(
                 let trimmed = n.trim_end();
                 match Command::try_from(trimmed) {
                     Ok(command) => {
-                        log::debug!("Received command: {:?}", command);
+                        log::info!("{}: sends command: {:?}", client.id(), command);
                         if let Some(e)= server.lock().await.take_command(&client.id(), command)? {
+                            log::info!("Player {} tried to push {} in to a full queue.", client.id(), trimmed);
                             client.writeln(&e.to_string()).await?;
                         }
                     },
-                    Err(_) => {
-                        client.writeln(&format!("Unknown command \"{}\"", trimmed)).await?;
+                    Err(err) => {
+                        log::error!("{}: {}", client.id(), err);
+                        client.writeln(&err).await?;
                     }
                 }
             }
-
             Some(cmd) = cmd_rx.recv() => {
                 match cmd {
                     ServerCommandToClient::Shutdown => {
