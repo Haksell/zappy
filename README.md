@@ -28,19 +28,19 @@ inventaire
 {Deraumere 0, Linemate 0, Mendiane 0, Nourriture 0, Phiras 0, Sibur 0, Thystame 0}
 prend kaka
 Ko
-prend Thystame
+prend thystame
 Ok
 inventaire
 {Deraumere 0, Linemate 0, Mendiane 0, Nourriture 0, Phiras 0, Sibur 0, Thystame 1}
 avance
 Ok
-prend Thystame  
+prend T  
 Ok
 inventaire
 {Deraumere 0, Linemate 0, Mendiane 0, Nourriture 0, Phiras 0, Sibur 0, Thystame 2}
 pose Thystame
 Ok
-pose Thystame
+pose t
 Ok
 inventaire
 {Deraumere 0, Linemate 0, Mendiane 0, Nourriture 0, Phiras 0, Sibur 0, Thystame 0}
