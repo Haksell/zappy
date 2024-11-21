@@ -1,6 +1,6 @@
 use crate::TechnicalError::ConnectionCorrupted;
 use crate::ZappyError::Technical;
-use crate::{resource::Resource, Command, ServerCommandToClient, ZappyError, MAX_COMMANDS};
+use crate::{resource::Resource, PlayerCommand, ServerCommandToClient, ZappyError, MAX_COMMANDS};
 use derive_getters::Getters;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
-use tokio::sync::mpsc::Sender;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash)]
 pub enum Direction {
@@ -78,13 +77,10 @@ impl Display for Position {
 
 #[derive(Getters, Serialize, Deserialize, Debug, Clone)]
 pub struct Player {
-    //TODO: communication channel is still unused, can be used in case of die, admin disconnect
-    #[serde(skip_serializing, skip_deserializing)]
-    communication_channel: Option<Sender<ServerCommandToClient>>,
     team: String,
     id: u16,
     next_frame: u64,
-    commands: VecDeque<Command>,
+    commands: VecDeque<PlayerCommand>,
     pub(crate) position: Position,
     inventory: [usize; Resource::SIZE],
     level: u8,
@@ -92,13 +88,11 @@ pub struct Player {
 
 impl Player {
     pub fn new(
-        communication_channel: Sender<ServerCommandToClient>,
         id: u16,
         team: String,
         position: Position,
     ) -> Self {
         Self {
-            communication_channel: Some(communication_channel),
             id,
             team,
             next_frame: 0,
@@ -125,21 +119,13 @@ impl Player {
         self.level += 1
     }
 
-    pub async fn disconnect(&self) -> Result<(), ZappyError> {
-        self.communication_channel
-            .as_ref()
-            .unwrap()
-            .send(ServerCommandToClient::Shutdown)
-            .await
-            .map_err(|e| Technical(ConnectionCorrupted(self.id, e.to_string())))
-    }
 
-    pub fn pop_command_from_queue(&mut self) -> Option<Command> {
+    pub fn pop_command_from_queue(&mut self) -> Option<PlayerCommand> {
         // not an Option?
         self.commands.pop_front()
     }
 
-    pub fn push_command_to_queue(&mut self, command: Command) {
+    pub fn push_command_to_queue(&mut self, command: PlayerCommand) {
         self.commands.push_back(command);
     }
 

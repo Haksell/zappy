@@ -1,20 +1,21 @@
 mod args;
-mod client_connection;
-mod client_loop;
-mod game_loop;
-mod gfx_loop;
+mod connection_manager;
+mod game_engine;
 mod logger;
-mod server;
+mod routine;
 
 use crate::args::ServerArgs;
-use crate::game_loop::game_loop;
+use crate::connection_manager::ConnectionManager;
+use crate::game_engine::GameEngine;
 use crate::logger::init_logger;
-use crate::server::Server;
 use clap::Parser;
-use client_loop::client_loop;
-use gfx_loop::gfx_loop;
+use dotenv::dotenv;
+use routine::client::client_routine;
+use routine::game::game_routine;
+use routine::gfx::gfx_routine;
 use shared::{ServerCommandToClient, GFX_PORT};
 use std::collections::HashMap;
+use std::env;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -23,13 +24,14 @@ use tokio::sync::Mutex;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
+    dotenv().ok();
+    let admin_pass = env::var("ADMIN_PASS").expect("ADMIN_PASS must be set");
     init_logger();
     let args = ServerArgs::parse();
-    let server = Server::from(&args).await?;
+    let server = GameEngine::from(&args).await?;
     let client_listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let gfx_listener = TcpListener::bind(format!("127.0.0.1:{}", GFX_PORT)).await?;
-    let client_connections: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>> =
-        Arc::new(Mutex::new(HashMap::new()));
+    let connection_manager = Arc::new(Mutex::new(ConnectionManager::new(admin_pass)));
     let server = Arc::new(Mutex::new(server));
 
     log::info!(
@@ -38,9 +40,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     );
 
     tokio::select! {
-        _ = client_loop(Arc::clone(&server), Arc::clone(&client_connections), client_listener) => {},
-        _ = gfx_loop(Arc::clone(&server), gfx_listener) => {},
-        _ = game_loop(server, client_connections, args.tud) => {},
+        _ = client_routine(Arc::clone(&server), Arc::clone(&connection_manager), client_listener) => {},
+        _ = gfx_routine(Arc::clone(&server), gfx_listener) => {},
+        _ = game_routine(server, connection_manager, args.tud) => {},
     };
 
     Ok(())

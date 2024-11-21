@@ -1,4 +1,4 @@
-use crate::server::Server;
+use crate::game_engine::GameEngine;
 use serde_json::{json, to_string};
 use std::collections::HashMap;
 use std::error::Error;
@@ -11,8 +11,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
-pub async fn gfx_loop(
-    server: Arc<Mutex<Server>>,
+pub async fn gfx_routine(
+    server: Arc<Mutex<GameEngine>>,
     listener: TcpListener,
 ) -> Result<(), Box<dyn Error>> {
     loop {
@@ -29,7 +29,7 @@ pub async fn gfx_loop(
 }
 
 async fn handle_streaming_client(
-    server: Arc<Mutex<Server>>,
+    server: Arc<Mutex<GameEngine>>,
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
     let mut last_hash = 0;

@@ -2,3 +2,4 @@
 .vscode
 rust_analyzer/
 target/
+.env

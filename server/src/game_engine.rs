@@ -3,7 +3,7 @@ use shared::LogicalError::{MaxPlayersReached, TeamDoesntExist};
 use shared::TechnicalError::IsNotConnectedToServer;
 use shared::ZappyError::{Logical, Technical};
 use shared::{
-    command::Command,
+    commands::PlayerCommand,
     map::Map,
     player::{Player, Side},
     resource::Resource,
@@ -16,7 +16,7 @@ use std::{
 };
 use tokio::sync::mpsc::Sender;
 
-pub struct Server {
+pub struct GameEngine {
     width: usize,
     height: usize,
     max_clients: u16,
@@ -27,7 +27,7 @@ pub struct Server {
     frame: u64,
 }
 
-impl Server {
+impl GameEngine {
     pub async fn from(args: &ServerArgs) -> Result<Self, Box<dyn Error>> {
         let teams = args
             .names
@@ -63,23 +63,23 @@ impl Server {
             .insert(*player.id());
     }
 
-    fn apply_cmd(&mut self, player_id: u16, command: &Command) -> Option<ServerResponse> {
+    fn apply_cmd(&mut self, player_id: u16, command: &PlayerCommand) -> Option<ServerResponse> {
         let player = self.players.get_mut(&player_id).unwrap();
         log::debug!("Executing command: {:?} for {}", command, player);
         match command {
-            Command::Gauche => {
+            PlayerCommand::Gauche => {
                 player.turn(Side::Left);
                 Some(ServerResponse::Ok)
             }
-            Command::Droite => {
+            PlayerCommand::Droite => {
                 player.turn(Side::Right);
                 Some(ServerResponse::Ok)
             }
-            Command::Avance => {
+            PlayerCommand::Avance => {
                 self.handle_avance(player_id);
                 Some(ServerResponse::Ok)
             }
-            Command::Prend { resource_name } => {
+            PlayerCommand::Prend { resource_name } => {
                 if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
                     let cell = &mut self.map.field[player.position().y][player.position().x];
                     if cell.resources[resource as usize] >= 1 {
@@ -90,7 +90,7 @@ impl Server {
                 }
                 Some(ServerResponse::Ko)
             }
-            Command::Pose { resource_name } => {
+            PlayerCommand::Pose { resource_name } => {
                 if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
                     let cell = &mut self.map.field[player.position().y][player.position().x];
                     if player.remove_from_inventory(resource) {
@@ -100,8 +100,8 @@ impl Server {
                 }
                 Some(ServerResponse::Ko)
             }
-            Command::Voir => todo!(),
-            Command::Inventaire => {
+            PlayerCommand::Voir => todo!(),
+            PlayerCommand::Inventaire => {
                 let inventory = player
                     .inventory()
                     .iter()
@@ -110,11 +110,11 @@ impl Server {
                     .collect::<Vec<String>>();
                 Some(ServerResponse::Inventory(inventory))
             }
-            Command::Expulse => todo!(),
-            Command::Broadcast { .. } => todo!(),
-            Command::Incantation => todo!(),
-            Command::Fork => todo!(),
-            Command::ConnectNbr => todo!(),
+            PlayerCommand::Expulse => todo!(),
+            PlayerCommand::Broadcast { .. } => todo!(),
+            PlayerCommand::Incantation => todo!(),
+            PlayerCommand::Fork => todo!(),
+            PlayerCommand::ConnectNbr => todo!(),
         }
     }
 
@@ -141,24 +141,18 @@ impl Server {
     pub fn add_player(
         &mut self,
         player_id: u16,
-        communication_channel: Sender<ServerCommandToClient>,
         team: String,
     ) -> Result<usize, ZappyError> {
         log::debug!("{player_id} wants to join {team}");
-        let team_name_trimmed = team.trim().to_string();
-        let remaining_clients = self.remaining_clients(&team_name_trimmed)?;
+        let remaining_clients = self.remaining_clients(&team)?;
         if remaining_clients > 0 {
             let player = Player::new(
-                communication_channel,
                 player_id,
-                team_name_trimmed.clone(),
+                team.clone(),
                 self.map.random_position(),
             );
             self.map.add_player(*player.id(), player.position());
-            self.teams
-                .get_mut(&team_name_trimmed)
-                .unwrap()
-                .insert(*player.id());
+            self.teams.get_mut(&team).unwrap().insert(*player.id());
             let log_successful_insert = format!(
                 "The player with id: {} has successfully joined the \"{}\" team.",
                 player.id(),
@@ -191,7 +185,7 @@ impl Server {
     pub fn take_command(
         &mut self,
         player_id: &u16,
-        cmd: Command,
+        cmd: PlayerCommand,
     ) -> Result<Option<ServerResponse>, ZappyError> {
         if let Some(player) = self.players.get_mut(player_id) {
             Ok(if player.commands().len() >= MAX_COMMANDS {
@@ -232,7 +226,7 @@ impl Server {
     }
 }
 
-impl Hash for Server {
+impl Hash for GameEngine {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let mut sorted_teams: Vec<_> = self.teams.iter().collect();
         sorted_teams.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));

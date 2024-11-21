@@ -1,10 +1,10 @@
-pub mod command;
+pub mod commands;
 pub mod map;
 pub mod player;
 pub mod resource;
 pub mod utils;
 
-use command::Command;
+use commands::PlayerCommand;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
