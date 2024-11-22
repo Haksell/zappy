@@ -56,25 +56,47 @@ Ko
 
 ---
 
-## Commands
+## Player commands
 
-| Command     | Status |
-|-------------|--------|
-| avance      | ✅      |
-| droite      | ✅      |
-| gauche      | ✅      |
-| voir        | ❌      |
-| inventaire  | ✅      |
-| prend       | ✅      |
-| pose        | ✅      |
-| expulse     | ❌      |
-| broadcast   | ❌      |
-| incantation | ❌      |
-| fork        | ❌      |
-| connect_nbr | ❌      |
+| Command     | Shortcut       | Status |
+|-------------|----------------|--------|
+| avance      | move           | ✅      |
+| droite      | right          | ✅      |
+| gauche      | left           | ✅      |
+| voir        | see            | ❌      |
+| inventaire  | inventory, inv | ✅      |
+| prend       | take           | ✅      |
+| pose        | put            | ✅      |
+| expulse     |                | ❌      |
+| broadcast   |                | ❌      |
+| incantation | inc            | ❌      |
+| fork        |                | ❌      |
+| connect_nbr | cn             | ❌      |
 
 ---
 
+## Resources types
+
+| Resource name | Shortcut |
+|---------------|----------|
+| deraumere     | d        |
+| linemate      | l        |
+| mendiane      | m        |
+| nourriture    | n        |
+| phiras        | p        |
+| sibur         | s        |
+| thystame      | t        |
+
+---
+
+## Admin commands
+
+| Command     | Shortcut       | Status |
+|-------------|----------------|--------|
+| avance      | move           | ✅      |
+| droite      | right          | ✅      |
+
+---
 
 
 Todo client:

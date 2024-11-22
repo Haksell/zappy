@@ -6,21 +6,17 @@ use shared::{
     commands::PlayerCommand,
     map::Map,
     player::{Player, Side},
-    resource::Resource,
-    ServerCommandToClient, ServerResponse, ZappyError, MAX_COMMANDS,
+    resource::Resource, ServerResponse, ZappyError, MAX_COMMANDS,
 };
-use std::hash::{Hash, Hasher};
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
 };
-use tokio::sync::mpsc::Sender;
 
 pub struct GameEngine {
     width: usize,
     height: usize,
     max_clients: u16,
-    _tud: u16,
     teams: HashMap<String, HashSet<u16>>,
     players: HashMap<u16, Player>,
     map: Map,
@@ -38,7 +34,6 @@ impl GameEngine {
             width: args.width,
             height: args.height,
             max_clients: args.clients,
-            _tud: args.tud,
             teams,
             players: HashMap::new(),
             map: Map::new(args.width, args.height),
@@ -138,19 +133,11 @@ impl GameEngine {
         }
     }
 
-    pub fn add_player(
-        &mut self,
-        player_id: u16,
-        team: String,
-    ) -> Result<usize, ZappyError> {
+    pub fn add_player(&mut self, player_id: u16, team: String) -> Result<usize, ZappyError> {
         log::debug!("{player_id} wants to join {team}");
         let remaining_clients = self.remaining_clients(&team)?;
         if remaining_clients > 0 {
-            let player = Player::new(
-                player_id,
-                team.clone(),
-                self.map.random_position(),
-            );
+            let player = Player::new(player_id, team.clone(), self.map.random_position());
             self.map.add_player(*player.id(), player.position());
             self.teams.get_mut(&team).unwrap().insert(*player.id());
             let log_successful_insert = format!(
@@ -226,26 +213,3 @@ impl GameEngine {
     }
 }
 
-impl Hash for GameEngine {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let mut sorted_teams: Vec<_> = self.teams.iter().collect();
-        sorted_teams.sort_by(|(k1, _), (k2, _)| k1.cmp(k2));
-        for (team_name, players) in sorted_teams {
-            team_name.hash(state);
-            let mut sorted_players: Vec<_> = players.iter().collect();
-            sorted_players.sort();
-            for player_id in sorted_players {
-                player_id.hash(state);
-            }
-        }
-
-        let mut sorted_players: Vec<_> = self.players.iter().collect();
-        sorted_players.sort_by_key(|(k, _)| *k);
-        for (id, player) in sorted_players {
-            id.hash(state);
-            player.hash(state);
-        }
-
-        self.map.hash(state);
-    }
-}

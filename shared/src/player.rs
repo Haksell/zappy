@@ -1,13 +1,10 @@
-use crate::TechnicalError::ConnectionCorrupted;
-use crate::ZappyError::Technical;
-use crate::{resource::Resource, PlayerCommand, ServerCommandToClient, ZappyError, MAX_COMMANDS};
+use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS};
 use derive_getters::Getters;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
-use std::hash::{Hash, Hasher};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash)]
 pub enum Direction {
@@ -154,13 +151,5 @@ impl Display for Player {
             "Player(team: {}, id: {}, position: {}, inventory: {:?}, level: {})",
             self.team, self.id, self.position, self.inventory, self.level
         )
-    }
-}
-
-impl Hash for Player {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.position.hash(state);
-        self.inventory.hash(state);
-        self.level.hash(state);
     }
 }

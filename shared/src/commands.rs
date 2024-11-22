@@ -5,7 +5,7 @@ pub enum AdminCommand {
 }
 
 impl AdminCommand {
-    pub fn show_off(&self)  {
+    pub fn show_off(&self) {
         log::info!("Admin showing off")
     }
 }
@@ -46,43 +46,25 @@ impl TryFrom<&str> for PlayerCommand {
         let parts: Vec<&str> = s.splitn(2, ' ').collect();
 
         //TODO: use lib for handling? for single word command add check that there is only 1 part
-        match parts[0] {
-            "avance" => Ok(PlayerCommand::Avance),
-            "droite" => Ok(PlayerCommand::Droite),
-            "gauche" => Ok(PlayerCommand::Gauche),
-            "voir" => Ok(PlayerCommand::Voir),
-            "inventaire" => Ok(PlayerCommand::Inventaire),
-            "prend" => {
-                if parts.len() == 2 {
-                    Ok(PlayerCommand::Prend {
-                        resource_name: parts[1].to_string(),
-                    })
-                } else {
-                    Err("Expected resource name for Prend".to_string())
-                }
-            }
-            "pose" => {
-                if parts.len() == 2 {
-                    Ok(PlayerCommand::Pose {
-                        resource_name: parts[1].to_string(),
-                    })
-                } else {
-                    Err("Expected resource name for Pose".to_string())
-                }
-            }
-            "expulse" => Ok(PlayerCommand::Expulse),
-            "broadcast" => {
-                if parts.len() == 2 {
-                    Ok(PlayerCommand::Broadcast {
-                        text: parts[1].to_string(),
-                    })
-                } else {
-                    Err("Expected text for Broadcast".to_string())
-                }
-            }
-            "incantation" => Ok(PlayerCommand::Incantation),
-            "fork" => Ok(PlayerCommand::Fork),
-            "connect_nbr" => Ok(PlayerCommand::ConnectNbr),
+        match (parts[0], parts.len()) {
+            ("avance" | "move", 1) => Ok(PlayerCommand::Avance),
+            ("droite" | "right", 1) => Ok(PlayerCommand::Droite),
+            ("gauche" | "left", 1) => Ok(PlayerCommand::Gauche),
+            ("voir" | "see", 1) => Ok(PlayerCommand::Voir),
+            ("inventaire" | "inv" | "inventory", 1) => Ok(PlayerCommand::Inventaire),
+            ("prend" | "take", 2) => Ok(PlayerCommand::Prend {
+                resource_name: parts[1].to_string(),
+            }),
+            ("pose" | "put", 2) => Ok(PlayerCommand::Pose {
+                resource_name: parts[1].to_string(),
+            }),
+            ("expulse", 1) => Ok(PlayerCommand::Expulse),
+            ("broadcast", 2) => Ok(PlayerCommand::Broadcast {
+                text: parts[1].to_string(),
+            }),
+            ("incantation", 1) => Ok(PlayerCommand::Incantation),
+            ("fork", 1) => Ok(PlayerCommand::Fork),
+            ("connect_nbr", 1) => Ok(PlayerCommand::ConnectNbr),
             _ => Err(format!("Unknown command: \"{s}\"")),
         }
     }

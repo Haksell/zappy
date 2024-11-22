@@ -1,8 +1,7 @@
 use crate::game_engine::GameEngine;
-use serde_json::{json, to_string};
+use serde_json::{json, to_string, to_string_pretty};
 use std::collections::HashMap;
 use std::error::Error;
-use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::IoSlice;
 use std::sync::Arc;
 use std::time::Duration;
@@ -32,33 +31,30 @@ async fn handle_streaming_client(
     server: Arc<Mutex<GameEngine>>,
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
-    let mut last_hash = 0;
+    let mut last_state = json!({});
 
     loop {
-        sleep(Duration::from_millis(1000)).await;
-        let (json_data, new_hash) = {
-            let mut hasher = DefaultHasher::new();
-            let server_lock = server.lock().await;
-            server_lock.hash(&mut hasher);
-            let new_hash = hasher.finish();
-            if new_hash == last_hash {
-                continue;
-            }
-            let state = json!({
-                "teams": server_lock.teams().iter()
-                    .map(|(k, v)| (k.clone(), v.len()))
-                    .collect::<HashMap<String, usize>>(),
-                "map": server_lock.map(),
-                "players": server_lock.players()
-            });
+        sleep(Duration::from_millis(20)).await;
 
-            (to_string(&state)?, new_hash)
-        };
+        let server_lock = server.lock().await;
 
-        last_hash = new_hash;
+        let current_state = json!({
+            "teams": server_lock.teams().iter()
+                .map(|(k, v)| (k.clone(), v.len()))
+                .collect::<HashMap<String, usize>>(),
+            "map": server_lock.map(),
+            "players": server_lock.players()
+        });
 
-        socket
-            .write_vectored(&[IoSlice::new(json_data.as_bytes()), IoSlice::new(b"\n")])
-            .await?;
+        if current_state != last_state {
+            println!("Updating the state...");
+            socket
+                .write_vectored(&[
+                    IoSlice::new(current_state.to_string().as_bytes()),
+                    IoSlice::new(b"\n"),
+                ])
+                .await?;
+            last_state = current_state;
+        }
     }
 }

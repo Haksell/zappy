@@ -5,11 +5,10 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
-use crate::connection_manager::ConnectionManager;
 
 pub async fn game_routine(
     server: Arc<Mutex<GameEngine>>,
-    client_connections: Arc<Mutex<ConnectionManager>>,
+    client_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
     tud: u16,
 ) {
     let t0 = tokio::time::Instant::now();
@@ -22,9 +21,8 @@ pub async fn game_routine(
             server_lock.frame()
         };
 
-        let mut client_connections_lock = client_connections.lock().await;
         while let Some((client_id, response)) = action_execution_results.pop() {
-            if let Some(connection) = client_connections_lock.get_connection(&client_id) {
+            if let Some(connection) = client_senders.lock().await.get(&client_id) {
                 if let Err(e) = connection
                     .send(ServerCommandToClient::SendMessage(response))
                     .await

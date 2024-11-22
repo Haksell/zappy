@@ -30,6 +30,7 @@ pub enum TechnicalError {
 pub enum LogicalError {
     TeamDoesntExist(String),
     MaxPlayersReached(u16, u16),
+    WrongUsernameOrPassword,
 }
 
 impl Display for LogicalError {
@@ -39,6 +40,7 @@ impl Display for LogicalError {
             LogicalError::MaxPlayersReached(_, remaining_clients) => {
                 format!("Max players reached: {}", remaining_clients)
             }
+            LogicalError::WrongUsernameOrPassword => "Wrong username or password".to_string(),
         };
         write!(f, "{}", msg)
     }
@@ -103,6 +105,7 @@ pub struct Egg {
 }
 
 pub const GFX_PORT: u16 = 4343; // TODO configurable port
+pub const ADMIN_PORT: u16 = 4444; // TODO configurable port
 pub const MAX_COMMANDS: usize = 10;
 pub const MAX_FIELD_SIZE: usize = 50;
 pub const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";
