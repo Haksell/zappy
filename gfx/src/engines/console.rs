@@ -60,6 +60,10 @@ fn map_player_to_span(color: Color, player: &Player) -> Span {
     )
 }
 
+fn map_team_to_span(count: usize, color: Color) -> Span<'static> {
+    Span::styled("(🥚)".to_string().repeat(count), Style::default().fg(color))
+}
+
 fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
     let rows = Layout::vertical(vec![
         Constraint::Ratio(1, *data.map.height() as u32);
@@ -84,9 +88,11 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
             let mapped_eggs = cell
                 .eggs
                 .iter()
-                .map(|e| e.team_name.get(..1).unwrap())
-                .collect::<Vec<_>>()
-                .concat();
+                .map(|e| {
+                    let color = data.teams.get(e.0).unwrap().0;
+                    map_team_to_span(*e.1, color.to_ratatui_value())
+                })
+                .collect::<Vec<_>>();
             let mapped_player = cell
                 .players
                 .iter()
@@ -102,7 +108,8 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
 
             let mut spans = vec![];
             spans.extend(mapped_player);
-            spans.push(Span::raw(format!(", {mapped_eggs}")));
+            spans.push(Span::raw(", ".to_string()));
+            spans.extend(mapped_eggs);
 
             if !mapped_map_resources.is_empty() {
                 spans.push(Span::raw(", "));

@@ -1,17 +1,16 @@
 use crate::player::{Direction, Position};
 use crate::resource::Resource;
-use crate::Egg;
+use derive_getters::Getters;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use derive_getters::Getters;
+use std::collections::{HashMap, HashSet};
 
 //TODO: change fields to private?
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
     pub players: HashSet<u16>,
     pub resources: [usize; Resource::SIZE],
-    pub eggs: Vec<Egg>,
+    pub eggs: HashMap<String, usize>,
 }
 
 //TODO: change fields to private?
@@ -28,7 +27,7 @@ impl Cell {
         Self {
             players: HashSet::new(),
             resources: [0; Resource::SIZE],
-            eggs: Vec::new(),
+            eggs: HashMap::new(),
         }
     }
 

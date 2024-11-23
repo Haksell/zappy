@@ -5,7 +5,7 @@ pub mod resource;
 pub mod team;
 pub mod utils;
 
-use crate::player::Direction;
+use crate::player::{Direction, Position};
 use commands::PlayerCommand;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -92,7 +92,7 @@ impl Display for ServerResponse {
             ServerResponse::Cases(_) => todo!(),
             ServerResponse::Inventory(items) => write!(f, "{{{}}}", items.join(", ")),
             ServerResponse::ElevationInProgress => write!(f, "Elevation InProgress"),
-            ServerResponse::Value(_) => todo!(),
+            ServerResponse::Value(value) => write!(f, "{}", value),
             ServerResponse::Mort => write!(f, "Mort"),
             ServerResponse::ActionQueueIsFull => {
                 write!(f, "The action queue is full, please try later.")
@@ -105,7 +105,7 @@ impl Display for ServerResponse {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Egg {
     pub team_name: String,
-    pub start_frame: u64,
+    pub position: Position,
 }
 
 pub const GFX_PORT: u16 = 4343; // TODO configurable port

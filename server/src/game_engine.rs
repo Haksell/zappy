@@ -10,7 +10,7 @@ use shared::{
     map::Map,
     player::{Player, Side},
     resource::Resource,
-    ServerResponse, ZappyError, MAX_COMMANDS,
+    Egg, ServerResponse, ZappyError, MAX_COMMANDS,
 };
 use std::{collections::HashMap, error::Error};
 
@@ -18,6 +18,7 @@ use std::{collections::HashMap, error::Error};
 pub struct GameEngine {
     teams: HashMap<String, Team>,
     players: HashMap<u16, Player>,
+    eggs: HashMap<u64, Vec<Egg>>,
     map: Map,
     frame: u64,
 }
@@ -32,6 +33,7 @@ impl GameEngine {
         Ok(Self {
             teams,
             players: HashMap::new(),
+            eggs: HashMap::new(),
             map: Map::new(args.width, args.height),
             frame: 0,
         })
@@ -139,8 +141,38 @@ impl GameEngine {
             }
             PlayerCommand::Broadcast { .. } => todo!(),
             PlayerCommand::Incantation => todo!(),
-            PlayerCommand::Fork => todo!(),
-            PlayerCommand::ConnectNbr => todo!(),
+            PlayerCommand::Fork => {
+                //TODO: I don't see any limit or cooldown for fork..
+                //TODO: Regarding the subject it is possible to spam it
+                let player = self.players.get_mut(&player_id).unwrap();
+                let egg = Egg {
+                    team_name: player.team().clone(),
+                    position: player.position().clone(),
+                };
+                self.eggs
+                    .entry(self.frame + PlayerCommand::EGG_FETCH_TIME_DELAY)
+                    .and_modify(|v| v.push(egg.clone()))
+                    .or_insert(vec![egg]);
+                self.map.field[player.position().y][player.position().x]
+                    .eggs
+                    .entry(player.team().clone())
+                    .and_modify(|v| *v += 1)
+                    .or_insert(1);
+                vec![(player_id, ServerResponse::Ok)]
+            }
+            PlayerCommand::ConnectNbr => {
+                let player = self.players.get_mut(&player_id).unwrap();
+                vec![(
+                    player_id,
+                    ServerResponse::Value(
+                        self.teams
+                            .get_mut(player.team())
+                            .unwrap()
+                            .remaining_members()
+                            .to_string(),
+                    ),
+                )]
+            }
         }
     }
 
@@ -159,6 +191,25 @@ impl GameEngine {
 
         for (player_id, command) in commands_to_process {
             execution_results.extend(self.apply_cmd(player_id, &command));
+        }
+
+        if let Some(eggs_to_hatch) = self.eggs.remove(&current_frame) {
+            for egg in eggs_to_hatch {
+                if let (Some(egg_on_field), Some(team)) = (
+                    self.map.field[egg.position.y][egg.position.x]
+                        .eggs
+                        .get_mut(&egg.team_name),
+                    self.teams.get_mut(&egg.team_name),
+                ) {
+                    *egg_on_field = egg_on_field.checked_sub(1).unwrap_or(0);
+                    team.increment_max_members();
+                    log::info!(
+                        "Team {}: hatched egg! New connection number {}",
+                        egg.team_name,
+                        team.max_members()
+                    );
+                }
+            }
         }
     }
 

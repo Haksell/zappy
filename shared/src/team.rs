@@ -40,4 +40,12 @@ impl Team {
     pub fn members_count(&self) -> usize {
         self.members.len()
     }
+
+    pub fn increment_max_members(&mut self) {
+        self.max_members += 1;
+    }
+
+    pub fn max_members(&self) -> u16 {
+        self.max_members
+    }
 }

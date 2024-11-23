@@ -70,8 +70,8 @@ Ko
 | expulse     | expel, exp     | ✅      |
 | broadcast   |                | ❌      |
 | incantation | inc            | ❌      |
-| fork        |                | ❌      |
-| connect_nbr | cn             | ❌      |
+| fork        |                | ✅      |
+| connect_nbr | cn             | ✅      |
 
 ---
 

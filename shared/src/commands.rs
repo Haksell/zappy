@@ -30,7 +30,7 @@ pub enum PlayerCommand {
     Left,
     See,
     Inventory,
-    Take  { resource_name: String },
+    Take { resource_name: String },
     Put { resource_name: String },
     Expel,
     Broadcast { text: String },
@@ -64,13 +64,14 @@ impl TryFrom<&str> for PlayerCommand {
             }),
             ("incantation", 1) => Ok(PlayerCommand::Incantation),
             ("fork", 1) => Ok(PlayerCommand::Fork),
-            ("connect_nbr", 1) => Ok(PlayerCommand::ConnectNbr),
+            ("connect_nbr" | "cn", 1) => Ok(PlayerCommand::ConnectNbr),
             _ => Err(format!("Unknown command: \"{s}\"")),
         }
     }
 }
 
 impl PlayerCommand {
+    pub const EGG_FETCH_TIME_DELAY: u64 = 600;
     pub fn delay(&self) -> u64 {
         match self {
             PlayerCommand::Move => 7,
