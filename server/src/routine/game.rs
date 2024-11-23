@@ -1,8 +1,9 @@
 use crate::game_engine::GameEngine;
-use shared::{ServerCommandToClient, ServerResponse};
+use shared::{ServerCommandToClient, ServerResponse, HP_MODULO};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+use colored::control::set_override;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 
@@ -20,9 +21,15 @@ pub async fn game_routine(
             server_lock.tick(&mut execution_results_buffer);
             *server_lock.frame()
         };
-
+        
+        if frame % HP_MODULO as u64 == 0 {
+            log::warn!("On this frame we should check if player has food. Then consume it or mark him as dead");
+        }
+        
         while let Some((client_id, response)) = execution_results_buffer.pop() {
             if let Some(connection) = client_senders.lock().await.get(&client_id) {
+                //TODO: investigate is "slow reader" case is possible?
+                //TODO: for example can send take a lot of time to block us here?
                 if let Err(e) = connection
                     .send(ServerCommandToClient::SendMessage(response))
                     .await

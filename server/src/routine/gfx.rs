@@ -48,7 +48,6 @@ async fn handle_streaming_client(
         };
 
         if current_state != last_state {
-            println!("Updating the state... //TODO: delete, it is still here to manually check if it works fine :P");
             socket
                 .write_vectored(&[
                     IoSlice::new(current_state.to_string().as_bytes()),
