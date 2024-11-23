@@ -12,16 +12,16 @@ pub async fn game_routine(
     tud: u16,
 ) {
     let t0 = tokio::time::Instant::now();
-    let mut action_execution_results: Vec<(u16, ServerResponse)> = Vec::new();
+    let mut execution_results_buffer: Vec<(u16, ServerResponse)> = Vec::new();
 
     loop {
         let frame = {
             let mut server_lock = server.lock().await;
-            server_lock.tick(&mut action_execution_results);
-            server_lock.frame()
+            server_lock.tick(&mut execution_results_buffer);
+            *server_lock.frame()
         };
 
-        while let Some((client_id, response)) = action_execution_results.pop() {
+        while let Some((client_id, response)) = execution_results_buffer.pop() {
             if let Some(connection) = client_senders.lock().await.get(&client_id) {
                 if let Err(e) = connection
                     .send(ServerCommandToClient::SendMessage(response))

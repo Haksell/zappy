@@ -67,7 +67,7 @@ Ko
 | inventaire  | inventory, inv | ✅      |
 | prend       | take           | ✅      |
 | pose        | put            | ✅      |
-| expulse     |                | ❌      |
+| expulse     | expel, exp     | ❌      |
 | broadcast   |                | ❌      |
 | incantation | inc            | ❌      |
 | fork        |                | ❌      |
@@ -91,10 +91,10 @@ Ko
 
 ## Admin commands
 
-| Command     | Shortcut       | Status |
-|-------------|----------------|--------|
-| avance      | move           | ✅      |
-| droite      | right          | ✅      |
+| Command | Shortcut | Status |
+|---------|----------|--------|
+| avance  | move     | ✅      |
+| droite  | right    | ✅      |
 
 ---
 

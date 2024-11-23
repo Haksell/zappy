@@ -1,6 +1,5 @@
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
-use std::error::Error;
+use std::collections::HashMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 pub struct SecurityContext {

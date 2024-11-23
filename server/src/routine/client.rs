@@ -1,4 +1,4 @@
-use crate::connection_manager::ClientConnection;
+use crate::connection::ClientConnection;
 use crate::game_engine::GameEngine;
 use shared::{commands::PlayerCommand, ServerCommandToClient, ZappyError};
 use std::collections::HashMap;
@@ -33,8 +33,8 @@ pub async fn client_routine(
                     let remaining_clients_count =
                         server_lock.add_player(client.id(), team_name.clone())?;
                     (
-                        server_lock.width(),
-                        server_lock.height(),
+                        server_lock.map_width(),
+                        server_lock.map_height(),
                         remaining_clients_count,
                     )
                 };

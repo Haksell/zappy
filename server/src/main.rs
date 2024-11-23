@@ -1,5 +1,5 @@
 mod args;
-mod connection_manager;
+mod connection;
 mod game_engine;
 mod logger;
 mod routine;

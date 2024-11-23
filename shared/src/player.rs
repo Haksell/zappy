@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum Direction {
     North,
     East,
@@ -59,7 +59,7 @@ impl Direction {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
@@ -78,17 +78,13 @@ pub struct Player {
     id: u16,
     next_frame: u64,
     commands: VecDeque<PlayerCommand>,
-    pub(crate) position: Position,
+    position: Position,
     inventory: [usize; Resource::SIZE],
     level: u8,
 }
 
 impl Player {
-    pub fn new(
-        id: u16,
-        team: String,
-        position: Position,
-    ) -> Self {
+    pub fn new(id: u16, team: String, position: Position) -> Self {
         Self {
             id,
             team,
@@ -115,7 +111,6 @@ impl Player {
     pub fn level_up(&mut self) {
         self.level += 1
     }
-
 
     pub fn pop_command_from_queue(&mut self) -> Option<PlayerCommand> {
         // not an Option?

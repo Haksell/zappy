@@ -3646,6 +3646,7 @@ dependencies = [
  "chrono",
  "clap",
  "colored",
+ "derive-getters",
  "dotenv",
  "env_logger",
  "log",

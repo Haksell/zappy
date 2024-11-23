@@ -1,5 +1,5 @@
 use crate::game_engine::GameEngine;
-use serde_json::{json, to_string, to_string_pretty};
+use serde_json::json;
 use std::collections::HashMap;
 use std::error::Error;
 use std::io::IoSlice;
@@ -36,18 +36,19 @@ async fn handle_streaming_client(
     loop {
         sleep(Duration::from_millis(20)).await;
 
-        let server_lock = server.lock().await;
-
-        let current_state = json!({
-            "teams": server_lock.teams().iter()
-                .map(|(k, v)| (k.clone(), v.len()))
-                .collect::<HashMap<String, usize>>(),
-            "map": server_lock.map(),
-            "players": server_lock.players()
-        });
+        let current_state = {
+            let server_lock = server.lock().await;
+            json!({
+                "teams": server_lock.teams().iter()
+                    .map(|(k, v)| (k.clone(), v.len()))
+                    .collect::<HashMap<String, usize>>(),
+                "map": server_lock.map(),
+                "players": server_lock.players()
+            })
+        };
 
         if current_state != last_state {
-            println!("Updating the state...");
+            println!("Updating the state... //TODO: delete, it is still here to manually check if it works fine :P");
             socket
                 .write_vectored(&[
                     IoSlice::new(current_state.to_string().as_bytes()),

@@ -1,4 +1,5 @@
 use crate::args::ServerArgs;
+use derive_getters::Getters;
 use shared::LogicalError::{MaxPlayersReached, TeamDoesntExist};
 use shared::TechnicalError::IsNotConnectedToServer;
 use shared::ZappyError::{Logical, Technical};
@@ -6,16 +7,16 @@ use shared::{
     commands::PlayerCommand,
     map::Map,
     player::{Player, Side},
-    resource::Resource, ServerResponse, ZappyError, MAX_COMMANDS,
+    resource::Resource,
+    ServerResponse, ZappyError, MAX_COMMANDS,
 };
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
 };
 
+#[derive(Debug, Getters)]
 pub struct GameEngine {
-    width: usize,
-    height: usize,
     max_clients: u16,
     teams: HashMap<String, HashSet<u16>>,
     players: HashMap<u16, Player>,
@@ -31,8 +32,6 @@ impl GameEngine {
             .map(|k| (k.clone(), HashSet::with_capacity(args.clients as usize)))
             .collect();
         Ok(Self {
-            width: args.width,
-            height: args.height,
             max_clients: args.clients,
             teams,
             players: HashMap::new(),
@@ -41,14 +40,14 @@ impl GameEngine {
         })
     }
 
-    fn handle_avance(&mut self, player_id: u16) {
+    fn handle_move(&mut self, player_id: u16) {
         let player = self.players.get_mut(&player_id).unwrap();
         let current_x = player.position().x;
         let current_y = player.position().y;
 
         let (dx, dy) = player.position().direction.dx_dy();
-        player.set_x(((current_x + self.map.width) as isize + dx) as usize % self.map.width);
-        player.set_y(((current_y + self.height) as isize + dy) as usize % self.map.height);
+        player.set_x(((current_x + self.map.width()) as isize + dx) as usize % self.map.width());
+        player.set_y(((current_y + self.map.height()) as isize + dy) as usize % self.map.height());
 
         self.map.field[current_y][current_x]
             .players
@@ -62,19 +61,19 @@ impl GameEngine {
         let player = self.players.get_mut(&player_id).unwrap();
         log::debug!("Executing command: {:?} for {}", command, player);
         match command {
-            PlayerCommand::Gauche => {
+            PlayerCommand::Left => {
                 player.turn(Side::Left);
                 Some(ServerResponse::Ok)
             }
-            PlayerCommand::Droite => {
+            PlayerCommand::Right => {
                 player.turn(Side::Right);
                 Some(ServerResponse::Ok)
             }
-            PlayerCommand::Avance => {
-                self.handle_avance(player_id);
+            PlayerCommand::Move => {
+                self.handle_move(player_id);
                 Some(ServerResponse::Ok)
             }
-            PlayerCommand::Prend { resource_name } => {
+            PlayerCommand::Take { resource_name } => {
                 if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
                     let cell = &mut self.map.field[player.position().y][player.position().x];
                     if cell.resources[resource as usize] >= 1 {
@@ -85,7 +84,7 @@ impl GameEngine {
                 }
                 Some(ServerResponse::Ko)
             }
-            PlayerCommand::Pose { resource_name } => {
+            PlayerCommand::Put { resource_name } => {
                 if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
                     let cell = &mut self.map.field[player.position().y][player.position().x];
                     if player.remove_from_inventory(resource) {
@@ -95,8 +94,8 @@ impl GameEngine {
                 }
                 Some(ServerResponse::Ko)
             }
-            PlayerCommand::Voir => todo!(),
-            PlayerCommand::Inventaire => {
+            PlayerCommand::See => todo!(),
+            PlayerCommand::Inventory => {
                 let inventory = player
                     .inventory()
                     .iter()
@@ -105,7 +104,7 @@ impl GameEngine {
                     .collect::<Vec<String>>();
                 Some(ServerResponse::Inventory(inventory))
             }
-            PlayerCommand::Expulse => todo!(),
+            PlayerCommand::Expel => todo!(),
             PlayerCommand::Broadcast { .. } => todo!(),
             PlayerCommand::Incantation => todo!(),
             PlayerCommand::Fork => todo!(),
@@ -186,30 +185,11 @@ impl GameEngine {
         }
     }
 
-    //TODO: replace by derive getters
-
-    pub fn width(&self) -> usize {
-        self.width
+    pub fn map_width(&self) -> usize {
+        *self.map.width()
     }
 
-    pub fn height(&self) -> usize {
-        self.height
-    }
-
-    pub fn teams(&self) -> &HashMap<String, HashSet<u16>> {
-        &self.teams
-    }
-
-    pub fn map(&self) -> &Map {
-        &self.map
-    }
-
-    pub fn players(&self) -> &HashMap<u16, Player> {
-        &self.players
-    }
-
-    pub fn frame(&self) -> u64 {
-        self.frame
+    pub fn map_height(&self) -> usize {
+        *self.map.height()
     }
 }
-

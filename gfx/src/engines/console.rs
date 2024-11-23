@@ -62,22 +62,22 @@ fn map_player_to_span(color: Color, player: &Player) -> Span {
 
 fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
     let rows = Layout::vertical(vec![
-        Constraint::Ratio(1, data.map.height as u32);
-        data.map.height
+        Constraint::Ratio(1, *data.map.height() as u32);
+        *data.map.height()
     ])
     .split(area);
 
     let mut cols = rows.iter().flat_map(|row| {
         Layout::horizontal(vec![
-            Constraint::Ratio(1, data.map.width as u32);
-            data.map.width
+            Constraint::Ratio(1, *data.map.width() as u32);
+            *data.map.width()
         ])
         .split(*row)
         .to_vec()
     });
 
-    for y in 0..data.map.height {
-        for x in 0..data.map.width {
+    for y in 0..*data.map.height() {
+        for x in 0..*data.map.width() {
             let col = cols.next().unwrap();
             let cell = &data.map.field[y][x];
             let mapped_map_resources = map_resource_to_vec_span(&cell.resources);

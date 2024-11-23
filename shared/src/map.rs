@@ -4,6 +4,7 @@ use crate::Egg;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use derive_getters::Getters;
 
 //TODO: change fields to private?
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -14,11 +15,12 @@ pub struct Cell {
 }
 
 //TODO: change fields to private?
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Getters)]
 pub struct Map {
+    #[getter(skip)]
     pub field: Vec<Vec<Cell>>,
-    pub width: usize,
-    pub height: usize,
+    width: usize,
+    height: usize,
 }
 
 impl Cell {

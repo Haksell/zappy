@@ -25,14 +25,14 @@ impl TryFrom<&str> for AdminCommand {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
 pub enum PlayerCommand {
-    Avance,
-    Droite,
-    Gauche,
-    Voir,
-    Inventaire,
-    Prend { resource_name: String },
-    Pose { resource_name: String },
-    Expulse,
+    Move,
+    Right,
+    Left,
+    See,
+    Inventory,
+    Take  { resource_name: String },
+    Put { resource_name: String },
+    Expel,
     Broadcast { text: String },
     Incantation,
     Fork,
@@ -47,18 +47,18 @@ impl TryFrom<&str> for PlayerCommand {
 
         //TODO: use lib for handling? for single word command add check that there is only 1 part
         match (parts[0], parts.len()) {
-            ("avance" | "move", 1) => Ok(PlayerCommand::Avance),
-            ("droite" | "right", 1) => Ok(PlayerCommand::Droite),
-            ("gauche" | "left", 1) => Ok(PlayerCommand::Gauche),
-            ("voir" | "see", 1) => Ok(PlayerCommand::Voir),
-            ("inventaire" | "inv" | "inventory", 1) => Ok(PlayerCommand::Inventaire),
-            ("prend" | "take", 2) => Ok(PlayerCommand::Prend {
+            ("avance" | "move", 1) => Ok(PlayerCommand::Move),
+            ("droite" | "right", 1) => Ok(PlayerCommand::Right),
+            ("gauche" | "left", 1) => Ok(PlayerCommand::Left),
+            ("voir" | "see", 1) => Ok(PlayerCommand::See),
+            ("inventaire" | "inv" | "inventory", 1) => Ok(PlayerCommand::Inventory),
+            ("prend" | "take", 2) => Ok(PlayerCommand::Take {
                 resource_name: parts[1].to_string(),
             }),
-            ("pose" | "put", 2) => Ok(PlayerCommand::Pose {
+            ("pose" | "put", 2) => Ok(PlayerCommand::Put {
                 resource_name: parts[1].to_string(),
             }),
-            ("expulse", 1) => Ok(PlayerCommand::Expulse),
+            ("expulse" | "expel" | "exp", 1) => Ok(PlayerCommand::Expel),
             ("broadcast", 2) => Ok(PlayerCommand::Broadcast {
                 text: parts[1].to_string(),
             }),
@@ -73,14 +73,14 @@ impl TryFrom<&str> for PlayerCommand {
 impl PlayerCommand {
     pub fn delay(&self) -> u64 {
         match self {
-            PlayerCommand::Avance => 7,
-            PlayerCommand::Droite => 7,
-            PlayerCommand::Gauche => 7,
-            PlayerCommand::Voir => 7,
-            PlayerCommand::Inventaire => 1,
-            PlayerCommand::Prend { .. } => 7,
-            PlayerCommand::Pose { .. } => 7,
-            PlayerCommand::Expulse => 7,
+            PlayerCommand::Move => 7,
+            PlayerCommand::Right => 7,
+            PlayerCommand::Left => 7,
+            PlayerCommand::See => 7,
+            PlayerCommand::Inventory => 1,
+            PlayerCommand::Take { .. } => 7,
+            PlayerCommand::Put { .. } => 7,
+            PlayerCommand::Expel => 7,
             PlayerCommand::Broadcast { .. } => 7,
             PlayerCommand::Incantation => 300,
             PlayerCommand::Fork => 42,

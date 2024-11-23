@@ -1,4 +1,4 @@
-use crate::connection_manager::ClientConnection;
+use crate::connection::ClientConnection;
 use crate::game_engine::GameEngine;
 use crate::security_context::SecurityContext;
 use shared::commands::AdminCommand;
@@ -9,7 +9,7 @@ use std::error::Error;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::Mutex;
 
 pub async fn admin_routine(
     server: Arc<Mutex<GameEngine>>,
@@ -33,12 +33,14 @@ pub async fn admin_routine(
                 let username = client.read().await?.trim_end().to_string();
                 client.writeln("Password:").await?;
                 let password = client.read().await?.trim_end().to_string();
-                if !security_context
-                    .lock()
-                    .await
-                    .check_credentials(&username, &password)
                 {
-                    return Err(ZappyError::Logical(WrongUsernameOrPassword));
+                    if !security_context
+                        .lock()
+                        .await
+                        .check_credentials(&username, &password)
+                    {
+                        return Err(ZappyError::Logical(WrongUsernameOrPassword));
+                    }
                 }
                 client.writeln("Hi admin!").await?;
                 return handle_admin(server_clone, &mut client, client_senders_clone).await;
@@ -49,12 +51,9 @@ pub async fn admin_routine(
             log::debug!("Admin: {} has been deleted by server", id);
             if let Err(err) = handle_result {
                 match err {
-                    ZappyError::Technical(err) => {
-                        log::error!("{err}");
-                    }
+                    ZappyError::Technical(err) => log::error!("{err}"),
                     ZappyError::Logical(err) => {
                         let msg = err.to_string();
-
                         //TODO: handle?
                         let _ = client.writeln(msg.as_str()).await;
                         log::info!("{}", err);
@@ -69,7 +68,7 @@ pub async fn admin_routine(
 async fn handle_admin(
     server: Arc<Mutex<GameEngine>>,
     client: &mut ClientConnection,
-    mut player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
+    player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
 ) -> Result<(), ZappyError> {
     loop {
         let msg = client.read().await?;

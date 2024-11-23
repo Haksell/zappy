@@ -19,7 +19,7 @@ pub struct ClientConnection {
 impl ClientConnection {
     //TODO: check when msg > buf size
     pub async fn send_handshake(&mut self) -> Result<(), ZappyError> {
-        self.writeln(HANDSHAKE_MSG).await
+        self.write(HANDSHAKE_MSG).await
     }
 
     pub fn new(tcp_stream: TcpStream, id: u16) -> Self {
