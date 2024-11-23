@@ -114,4 +114,5 @@ pub const MAX_FIELD_SIZE: usize = 50;
 pub const MAX_PLAYER_LVL: u8 = 8;
 pub const MAX_PLAYERS_IN_TEAM: u16 = 6;
 pub const HP_MODULO: u8 = 126;
+pub const HP_ON_THE_START: u16 = 1260;
 pub const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";
