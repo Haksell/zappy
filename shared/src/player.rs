@@ -1,4 +1,4 @@
-use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS, MAX_LVL};
+use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS, MAX_PLAYER_LVL};
 use derive_getters::Getters;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -145,7 +145,7 @@ impl Player {
 
     //TODO: need to test
     pub fn level_up(&mut self) -> bool {
-        if self.level == MAX_LVL {
+        if self.level == MAX_PLAYER_LVL {
             log::error!(
                 "Trying to level up {}, but the max level is already reached",
                 self.id
