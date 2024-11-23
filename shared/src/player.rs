@@ -1,4 +1,4 @@
-use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS};
+use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS, MAX_LVL};
 use derive_getters::Getters;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -48,7 +48,7 @@ impl Direction {
             },
         }
     }
-    
+
     pub fn opposite_side(&self) -> Self {
         match self {
             Direction::North => Direction::South,
@@ -104,6 +104,17 @@ pub struct Player {
 }
 
 impl Player {
+    const LEVEL_RESOURCES_MASKS: [[usize; Resource::SIZE]; 7] = [
+        //D  L  M  N  P  S  T
+        [0, 1, 0, 0, 0, 0, 0],
+        [1, 1, 0, 0, 0, 1, 0],
+        [0, 2, 0, 0, 2, 1, 0],
+        [1, 1, 0, 0, 1, 2, 0],
+        [2, 1, 3, 0, 0, 1, 0],
+        [2, 1, 0, 0, 1, 3, 0],
+        [2, 2, 2, 0, 2, 2, 1],
+    ];
+
     pub fn new(id: u16, team: String, position: Position) -> Self {
         Self {
             id,
@@ -128,8 +139,34 @@ impl Player {
         self.position.y = y;
     }
 
-    pub fn level_up(&mut self) {
-        self.level += 1
+    fn get_right_resource_mask(level: u8) -> &'static [usize; Resource::SIZE] {
+        &Self::LEVEL_RESOURCES_MASKS[level as usize - 1]
+    }
+
+    //TODO: need to test
+    pub fn level_up(&mut self) -> bool {
+        if self.level == MAX_LVL {
+            log::error!(
+                "Trying to level up {}, but the max level is already reached",
+                self.id
+            );
+            return false;
+        }
+        let current_level_resource_mask = Player::get_right_resource_mask(self.level);
+        let has_enough_resources = self
+            .inventory
+            .iter()
+            .zip(current_level_resource_mask.iter())
+            .all(|(a, b)| a >= b);
+        if !has_enough_resources {
+            false
+        } else {
+            for (idx, count) in current_level_resource_mask.iter().enumerate() {
+                self.inventory[idx] -= count;
+            }
+            self.level += 1;
+            true
+        }
     }
 
     pub fn pop_command_from_queue(&mut self) -> Option<PlayerCommand> {

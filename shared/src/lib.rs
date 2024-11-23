@@ -111,5 +111,6 @@ pub const GFX_PORT: u16 = 4343; // TODO configurable port
 pub const ADMIN_PORT: u16 = 4444; // TODO configurable port
 pub const MAX_COMMANDS: usize = 10;
 pub const MAX_FIELD_SIZE: usize = 50;
+pub const MAX_LVL: u8 = 8;
 pub const HP_MODULO: u8 = 126;
 pub const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";

@@ -3,7 +3,6 @@ use shared::{ServerCommandToClient, ServerResponse, HP_MODULO};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use colored::control::set_override;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
 
