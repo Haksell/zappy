@@ -3,3 +3,4 @@
 rust_analyzer/
 target/
 .env
+*.pem

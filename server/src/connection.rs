@@ -4,43 +4,40 @@ use shared::TechnicalError::{
 };
 use shared::ZappyError::Technical;
 use shared::{ZappyError, HANDSHAKE_MSG};
-use std::io::IoSlice;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpStream;
+use std::pin::Pin;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 const BUF_SIZE: usize = 1024;
 
-pub struct ClientConnection {
-    tcp_stream: TcpStream,
+pub trait AsyncReadWrite: AsyncRead + AsyncWrite {}
+impl<T: AsyncRead + AsyncWrite + ?Sized> AsyncReadWrite for T {}
+
+pub struct Connection {
+    stream: Pin<Box<dyn AsyncReadWrite + Send>>,
     buf: Vec<u8>,
     id: u16,
 }
 
-impl ClientConnection {
+impl Connection {
     //TODO: check when msg > buf size
     pub async fn send_handshake(&mut self) -> Result<(), ZappyError> {
         self.write(HANDSHAKE_MSG).await
     }
 
-    pub fn new(tcp_stream: TcpStream, id: u16) -> Self {
+    pub fn new(stream: Pin<Box<dyn AsyncReadWrite + Send>>, id: u16) -> Self {
         let buf = vec![0u8; BUF_SIZE];
-        Self {
-            buf,
-            tcp_stream,
-            id,
-        }
+        Self { buf, stream, id }
     }
 
     pub async fn writeln(&mut self, message: &str) -> Result<(), ZappyError> {
-        self.tcp_stream
-            .write_vectored(&[IoSlice::new(message.as_bytes()), IoSlice::new(b"\n")])
+        self.stream
+            .write_all(format!("{}\n", message).as_bytes())
             .await
-            .map(|_| ())
             .map_err(|e| Technical(FailedToWriteToSocket(self.id, e.to_string())))
     }
 
     pub async fn write(&mut self, message: &str) -> Result<(), ZappyError> {
-        self.tcp_stream
+        self.stream
             .write_all(message.as_bytes())
             .await
             .map_err(|e| Technical(FailedToWriteToSocket(self.id, e.to_string())))
@@ -49,7 +46,7 @@ impl ClientConnection {
     // TODO: handle multiline commands and buffer with Ctrl+D like ft_irc/webserv
     pub async fn read(&mut self) -> Result<String, ZappyError> {
         let n = self
-            .tcp_stream
+            .stream
             .read(&mut *self.buf)
             .await
             .map_err(|e| Technical(FailedToReadFromSocket(self.id, e.to_string())))?;

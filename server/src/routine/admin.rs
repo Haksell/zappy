@@ -1,24 +1,27 @@
-use crate::connection::ClientConnection;
+use crate::connection::{AsyncReadWrite, Connection};
 use crate::game_engine::GameEngine;
-use crate::security_context::SecurityContext;
+use crate::security::security_context::SecurityContext;
 use shared::commands::AdminCommand;
 use shared::LogicalError::WrongUsernameOrPassword;
 use shared::{ServerCommandToClient, ZappyError};
 use std::collections::HashMap;
 use std::error::Error;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::Mutex;
+use tokio_rustls::TlsAcceptor;
 
 pub async fn admin_routine(
     server: Arc<Mutex<GameEngine>>,
     player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
-    listener: TcpListener,
+    (listener, acceptor): (TcpListener, TlsAcceptor),
     security_context: Arc<Mutex<SecurityContext>>,
 ) -> Result<(), Box<dyn Error>> {
     loop {
         let (socket, addr) = listener.accept().await?;
+        let acceptor = acceptor.clone();
         let id = addr.port();
         log::info!("New connection, assigned id: {}", id);
 
@@ -27,7 +30,15 @@ pub async fn admin_routine(
         let security_context = Arc::clone(&security_context);
 
         tokio::spawn(async move {
-            let mut client = ClientConnection::new(socket, id);
+            let tls_stream = match acceptor.accept(socket).await {
+                Ok(stream) => stream,
+                Err(e) => {
+                    log::error!("TLS handshake failed for {}: {}", id, e);
+                    return;
+                }
+            };
+            let stream: Pin<Box<dyn AsyncReadWrite + Send>> = Box::pin(tls_stream);
+            let mut client = Connection::new(stream, id);
             let handle_result: Result<(), ZappyError> = async {
                 client.writeln("Username:").await?;
                 let username = client.read().await?.trim_end().to_string();
@@ -67,7 +78,7 @@ pub async fn admin_routine(
 
 async fn handle_admin(
     server: Arc<Mutex<GameEngine>>,
-    client: &mut ClientConnection,
+    client: &mut Connection,
     player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
 ) -> Result<(), ZappyError> {
     loop {

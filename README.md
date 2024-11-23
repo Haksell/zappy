@@ -1,6 +1,21 @@
 ## Quickstart
 
-### server:
+### .env
+
+```shell
+cp .env.template .env
+```
+
+### TLS
+
+server requires certificates for enabling secured TLS connection.\
+Generate certificates:
+
+```shell
+openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
+```
+
+### Server
 
 ```shell
 cargo run -p server -- -p 8080 -x 20 -y 10 -n anton axel victor -c 1 -t 4
@@ -16,6 +31,14 @@ cargo run -p gfx
 
 ```shell
 cargo run -p gfx -- -e console
+```
+
+### admin connection:
+
+credentials are in .env
+
+```shell
+openssl s_client -connect localhost:4444
 ```
 
 ### raw nc client:

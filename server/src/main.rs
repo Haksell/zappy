@@ -3,18 +3,19 @@ mod connection;
 mod game_engine;
 mod logger;
 mod routine;
-mod security_context;
+mod security;
 
 use crate::args::ServerArgs;
 use crate::game_engine::GameEngine;
 use crate::logger::init_logger;
 use crate::routine::admin::admin_routine;
-use crate::security_context::SecurityContext;
+use crate::security::tls::setup_tls;
 use clap::Parser;
 use dotenv::dotenv;
 use routine::client::client_routine;
 use routine::game::game_routine;
 use routine::gfx::gfx_routine;
+use security::security_context::SecurityContext;
 use shared::{ServerCommandToClient, ADMIN_PORT, GFX_PORT};
 use std::collections::HashMap;
 use std::env;
@@ -39,6 +40,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>> =
         Arc::new(Mutex::new(HashMap::new()));
     let server = Arc::new(Mutex::new(server));
+    let acceptor = setup_tls()?;
 
     log::info!(
         "Server running on 127.0.0.1:{} (client), 127.0.0.1:{} (admin), 127.0.0.1:{} (gfx)",
@@ -49,7 +51,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     tokio::select! {
         _ = client_routine(Arc::clone(&server), Arc::clone(&player_senders), client_listener) => {},
-        _ = admin_routine(Arc::clone(&server), Arc::clone(&player_senders), admin_listener, Arc::clone(&security_context)) => {},
+        _ = admin_routine(Arc::clone(&server), Arc::clone(&player_senders), (admin_listener, acceptor), Arc::clone(&security_context)) => {},
         _ = gfx_routine(Arc::clone(&server), gfx_listener) => {},
         _ = game_routine(server, Arc::clone(&player_senders), args.tud) => {},
     };

@@ -1,8 +1,9 @@
-use crate::connection::ClientConnection;
+use crate::connection::{AsyncReadWrite, Connection};
 use crate::game_engine::GameEngine;
 use shared::{commands::PlayerCommand, ServerCommandToClient, ZappyError};
 use std::collections::HashMap;
 use std::error::Error;
+use std::pin::Pin;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc::Sender;
@@ -24,7 +25,8 @@ pub async fn client_routine(
 
         tokio::spawn(async move {
             let (cmd_tx, cmd_rx) = mpsc::channel::<ServerCommandToClient>(32);
-            let mut client = ClientConnection::new(socket, id);
+            let stream: Pin<Box<dyn AsyncReadWrite + Send>> = Box::pin(socket);
+            let mut client = Connection::new(stream, id);
             let handle_result: Result<(), ZappyError> = async {
                 client.send_handshake().await?;
                 let team_name = client.read().await?.trim_end().to_string();
@@ -70,7 +72,7 @@ pub async fn client_routine(
 
 async fn handle_client(
     server: Arc<Mutex<GameEngine>>,
-    client: &mut ClientConnection,
+    client: &mut Connection,
     mut cmd_rx: mpsc::Receiver<ServerCommandToClient>,
 ) -> Result<(), ZappyError> {
     loop {
