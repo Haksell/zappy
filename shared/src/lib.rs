@@ -2,6 +2,7 @@ pub mod commands;
 pub mod map;
 pub mod player;
 pub mod resource;
+pub mod team;
 pub mod utils;
 
 use crate::player::Direction;
@@ -112,7 +113,7 @@ pub const ADMIN_PORT: u16 = 4444; // TODO configurable port
 pub const MAX_COMMANDS: usize = 10;
 pub const MAX_FIELD_SIZE: usize = 50;
 pub const MAX_PLAYER_LVL: u8 = 8;
-pub const MAX_PLAYERS_IN_TEAM: u16 = 6;
+pub const MAX_PLAYERS_IN_TEAM_AT_START: u16 = 10;
 pub const HP_MODULO: u8 = 126;
 pub const HP_ON_THE_START: u16 = 1260;
 pub const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";

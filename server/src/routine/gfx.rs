@@ -40,7 +40,7 @@ async fn handle_streaming_client(
             let server_lock = server.lock().await;
             json!({
                 "teams": server_lock.teams().iter()
-                    .map(|(k, v)| (k.clone(), v.len()))
+                    .map(|(k, v)| (k.clone(), v.members_count()))
                     .collect::<HashMap<String, usize>>(),
                 "map": server_lock.map(),
                 "players": server_lock.players()

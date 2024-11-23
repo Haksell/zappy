@@ -1,5 +1,5 @@
 use clap::Parser;
-use shared::MAX_PLAYERS_IN_TEAM;
+use shared::MAX_PLAYERS_IN_TEAM_AT_START;
 
 // TODO: more default values
 // TODO: min max value for width and height
@@ -38,12 +38,12 @@ pub(crate) struct ServerArgs {
 
 fn clients_in_range(s: &str) -> Result<u16, String> {
     let clients: u16 = s.parse().map_err(|_| "Not a valid number")?;
-    if clients > 0 && clients <= MAX_PLAYERS_IN_TEAM {
+    if clients > 0 && clients <= MAX_PLAYERS_IN_TEAM_AT_START {
         Ok(clients)
     } else {
         Err(format!(
             "Number of clients must be {} or less and greater than 0",
-            MAX_PLAYERS_IN_TEAM
+            MAX_PLAYERS_IN_TEAM_AT_START
         ))
     }
 }

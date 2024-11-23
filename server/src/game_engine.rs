@@ -1,6 +1,7 @@
 use crate::args::ServerArgs;
 use derive_getters::Getters;
 use shared::player::Direction;
+use shared::team::Team;
 use shared::LogicalError::{MaxPlayersReached, TeamDoesntExist};
 use shared::TechnicalError::IsNotConnectedToServer;
 use shared::ZappyError::{Logical, Technical};
@@ -11,15 +12,11 @@ use shared::{
     resource::Resource,
     ServerResponse, ZappyError, MAX_COMMANDS,
 };
-use std::{
-    collections::{HashMap, HashSet},
-    error::Error,
-};
+use std::{collections::HashMap, error::Error};
 
 #[derive(Debug, Getters)]
 pub struct GameEngine {
-    max_clients: u16,
-    teams: HashMap<String, HashSet<u16>>,
+    teams: HashMap<String, Team>,
     players: HashMap<u16, Player>,
     map: Map,
     frame: u64,
@@ -30,10 +27,9 @@ impl GameEngine {
         let teams = args
             .names
             .iter()
-            .map(|k| (k.clone(), HashSet::with_capacity(args.clients as usize)))
+            .map(|k| (k.clone(), Team::new(args.clients)))
             .collect();
         Ok(Self {
-            max_clients: args.clients,
             teams,
             players: HashMap::new(),
             map: Map::new(args.width, args.height),
@@ -172,7 +168,7 @@ impl GameEngine {
         if remaining_clients > 0 {
             let player = Player::new(player_id, team.clone(), self.map.random_position());
             self.map.add_player(*player.id(), player.position());
-            self.teams.get_mut(&team).unwrap().insert(*player.id());
+            self.teams.get_mut(&team).unwrap().add_member(player_id)?;
             let log_successful_insert = format!(
                 "The player with id: {} has successfully joined the \"{}\" team.",
                 player.id(),
@@ -190,13 +186,16 @@ impl GameEngine {
         if let Some(player) = self.players.remove(player_id) {
             log::debug!("Client {player_id} has been removed from the server");
             self.map.remove_player(player.id(), player.position());
-            self.teams.get_mut(player.team()).unwrap().remove(player_id);
+            self.teams
+                .get_mut(player.team())
+                .unwrap()
+                .remove_member(*player_id);
         }
     }
 
     pub fn remaining_clients(&self, team_name: &str) -> Result<u16, ZappyError> {
-        if let Some(players_in_team) = self.teams.get(team_name) {
-            Ok(self.max_clients - players_in_team.len() as u16)
+        if let Some(team) = self.teams.get(team_name) {
+            Ok(team.remaining_members())
         } else {
             Err(Logical(TeamDoesntExist(team_name.to_string())))
         }
