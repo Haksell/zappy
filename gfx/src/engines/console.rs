@@ -1,5 +1,5 @@
 use crossterm::event::KeyEvent;
-use ratatui::widgets::{BorderType, Borders, Paragraph};
+use ratatui::widgets::{BorderType, Borders, Paragraph, Wrap};
 use ratatui::{crossterm::event::KeyCode, widgets::Block};
 use ratatui::{
     layout::{Constraint, Layout},
@@ -110,7 +110,8 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
             }
 
             let widget = Paragraph::new(Line::from(spans))
-                .block(Block::bordered().title(format!("y={y} x={x}")));
+                .block(Block::bordered().title(format!("y={y} x={x}")))
+                .wrap(Wrap { trim: true });
             frame.render_widget(widget, col);
         }
     }

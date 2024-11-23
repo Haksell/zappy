@@ -67,7 +67,7 @@ Ko
 | inventaire  | inventory, inv | ✅      |
 | prend       | take           | ✅      |
 | pose        | put            | ✅      |
-| expulse     | expel, exp     | ❌      |
+| expulse     | expel, exp     | ✅      |
 | broadcast   |                | ❌      |
 | incantation | inc            | ❌      |
 | fork        |                | ❌      |

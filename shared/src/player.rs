@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Direction {
     North,
     East,
@@ -48,6 +48,15 @@ impl Direction {
             },
         }
     }
+    
+    pub fn opposite_side(&self) -> Self {
+        match self {
+            Direction::North => Direction::South,
+            Direction::East => Direction::West,
+            Direction::South => Direction::North,
+            Direction::West => Direction::East,
+        }
+    }
 
     pub fn dx_dy(&self) -> (isize, isize) {
         match self {
@@ -55,6 +64,17 @@ impl Direction {
             Direction::East => (1, 0),
             Direction::South => (0, 1),
             Direction::West => (-1, 0),
+        }
+    }
+}
+
+impl Display for Direction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Direction::North => write!(f, "North"),
+            Direction::East => write!(f, "East"),
+            Direction::South => write!(f, "South"),
+            Direction::West => write!(f, "West"),
         }
     }
 }

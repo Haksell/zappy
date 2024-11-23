@@ -4,6 +4,7 @@ pub mod player;
 pub mod resource;
 pub mod utils;
 
+use crate::player::Direction;
 use commands::PlayerCommand;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -79,6 +80,7 @@ pub enum ServerResponse {
     Value(String),
     Mort,
     ActionQueueIsFull,
+    Movement(Direction),
 }
 
 impl Display for ServerResponse {
@@ -94,6 +96,7 @@ impl Display for ServerResponse {
             ServerResponse::ActionQueueIsFull => {
                 write!(f, "The action queue is full, please try later.")
             }
+            ServerResponse::Movement(from) => write!(f, "deplacement {from}"),
         }
     }
 }

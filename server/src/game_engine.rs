@@ -1,5 +1,6 @@
 use crate::args::ServerArgs;
 use derive_getters::Getters;
+use shared::player::Direction;
 use shared::LogicalError::{MaxPlayersReached, TeamDoesntExist};
 use shared::TechnicalError::IsNotConnectedToServer;
 use shared::ZappyError::{Logical, Technical};
@@ -40,12 +41,12 @@ impl GameEngine {
         })
     }
 
-    fn handle_move(&mut self, player_id: u16) {
+    fn handle_move(&mut self, player_id: u16, direction: &Direction) {
         let player = self.players.get_mut(&player_id).unwrap();
         let current_x = player.position().x;
         let current_y = player.position().y;
 
-        let (dx, dy) = player.position().direction.dx_dy();
+        let (dx, dy) = direction.dx_dy();
         player.set_x(((current_x + self.map.width()) as isize + dx) as usize % self.map.width());
         player.set_y(((current_y + self.map.height()) as isize + dy) as usize % self.map.height());
 
@@ -57,54 +58,89 @@ impl GameEngine {
             .insert(*player.id());
     }
 
-    fn apply_cmd(&mut self, player_id: u16, command: &PlayerCommand) -> Option<ServerResponse> {
-        let player = self.players.get_mut(&player_id).unwrap();
-        log::debug!("Executing command: {:?} for {}", command, player);
+    fn apply_cmd(&mut self, player_id: u16, command: &PlayerCommand) -> Vec<(u16, ServerResponse)> {
+        log::debug!("Executing command: {:?} for {}", command, player_id);
         match command {
             PlayerCommand::Left => {
+                let player = self.players.get_mut(&player_id).unwrap();
                 player.turn(Side::Left);
-                Some(ServerResponse::Ok)
+                vec![(player_id, ServerResponse::Ok)]
             }
             PlayerCommand::Right => {
+                let player = self.players.get_mut(&player_id).unwrap();
                 player.turn(Side::Right);
-                Some(ServerResponse::Ok)
+                vec![(player_id, ServerResponse::Ok)]
             }
             PlayerCommand::Move => {
-                self.handle_move(player_id);
-                Some(ServerResponse::Ok)
+                let player_direction = {
+                    let player = self.players.get_mut(&player_id).unwrap();
+                    player.position().direction
+                };
+                self.handle_move(player_id, &player_direction);
+                vec![(player_id, ServerResponse::Ok)]
             }
             PlayerCommand::Take { resource_name } => {
-                if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
-                    let cell = &mut self.map.field[player.position().y][player.position().x];
-                    if cell.resources[resource as usize] >= 1 {
-                        cell.resources[resource as usize] -= 1;
-                        player.add_to_inventory(resource);
-                        return Some(ServerResponse::Ok);
-                    }
-                }
-                Some(ServerResponse::Ko)
+                let result = Resource::try_from(resource_name.as_str())
+                    .map(|resource| {
+                        let player = self.players.get_mut(&player_id).unwrap();
+                        let cell = &mut self.map.field[player.position().y][player.position().x];
+                        if cell.resources[resource as usize] >= 1 {
+                            cell.resources[resource as usize] -= 1;
+                            player.add_to_inventory(resource);
+                            (player_id, ServerResponse::Ok)
+                        } else {
+                            (player_id, ServerResponse::Ko)
+                        }
+                    })
+                    .unwrap_or((player_id, ServerResponse::Ko));
+                vec![result]
             }
             PlayerCommand::Put { resource_name } => {
-                if let Ok(resource) = Resource::try_from(resource_name.as_str()) {
-                    let cell = &mut self.map.field[player.position().y][player.position().x];
-                    if player.remove_from_inventory(resource) {
-                        cell.resources[resource as usize] += 1;
-                        return Some(ServerResponse::Ok);
-                    }
-                }
-                Some(ServerResponse::Ko)
+                let result = Resource::try_from(resource_name.as_str())
+                    .map(|resource| {
+                        let player = self.players.get_mut(&player_id).unwrap();
+                        let cell = &mut self.map.field[player.position().y][player.position().x];
+                        if player.remove_from_inventory(resource) {
+                            cell.resources[resource as usize] += 1;
+                            (player_id, ServerResponse::Ok)
+                        } else {
+                            (player_id, ServerResponse::Ko)
+                        }
+                    })
+                    .unwrap_or((player_id, ServerResponse::Ko));
+                vec![result]
             }
             PlayerCommand::See => todo!(),
             PlayerCommand::Inventory => {
+                let player = self.players.get_mut(&player_id).unwrap();
                 let inventory = player
                     .inventory()
                     .iter()
                     .enumerate()
                     .map(|(i, b)| format!("{} {}", Resource::try_from(i as u8).unwrap(), b))
                     .collect::<Vec<String>>();
-                Some(ServerResponse::Inventory(inventory))
+                vec![(player_id, ServerResponse::Inventory(inventory))]
             }
-            PlayerCommand::Expel => todo!(),
+            PlayerCommand::Expel => {
+                let (target_ids, direction) = {
+                    let player = self.players.get_mut(&player_id).unwrap();
+                    let ids: Vec<u16> = self.map.field[player.position().y][player.position().x]
+                        .players
+                        .iter()
+                        .filter_map(|&id| if id != player_id { Some(id) } else { None })
+                        .collect();
+                    (ids, player.position().direction)
+                };
+                let mut result: Vec<(u16, ServerResponse)> = target_ids
+                    .iter()
+                    .map(|&id| {
+                        self.handle_move(id, &direction);
+                        (id, ServerResponse::Movement(direction.opposite_side()))
+                    })
+                    .collect();
+                result.push((player_id, ServerResponse::Ok));
+                result
+            }
             PlayerCommand::Broadcast { .. } => todo!(),
             PlayerCommand::Incantation => todo!(),
             PlayerCommand::Fork => todo!(),
@@ -126,9 +162,7 @@ impl GameEngine {
         }
 
         for (player_id, command) in commands_to_process {
-            if let Some(resp) = self.apply_cmd(player_id, &command) {
-                execution_results.push((player_id, resp));
-            }
+            execution_results.extend(self.apply_cmd(player_id, &command));
         }
     }
 
