@@ -1,18 +1,12 @@
 [package]
-name = "server"
+name = "admin_client"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = { workspace = true }
 clap = { workspace = true }
-colored = { workspace = true }
-env_logger = { workspace = true }
-log = { workspace = true }
-rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-derive-getters = { workspace = true }
 # TLS
 tokio-rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
@@ -20,5 +14,6 @@ rustls = { workspace = true }
 
 shared = { path = "../shared" }
 tokio = { version = "1.40.0", default-features = true, features = ["full"] }
-dotenv = "0.15"
-regex = "1.11.0"
+unicode-width = "0.2.0"
+rustyline = { version = "15.0.0", features = ["custom-bindings", "derive"] }
+env_logger = { workspace = true }

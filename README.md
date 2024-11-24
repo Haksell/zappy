@@ -37,8 +37,16 @@ cargo run -p gfx -- -e console
 
 credentials are in .env
 
+via open ssl:
+
 ```shell
 openssl s_client -connect localhost:4444
+```
+
+via our custom admin client:
+
+```shell
+cargo run -p admin_client
 ```
 
 ### raw nc client:
