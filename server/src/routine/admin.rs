@@ -30,48 +30,44 @@ pub async fn admin_routine(
         let security_context = Arc::clone(&security_context);
 
         tokio::spawn(async move {
-            let tls_stream = match acceptor.accept(socket).await {
-                Ok(stream) => stream,
+            match acceptor.accept(socket).await {
+                Ok(tls_stream) => {
+                    let stream: Pin<Box<dyn AsyncReadWrite + Send>> = Box::pin(tls_stream);
+                    let mut client = Connection::new(stream, id);
+                    let handle_result: Result<(), ZappyError> = async {
+                        client.writeln("Username:").await?;
+                        let username = client.read().await?.trim_end().to_string();
+                        client.writeln("Password:").await?;
+                        let password = client.read().await?.trim_end().to_string();
+                        {
+                            if !security_context.lock().await.is_valid(&username, &password) {
+                                return Err(ZappyError::Logical(WrongUsernameOrPassword));
+                            }
+                        }
+                        client.writeln("Hi admin!").await?;
+                        return handle_admin(server_clone, &mut client, client_senders_clone).await;
+                    }
+                    .await;
+
+                    //Specific client loop ends here, cleanup before quiting async task
+                    log::debug!("Admin: {} has been deleted by server", id);
+                    if let Err(err) = handle_result {
+                        match err {
+                            ZappyError::Technical(err) => log::error!("{err}"),
+                            ZappyError::Logical(err) => {
+                                let msg = err.to_string();
+                                //TODO: handle?
+                                let _ = client.writeln(msg.as_str()).await;
+                                log::info!("{}", err);
+                            }
+                        }
+                    }
+                    let _ = client.writeln("Disconnected").await;
+                }
                 Err(e) => {
                     log::error!("TLS handshake failed for {}: {}", id, e);
-                    return;
                 }
             };
-            let stream: Pin<Box<dyn AsyncReadWrite + Send>> = Box::pin(tls_stream);
-            let mut client = Connection::new(stream, id);
-            let handle_result: Result<(), ZappyError> = async {
-                client.writeln("Username:").await?;
-                let username = client.read().await?.trim_end().to_string();
-                client.writeln("Password:").await?;
-                let password = client.read().await?.trim_end().to_string();
-                {
-                    if !security_context
-                        .lock()
-                        .await
-                        .check_credentials(&username, &password)
-                    {
-                        return Err(ZappyError::Logical(WrongUsernameOrPassword));
-                    }
-                }
-                client.writeln("Hi admin!").await?;
-                return handle_admin(server_clone, &mut client, client_senders_clone).await;
-            }
-            .await;
-
-            //Specific client loop ends here, cleanup before quiting async task
-            log::debug!("Admin: {} has been deleted by server", id);
-            if let Err(err) = handle_result {
-                match err {
-                    ZappyError::Technical(err) => log::error!("{err}"),
-                    ZappyError::Logical(err) => {
-                        let msg = err.to_string();
-                        //TODO: handle?
-                        let _ = client.writeln(msg.as_str()).await;
-                        log::info!("{}", err);
-                    }
-                }
-            }
-            let _ = client.writeln("Disconnected").await;
         });
     }
 }

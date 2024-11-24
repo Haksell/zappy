@@ -12,6 +12,7 @@ use std::fmt::{Display, Formatter};
 
 pub const PROJECT_NAME: &'static str = "zappy";
 
+//TODO: move from lib to server
 pub enum ZappyError {
     Technical(TechnicalError),
     Logical(LogicalError),

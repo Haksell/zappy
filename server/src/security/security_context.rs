@@ -1,5 +1,8 @@
+use crate::security::{ConfigurationError, ADMIN_CREDENTIALS_ENV_VAR};
+use dotenv::dotenv;
 use regex::Regex;
 use std::collections::HashMap;
+use std::env;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 pub struct SecurityContext {
@@ -7,34 +10,36 @@ pub struct SecurityContext {
 }
 
 impl SecurityContext {
-    pub fn new(env: String) -> Result<SecurityContext, String> {
+    pub fn from_env() -> Result<SecurityContext, ConfigurationError> {
+        dotenv().ok();
+        let credentials = env::var(ADMIN_CREDENTIALS_ENV_VAR)
+            .map_err(|_| ConfigurationError::CredentialsVarIsNotSet)?;
         let log_pass_regex =
-            Regex::new(r"^[a-zA-Z0-9]+:[a-zA-Z0-9]+(?:,[a-zA-Z0-9]+:[a-zA-Z0-9]+)*$")
-                .map_err(|_| "Invalid regex pattern")?;
+            Regex::new(r"^[a-zA-Z0-9]+:[a-zA-Z0-9]+(?:,[a-zA-Z0-9]+:[a-zA-Z0-9]+)*$").unwrap();
 
-        if !log_pass_regex.is_match(&env) {
-            return Err("User credentials must be in format 'user1:pass1,user2:pass2'".to_string());
-        }
-
-        let users = env
-            .split(',')
-            .filter_map(|chunk| {
-                let mut parts = chunk.split(':');
-                match (parts.next(), parts.next()) {
-                    (Some(username), Some(password)) => {
-                        let mut hasher = DefaultHasher::new();
-                        password.hash(&mut hasher);
-                        Some((username.to_string(), hasher.finish()))
+        if !log_pass_regex.is_match(&credentials) {
+            Err(ConfigurationError::WrongCredentialsFormat)
+        } else {
+            let users = credentials
+                .split(',')
+                .filter_map(|chunk| {
+                    let mut parts = chunk.split(':');
+                    match (parts.next(), parts.next()) {
+                        (Some(username), Some(password)) => {
+                            let mut hasher = DefaultHasher::new();
+                            password.hash(&mut hasher);
+                            Some((username.to_string(), hasher.finish()))
+                        }
+                        _ => None,
                     }
-                    _ => None,
-                }
-            })
-            .collect();
+                })
+                .collect();
 
-        Ok(SecurityContext { users })
+            Ok(SecurityContext { users })
+        }
     }
 
-    pub fn check_credentials(&self, username: &str, password: &str) -> bool {
+    pub fn is_valid(&self, username: &str, password: &str) -> bool {
         let mut hasher = DefaultHasher::new();
         password.hash(&mut hasher);
         let hashed_password = hasher.finish();

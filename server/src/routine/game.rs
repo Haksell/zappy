@@ -21,6 +21,8 @@ pub async fn game_routine(
             *server_lock.frame()
         };
 
+        //TODO: ok I remember discussing with Axel to put it here but for new players it is bad handling
+        //can provoke a death on connect
         if frame >= HP_ON_THE_START as u64 && frame % HP_MODULO as u64 == 0 {
             log::warn!("On this frame we should check if player has food. Then consume it or mark him as dead");
         }
