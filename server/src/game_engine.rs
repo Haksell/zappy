@@ -97,7 +97,7 @@ impl GameEngine {
                 vec![(player_id, ServerResponse::Ok)]
             }
             PlayerCommand::Take { resource_name } => {
-                let result = Resource::try_from(resource_name.as_str())
+                let response = Resource::try_from(resource_name.as_str())
                     .map(|resource| {
                         let player = self.players.get_mut(&player_id).unwrap();
                         let cell = &mut self.map.field[player.position().y][player.position().x];
@@ -105,38 +105,45 @@ impl GameEngine {
                         if cell.resources[resource_idx] >= 1 {
                             cell.resources[resource_idx] -= 1;
                             player.add_to_inventory(resource);
-                            (player_id, ServerResponse::Ok)
+                            ServerResponse::Ok
                         } else {
-                            (player_id, ServerResponse::Ko)
+                            ServerResponse::Ko
                         }
                     })
-                    .unwrap_or((player_id, ServerResponse::Ko));
-                vec![result]
+                    .unwrap_or(ServerResponse::Ko);
+                vec![(player_id, response)]
             }
             PlayerCommand::Put { resource_name } => {
-                let result = Resource::try_from(resource_name.as_str())
+                let response = Resource::try_from(resource_name.as_str())
                     .map(|resource| {
                         let player = self.players.get_mut(&player_id).unwrap();
                         let cell = &mut self.map.field[player.position().y][player.position().x];
                         if player.remove_from_inventory(resource) {
                             cell.resources[usize::try_from(resource).unwrap()] += 1;
-                            (player_id, ServerResponse::Ok)
+                            ServerResponse::Ok
                         } else {
-                            (player_id, ServerResponse::Ko)
+                            ServerResponse::Ko
                         }
                     })
-                    .unwrap_or((player_id, ServerResponse::Ko));
-                vec![result]
+                    .unwrap_or(ServerResponse::Ko);
+                vec![(player_id, response)]
             }
             PlayerCommand::See => todo!(),
             PlayerCommand::Inventory => {
                 let player = self.players.get_mut(&player_id).unwrap();
-                let inventory = player
-                    .inventory()
-                    .iter()
-                    .enumerate()
-                    .map(|(i, b)| format!("{} {}", Resource::try_from(i).unwrap(), b))
-                    .collect::<Vec<String>>();
+                let mut inventory = vec![format!(
+                    "{} {}",
+                    Resource::Nourriture,
+                    player.remaining_life()
+                )];
+                inventory.extend(
+                    player
+                        .inventory()
+                        .iter()
+                        .enumerate()
+                        .map(|(i, b)| format!("{} {}", Resource::try_from(i).unwrap(), b))
+                        .collect::<Vec<String>>(),
+                );
                 vec![(player_id, ServerResponse::Inventory(inventory))]
             }
             PlayerCommand::Expel => {

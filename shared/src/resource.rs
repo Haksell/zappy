@@ -62,6 +62,20 @@ impl Resource {
         }
     }
 
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Resource::Mining(mining) => match mining {
+                Mining::Deraumere => "Deraumere",
+                Mining::Linemate => "Linemate",
+                Mining::Mendiane => "Mendiane",
+                Mining::Phiras => "Phiras",
+                Mining::Sibur => "Sibur",
+                Mining::Thystame => "Thystame",
+            },
+            Resource::Nourriture => "Nourriture",
+        }
+    }
+
     pub fn random() -> Self {
         static RESOURCES: [Resource; Resource::SIZE] = [
             Resource::Mining(Mining::Deraumere),
@@ -80,21 +94,7 @@ impl Resource {
 
 impl Display for Resource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Resource::Mining(mining) => match mining {
-                    Mining::Deraumere => 'D',
-                    Mining::Linemate => 'L',
-                    Mining::Mendiane => 'M',
-                    Mining::Phiras => 'P',
-                    Mining::Sibur => 'S',
-                    Mining::Thystame => 'T',
-                },
-                Resource::Nourriture => 'N',
-            }
-        )
+        write!(f, "{}", self.as_str())
     }
 }
 
