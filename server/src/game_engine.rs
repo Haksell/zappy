@@ -1,5 +1,6 @@
 use crate::args::ServerArgs;
 use derive_getters::Getters;
+use shared::resource::StoneSetOperations;
 use shared::{
     commands::PlayerCommand,
     map::Map,
@@ -23,6 +24,7 @@ pub struct GameEngine {
     teams: HashMap<String, Team>,
     players: HashMap<u16, Player>,
     eggs: HashMap<u64, Vec<Egg>>,
+    incantation: HashMap<u64, Vec<u16>>,
     map: Map,
     frame: u64,
 }
@@ -50,6 +52,7 @@ impl GameEngine {
             })
             .collect();
         Ok(Self {
+            incantation: HashMap::new(),
             teams,
             players: HashMap::new(),
             eggs: HashMap::new(),
@@ -102,8 +105,8 @@ impl GameEngine {
                         let player = self.players.get_mut(&player_id).unwrap();
                         let cell = &mut self.map.field[player.position().y][player.position().x];
                         let resource_idx = usize::try_from(resource).unwrap();
-                        if cell.resources[resource_idx] >= 1 {
-                            cell.resources[resource_idx] -= 1;
+                        if cell.stones[resource_idx] >= 1 {
+                            cell.stones[resource_idx] -= 1;
                             player.add_to_inventory(resource);
                             ServerResponse::Ok
                         } else {
@@ -119,7 +122,7 @@ impl GameEngine {
                         let player = self.players.get_mut(&player_id).unwrap();
                         let cell = &mut self.map.field[player.position().y][player.position().x];
                         if player.remove_from_inventory(resource) {
-                            cell.resources[usize::try_from(resource).unwrap()] += 1;
+                            cell.stones[usize::try_from(resource).unwrap()] += 1;
                             ServerResponse::Ok
                         } else {
                             ServerResponse::Ko
@@ -148,7 +151,7 @@ impl GameEngine {
                         let cell = &self.map.field[y][x];
                         let mut cell_response =
                             vec!["player"; cell.players.len() - is_same_pos as usize];
-                        for (resource_idx, &cnt) in cell.resources.iter().enumerate() {
+                        for (resource_idx, &cnt) in cell.stones.iter().enumerate() {
                             for _ in 0..cnt {
                                 cell_response
                                     .push(Resource::try_from(resource_idx).unwrap().as_str());
@@ -214,7 +217,43 @@ impl GameEngine {
                     })
                     .collect()
             }
-            PlayerCommand::Incantation => todo!(),
+            //TODO: what to do with commands in queue
+            PlayerCommand::Incantation => {
+                let player = self.players.get(&player_id).unwrap();
+                let position = player.position();
+                let same_lvl_players = self.map.field[position.y][position.x]
+                    .players
+                    .iter()
+                    .filter_map(|&lvl| {
+                        let other = self.players.get(&lvl).unwrap();
+                        if *other.level() == *player.level() {
+                            Some(*other.id())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                //TODO: or == ?
+                if same_lvl_players.len() >= player.nxt_lvl_player_cnt_requirements()
+                    && self.map.field[position.y][position.x]
+                        .stones
+                        .reduce_current_from(player.nxt_lvl_stone_requirements())
+                {
+                    same_lvl_players
+                        .iter()
+                        .map(|&id| {
+                            self.incantation
+                                .entry(self.frame + PlayerCommand::INCANTATION_DURATION)
+                                .and_modify(|v| v.push(id))
+                                .or_insert(vec![id]);
+                            self.players.get_mut(&id).unwrap().start_incantation();
+                            (id, ServerResponse::Incantation)
+                        })
+                        .collect()
+                } else {
+                    vec![(player_id, ServerResponse::Ko)]
+                }
+            }
             PlayerCommand::Fork => {
                 // TODO: use MAX_PLAYERS to not abuse spamming
                 let player = self.players.get(&player_id).unwrap();
@@ -269,6 +308,7 @@ impl GameEngine {
                 continue;
             }
 
+            //TODO: for incantation as well?
             player.decrement_life();
 
             if !player.commands().is_empty() && current_frame >= *player.next_frame() {
@@ -283,7 +323,15 @@ impl GameEngine {
         }
 
         for (player_id, command) in commands_to_process {
-            execution_results.extend(self.apply_cmd(player_id, &command));
+            let command_execution_result = self.apply_cmd(player_id, &command);
+            //TODO: here is additional delay for the next command, is it enough?
+            if command == PlayerCommand::Incantation
+                && !command_execution_result.contains(&(player_id, ServerResponse::Ko))
+            {
+                let player = self.players.get_mut(&player_id).unwrap();
+                player.set_next_frame(player.next_frame() + PlayerCommand::INCANTATION_DURATION)
+            }
+            execution_results.extend(command_execution_result);
         }
 
         if let Some(eggs_to_hatch) = self.eggs.remove(&current_frame) {
@@ -304,6 +352,15 @@ impl GameEngine {
                         egg.position.y
                     );
                 }
+            }
+        }
+
+        if let Some(players_to_stop_incantation) = self.incantation.remove(&current_frame) {
+            for id in players_to_stop_incantation {
+                let player = self.players.get_mut(&id).unwrap();
+                player.level_up();
+                player.stop_incantation();
+                execution_results.push((id, ServerResponse::Ok));
             }
         }
     }
@@ -342,7 +399,9 @@ impl GameEngine {
         cmd: PlayerCommand,
     ) -> Result<Option<ServerResponse>, ZappyError> {
         if let Some(player) = self.players.get_mut(player_id) {
-            Ok(if player.commands().len() >= MAX_COMMANDS {
+            Ok(if *player.is_performing_incantation() {
+                Some(ServerResponse::Incantation)
+            } else if player.commands().len() >= MAX_COMMANDS {
                 Some(ServerResponse::ActionQueueIsFull)
             } else {
                 player.push_command_to_queue(cmd);

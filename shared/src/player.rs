@@ -1,5 +1,5 @@
 use crate::position::{Position, Side};
-use crate::resource::Stone;
+use crate::resource::{Stone, StoneSet};
 use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS, MAX_PLAYER_LVL};
 use crate::{LIFE_TICKS, LIVES_START};
 use derive_getters::Getters;
@@ -17,18 +17,19 @@ pub struct Player {
     inventory: [usize; Stone::SIZE],
     level: u8,
     remaining_life: u64,
+    is_performing_incantation: bool,
 }
 
 impl Player {
-    const LEVEL_RESOURCES_MASKS: [[usize; Stone::SIZE]; 7] = [
-        // D  L  M  P  S  T
-        [0, 1, 0, 0, 0, 0],
-        [1, 1, 0, 0, 1, 0],
-        [0, 2, 0, 2, 1, 0],
-        [1, 1, 0, 1, 2, 0],
-        [2, 1, 3, 0, 1, 0],
-        [2, 1, 0, 1, 3, 0],
-        [2, 2, 2, 2, 2, 1],
+    const LEVEL_REQUIREMENTS: [(StoneSet, usize); 7] = [
+        //D  L  M  P  S  T
+        ([0, 1, 0, 0, 0, 0], 1),
+        ([1, 1, 0, 0, 1, 0], 2),
+        ([0, 2, 0, 2, 1, 0], 2),
+        ([1, 1, 0, 1, 2, 0], 4),
+        ([2, 1, 3, 0, 1, 0], 4),
+        ([2, 1, 0, 1, 3, 0], 6),
+        ([2, 2, 2, 2, 2, 1], 6),
     ];
 
     pub fn new(id: u16, team: String, position: Position) -> Self {
@@ -41,6 +42,7 @@ impl Player {
             inventory: [0; Stone::SIZE],
             level: 1,
             remaining_life: LIFE_TICKS * LIVES_START,
+            is_performing_incantation: false,
         }
     }
 
@@ -56,31 +58,22 @@ impl Player {
         self.position.y = y;
     }
 
-    fn get_right_resource_mask(level: u8) -> &'static [usize; Stone::SIZE] {
-        &Self::LEVEL_RESOURCES_MASKS[level as usize - 1]
+    pub fn nxt_lvl_stone_requirements(&self) -> &'static StoneSet {
+        &Self::LEVEL_REQUIREMENTS[self.level as usize - 1].0
     }
 
-    // TODO: need to test
+    pub fn nxt_lvl_player_cnt_requirements(&self) -> usize {
+        Self::LEVEL_REQUIREMENTS[self.level as usize - 1].1
+    }
+
     pub fn level_up(&mut self) -> bool {
         if self.level == MAX_PLAYER_LVL {
             log::error!(
                 "Trying to level up {}, but the max level is already reached",
                 self.id
             );
-            return false;
-        }
-        let current_level_resource_mask = Player::get_right_resource_mask(self.level);
-        let has_enough_resources = self
-            .inventory
-            .iter()
-            .zip(current_level_resource_mask.iter())
-            .all(|(a, b)| a >= b);
-        if !has_enough_resources {
             false
         } else {
-            for (idx, count) in current_level_resource_mask.iter().enumerate() {
-                self.inventory[idx] -= count;
-            }
             self.level += 1;
             true
         }
@@ -132,6 +125,14 @@ impl Player {
 
     pub fn decrement_life(&mut self) {
         self.remaining_life -= 1;
+    }
+
+    pub fn start_incantation(&mut self) {
+        self.is_performing_incantation = true;
+    }
+
+    pub fn stop_incantation(&mut self) {
+        self.is_performing_incantation = false;
     }
 }
 

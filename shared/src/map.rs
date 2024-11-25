@@ -1,5 +1,5 @@
 use crate::position::{Direction, Position};
-use crate::resource::Resource;
+use crate::resource::{Resource, Stone};
 use derive_getters::Getters;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,8 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
     pub players: BTreeSet<u16>,
-    pub resources: [usize; Resource::SIZE],
+    pub stones: [usize; Stone::SIZE],
+    pub nourriture: usize,
     pub eggs: BTreeMap<String, (usize, usize)>,
 }
 
@@ -26,13 +27,14 @@ impl Cell {
     pub fn new() -> Self {
         Self {
             players: BTreeSet::new(),
-            resources: [0; Resource::SIZE],
+            stones: [0; Stone::SIZE],
             eggs: BTreeMap::new(),
+            nourriture: 0,
         }
     }
 
     pub fn add_resource(&mut self, resource: Resource) {
-        self.resources[usize::try_from(resource).unwrap()] += 1;
+        self.stones[usize::try_from(resource).unwrap()] += 1;
     }
 }
 

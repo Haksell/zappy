@@ -2,6 +2,30 @@ use rand::{seq::SliceRandom as _, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
+pub type StoneSet = [usize; Stone::SIZE];
+
+pub trait StoneSetOperations {
+    fn reduce_current_from(&mut self, other: &StoneSet) -> bool;
+}
+
+impl StoneSetOperations for StoneSet {
+    fn reduce_current_from(&mut self, other: &StoneSet) -> bool {
+        let has_enough_resources = self.iter()
+            .zip(other.iter())
+            .all(|(a, b)| a >= b);
+        if !has_enough_resources {
+            println!("Doesn't have enough resources");
+            false
+        } else {
+            for (idx, count) in other.iter().enumerate() {
+                self[idx] -= count;
+            }
+            true
+        }
+    }
+}
+
+
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
 #[repr(u8)]
 pub enum Stone {
@@ -39,7 +63,7 @@ impl Stone {
     pub const SIZE: usize = 6; // TODO: dynamic
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 pub enum Resource {
     Stone(Stone),
     Nourriture,
@@ -77,19 +101,20 @@ impl Resource {
     }
 
     pub fn random() -> Self {
-        static RESOURCES: [Resource; Resource::SIZE] = [
+        //TODO: nouriture is deleted
+        static RESOURCES: [Resource; Stone::SIZE] = [
             Resource::Stone(Stone::Deraumere),
             Resource::Stone(Stone::Linemate),
             Resource::Stone(Stone::Mendiane),
             Resource::Stone(Stone::Phiras),
             Resource::Stone(Stone::Sibur),
             Resource::Stone(Stone::Thystame),
-            Resource::Nourriture,
         ];
 
         let mut rng = thread_rng();
         *RESOURCES.choose(&mut rng).unwrap()
     }
+    
 }
 
 impl Display for Resource {
@@ -135,3 +160,4 @@ impl From<Resource> for usize {
         }
     }
 }
+

@@ -86,6 +86,7 @@ pub enum ServerResponse {
     ActionQueueIsFull,
     Movement(Direction),
     Message(u8, String),
+    Incantation,
 }
 
 impl Display for ServerResponse {
@@ -105,6 +106,7 @@ impl Display for ServerResponse {
             }
             ServerResponse::Movement(from) => write!(f, "deplacement {from}"),
             ServerResponse::Message(source, text) => write!(f, "message {source},{text}"),
+            ServerResponse::Incantation => write!(f, "elevation en cours"),
         }
     }
 }

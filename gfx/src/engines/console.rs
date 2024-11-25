@@ -33,7 +33,8 @@ fn direction_to_emoji(direction: &Direction) -> &'static str {
     }
 }
 
-fn map_resource_to_vec_span(resources: &[usize; Resource::SIZE]) -> Vec<Span> {
+//TODO: nourriture is deleted
+fn map_resource_to_vec_span(resources: &[usize; Stone::SIZE]) -> Vec<Span> {
     resources
         .iter()
         .enumerate()
@@ -78,7 +79,12 @@ fn map_stones_to_vec_span(resources: &[usize; Stone::SIZE]) -> Vec<Span> {
 fn map_player_to_span(color: Color, player: &Player) -> Span {
     Span::styled(
         format!(
-            "[{}{}]",
+            "[{}{}{}]",
+            if *player.is_performing_incantation() {
+                "🗿"
+            } else {
+                ""
+            },
             player.id(),
             direction_to_emoji(&player.position().direction),
         ),
@@ -118,7 +124,7 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
         for x in 0..*data.map.width() {
             let col = cols.next().unwrap();
             let cell = &data.map.field[y][x];
-            let mapped_map_resources = map_resource_to_vec_span(&cell.resources);
+            let mapped_map_resources = map_resource_to_vec_span(&cell.stones);
             let mapped_eggs = cell
                 .eggs
                 .iter()
