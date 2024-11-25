@@ -65,14 +65,14 @@ impl Resource {
     pub fn as_str(&self) -> &'static str {
         match self {
             Resource::Mining(mining) => match mining {
-                Mining::Deraumere => "Deraumere",
-                Mining::Linemate => "Linemate",
-                Mining::Mendiane => "Mendiane",
-                Mining::Phiras => "Phiras",
-                Mining::Sibur => "Sibur",
-                Mining::Thystame => "Thystame",
+                Mining::Deraumere => "deraumere",
+                Mining::Linemate => "linemate",
+                Mining::Mendiane => "mendiane",
+                Mining::Phiras => "phiras",
+                Mining::Sibur => "sibur",
+                Mining::Thystame => "thystame",
             },
-            Resource::Nourriture => "Nourriture",
+            Resource::Nourriture => "nourriture",
         }
     }
 
