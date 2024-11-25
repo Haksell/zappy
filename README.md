@@ -94,12 +94,12 @@ Ko
 | avance      | move           | ✅      |
 | droite      | right          | ✅      |
 | gauche      | left           | ✅      |
-| voir        | see            | ❌      |
+| voir        | see            | ✅      |
 | inventaire  | inventory, inv | ✅      |
 | prend       | take           | ✅      |
 | pose        | put            | ✅      |
 | expulse     | expel, exp     | ✅      |
-| broadcast   |                | ❌      |
+| broadcast   |                | ✅      |
 | incantation | inc            | ❌      |
 | fork        |                | ✅      |
 | connect_nbr | cn             | ✅      |
@@ -166,10 +166,10 @@ what happens if field of view is bigger than map? do we allow repetitions?
 player dont see themselves
 
 incantation:
-any player can launch it
-different teams can cooperate on elevation
-should the stones be dropped?
-can people steal them during incantation?
+begin incantation command is instantaneous, the incantation itself lasts 300 ticks
+stones must be put on the cell, and disappear when the incantation starts
+all the players of the same level as the starter on the same cell will participate, whether they want it or not
+during incantation, players that try to do actions receive a "elevation en cours"
 
 kick:
 ko if no one here?
