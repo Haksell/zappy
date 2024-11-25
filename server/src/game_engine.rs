@@ -136,7 +136,6 @@ impl GameEngine {
                 let mut response = Vec::with_capacity((*player.level() as usize + 1).pow(2));
                 for line in 0..=(*player.level() as isize) {
                     for idx in -line..=line {
-                        // TODO: truc style avec dx, dy
                         let (x, y) = match pos.direction {
                             Direction::North => (x + idx, y - line),
                             Direction::East => (x + line, y + idx),
