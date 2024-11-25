@@ -16,7 +16,7 @@ use shared::{
     position::Direction,
     resource::{Resource, Stone},
 };
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Duration};
 use tokio::sync::mpsc::Receiver;
 
 pub const NORTH_EMOJI: &'static str = "^";
@@ -234,7 +234,7 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
 
 pub async fn render(
     mut event_rx: Receiver<KeyEvent>,
-    mut rx: Receiver<ServerData>,
+    mut data_rx: Receiver<ServerData>,
     mut conn_rx: Receiver<bool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = ratatui::init();
@@ -257,7 +257,7 @@ pub async fn render(
                     break;
                 }
             }
-            Some(new_data) = rx.recv() => {
+            Some(new_data) = data_rx.recv() => {
                 data = Some(new_data);
             }
             Some(is_connected) = conn_rx.recv() => {
@@ -265,7 +265,7 @@ pub async fn render(
                     terminal.clear()?;
                 }
             }
-            //_ = tokio::time::sleep(Duration::from_millis(50)) => {}
+            _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep
         }
     }
     ratatui::restore();

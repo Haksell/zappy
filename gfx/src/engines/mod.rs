@@ -1,14 +1,12 @@
-use clap::ValueEnum;
-use crossterm::event::KeyEvent;
-use shared::{map::Map, player::Player};
-use std::collections::BTreeMap;
-use std::fmt::Debug;
-use tokio::sync::mpsc::Receiver;
-
 mod console;
 mod torus;
 
+use clap::ValueEnum;
+use crossterm::event::KeyEvent;
 use ratatui::style::Color as RatatuiColor;
+use shared::{map::Map, player::Player};
+use std::{collections::BTreeMap, fmt::Debug};
+use tokio::sync::mpsc::Receiver;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ZappyColor {
@@ -49,6 +47,7 @@ impl ZappyColor {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct ServerData {
     pub map: Map,
     pub players: BTreeMap<u16, Player>,
@@ -105,12 +104,12 @@ impl Engine {
     pub async fn render(
         &self,
         event_rx: Receiver<KeyEvent>,
-        rx: Receiver<ServerData>,
+        data_rx: Receiver<ServerData>,
         conn_rx: Receiver<bool>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         match self {
-            Engine::Console => console::render(event_rx, rx, conn_rx).await,
-            Engine::Torus => torus::render(event_rx, rx, conn_rx).await,
+            Engine::Console => console::render(event_rx, data_rx, conn_rx).await,
+            Engine::Torus => torus::render(event_rx, data_rx, conn_rx).await,
         }
     }
 }

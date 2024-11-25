@@ -14,7 +14,7 @@ pub struct Cell {
 }
 
 //TODO: change fields to private?
-#[derive(Debug, Serialize, Deserialize, Getters)]
+#[derive(Debug, Serialize, Deserialize, Getters, Default)]
 pub struct Map {
     #[getter(skip)]
     pub field: Vec<Vec<Cell>>,

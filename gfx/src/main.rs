@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     let (event_tx, event_rx) = mpsc::channel(100);
-    let (tx, rx) = mpsc::channel(100);
+    let (tx, data_rx) = mpsc::channel(100);
     let (conn_tx, conn_rx) = mpsc::channel(10);
 
     tokio::spawn(async move {
@@ -94,5 +94,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
-    args.engine.render(event_rx, rx, conn_rx).await
+    args.engine.render(event_rx, data_rx, conn_rx).await
 }
