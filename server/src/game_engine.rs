@@ -128,9 +128,40 @@ impl GameEngine {
                     .unwrap_or(ServerResponse::Ko);
                 vec![(player_id, response)]
             }
-            PlayerCommand::See => todo!(),
+            PlayerCommand::See => {
+                let player = self.players.get(&player_id).unwrap();
+                let pos = *player.position();
+                let (x, y) = (pos.x as isize, pos.y as isize);
+                let (width, height) = (self.map_width() as isize, self.map_height() as isize);
+                let mut response = Vec::with_capacity((*player.level() as usize + 1).pow(2));
+                for line in 0..=(*player.level() as isize) {
+                    for idx in -line..=line {
+                        // TODO: truc style avec dx, dy
+                        let (x, y) = match pos.direction {
+                            Direction::North => (x + idx, y - line),
+                            Direction::East => (x + line, y + idx),
+                            Direction::South => (x - idx, y + line),
+                            Direction::West => (x - line, y - idx),
+                        };
+                        let x = ((x % width + width) % width) as usize;
+                        let y = ((y % height + height) % height) as usize;
+                        let is_same_pos = x == pos.x && y == pos.y;
+                        let cell = &self.map.field[y][x];
+                        let mut cell_response =
+                            vec!["player"; cell.players.len() - is_same_pos as usize];
+                        for (resource_idx, &cnt) in cell.resources.iter().enumerate() {
+                            for _ in 0..cnt {
+                                cell_response
+                                    .push(Resource::try_from(resource_idx).unwrap().as_str());
+                            }
+                        }
+                        response.push(cell_response.join(" "));
+                    }
+                }
+                vec![(player_id, ServerResponse::See(response))]
+            }
             PlayerCommand::Inventory => {
-                let player = self.players.get_mut(&player_id).unwrap();
+                let player = self.players.get(&player_id).unwrap();
                 let mut inventory = vec![format!(
                     "{} {}",
                     Resource::Nourriture,

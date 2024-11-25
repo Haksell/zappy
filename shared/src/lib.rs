@@ -79,6 +79,7 @@ pub enum ServerResponse {
     Ko,
     Cases(Vec<String>),
     Inventory(Vec<String>),
+    See(Vec<String>),
     ElevationInProgress,
     Value(String),
     Mort,
@@ -92,8 +93,10 @@ impl Display for ServerResponse {
             ServerResponse::Ok => write!(f, "Ok"),
             ServerResponse::Ko => write!(f, "Ko"),
             ServerResponse::Cases(_) => todo!(),
-            ServerResponse::Inventory(items) => write!(f, "{{{}}}", items.join(", ")),
-            ServerResponse::ElevationInProgress => write!(f, "Elevation InProgress"),
+            ServerResponse::Inventory(items) | ServerResponse::See(items) => {
+                write!(f, "{{{}}}", items.join(", "))
+            }
+            ServerResponse::ElevationInProgress => todo!(),
             ServerResponse::Value(value) => write!(f, "{}", value),
             ServerResponse::Mort => write!(f, "Mort"),
             ServerResponse::ActionQueueIsFull => {
