@@ -29,8 +29,8 @@ use std::{
 use tokio::sync::mpsc::Receiver;
 
 // TODO: read from server
-const GRID_U: u8 = 12;
-const GRID_V: u8 = 8;
+const WIDTH: u8 = 12;
+const HEIGHT: u8 = 8;
 
 const SUBDIVISIONS: &[u16] = &[1, 2, 3, 5, 8, 13, 21, 34];
 
@@ -85,8 +85,8 @@ struct NetworkResource {
 
 #[derive(Component, Debug)]
 struct QuadInfo {
-    u: u8,
-    v: u8,
+    x: u8,
+    y: u8,
 }
 
 #[derive(Bundle)]
@@ -101,15 +101,15 @@ impl QuadBundle {
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<StandardMaterial>>,
         torus_transform: &Res<TorusTransform>,
-        u: u8,
-        v: u8,
+        x: u8,
+        y: u8,
     ) -> Self {
         // TODO: refactor
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
         );
-        fill_torus_cell_mesh(&mut mesh, torus_transform, u, v);
+        fill_torus_cell_mesh(&mut mesh, torus_transform, x, y);
         let material = StandardMaterial {
             base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
             metallic: 0.5,
@@ -121,7 +121,7 @@ impl QuadBundle {
             material: materials.add(material),
             ..Default::default()
         };
-        let quad_info = QuadInfo { u, v };
+        let quad_info = QuadInfo { x, y };
         Self { pbr, quad_info }
     }
 }
@@ -184,15 +184,15 @@ fn setup(
     });
 
     let mut rng = StdRng::seed_from_u64(0);
-    for v in 0..GRID_V {
-        for u in 0..GRID_U {
+    for y in 0..HEIGHT {
+        for x in 0..WIDTH {
             commands.spawn(QuadBundle::new(
                 &mut rng,
                 &mut meshes,
                 &mut materials,
                 &torus_transform,
-                u,
-                v,
+                x,
+                y,
             ));
         }
     }
@@ -233,24 +233,24 @@ fn network_setup(mut commands: Commands, args: ResMut<ArgsResource>) {
     });
 }
 
-fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, u: u8, v: u8) {
+fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, x: u8, y: u8) {
     let ttsd = SUBDIVISIONS[torus_transform.subdiv_idx];
 
-    let v_start = v as f32 / GRID_V as f32 + torus_transform.shift_major;
-    let v_end = v_start + 1. / GRID_V as f32;
+    let v_start = y as f32 / HEIGHT as f32 + torus_transform.shift_major;
+    let v_end = v_start + 1. / HEIGHT as f32;
 
-    let u_start = u as f32 / GRID_U as f32 + torus_transform.shift_minor;
-    let u_end = u_start + 1. / GRID_U as f32;
+    let u_start = x as f32 / WIDTH as f32 + torus_transform.shift_minor;
+    let u_end = u_start + 1. / WIDTH as f32;
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
-    for v in 0..=ttsd {
-        let v_ratio = lerp(v_start, v_end, v as f32 / ttsd as f32);
+    for y in 0..=ttsd {
+        let v_ratio = lerp(v_start, v_end, y as f32 / ttsd as f32);
         let phi = v_ratio * TAU;
         let (sin_phi, cos_phi) = phi.sin_cos();
 
-        for u in 0..=ttsd {
-            let u_ratio = lerp(u_start, u_end, u as f32 / ttsd as f32);
+        for x in 0..=ttsd {
+            let u_ratio = lerp(u_start, u_end, x as f32 / ttsd as f32);
             let theta = u_ratio * TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
             let r = 1. + torus_transform.minor_radius * cos_theta;
@@ -267,12 +267,12 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
     let mut indices = Vec::new();
-    for v in 0..ttsd {
-        for u in 0..ttsd {
-            let i0 = v * (ttsd + 1) + u;
-            let i1 = v * (ttsd + 1) + u + 1;
-            let i2 = (v + 1) * (ttsd + 1) + u;
-            let i3 = (v + 1) * (ttsd + 1) + u + 1;
+    for y in 0..ttsd {
+        for x in 0..ttsd {
+            let i0 = y * (ttsd + 1) + x;
+            let i1 = y * (ttsd + 1) + x + 1;
+            let i2 = (y + 1) * (ttsd + 1) + x;
+            let i3 = (y + 1) * (ttsd + 1) + x + 1;
 
             indices.push(i0 as u32);
             indices.push(i2 as u32);
@@ -296,7 +296,7 @@ fn update_cell_mesh(
     if torus_transform.is_changed() {
         for (mesh_handle, quad_info) in &query {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
-                fill_torus_cell_mesh(mesh, &torus_transform, quad_info.u, quad_info.v);
+                fill_torus_cell_mesh(mesh, &torus_transform, quad_info.x, quad_info.y);
             }
         }
     }
