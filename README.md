@@ -147,6 +147,7 @@ dying conditions:
 start with 10 nourritures
 each nourriture gives 126 time units
 death no more nourriture
+all the player's stones (and food?) are put on the cell
 
 nourriture:
 how do we now how much we ate of the current food? ((frame - connection) % 126)
