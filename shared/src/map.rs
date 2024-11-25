@@ -10,7 +10,7 @@ use std::collections::{HashMap, HashSet};
 pub struct Cell {
     pub players: HashSet<u16>,
     pub resources: [usize; Resource::SIZE],
-    pub eggs: HashMap<String, usize>,
+    pub eggs: HashMap<String, (usize, usize)>,
 }
 
 //TODO: change fields to private?

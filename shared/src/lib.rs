@@ -32,7 +32,7 @@ pub enum TechnicalError {
 
 pub enum LogicalError {
     TeamDoesntExist(String),
-    MaxPlayersReached(u16, u16),
+    NoPlaceAvailable(u16, String),
     WrongUsernameOrPassword,
 }
 
@@ -40,8 +40,8 @@ impl Display for LogicalError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let msg = match self {
             LogicalError::TeamDoesntExist(team) => format!("Team does not exist: {}", team),
-            LogicalError::MaxPlayersReached(_, remaining_clients) => {
-                format!("Max players reached: {}", remaining_clients)
+            LogicalError::NoPlaceAvailable(_, team_name) => {
+                format!("No place available on team {team_name}")
             }
             LogicalError::WrongUsernameOrPassword => "Wrong username or password".to_string(),
         };
@@ -114,8 +114,8 @@ pub const ADMIN_PORT: u16 = 4444; // TODO configurable port
 pub const MAX_COMMANDS: usize = 10;
 pub const MAX_FIELD_SIZE: usize = 50;
 pub const MAX_PLAYER_LVL: u8 = 8;
-//TODO: map height * map width but 12 min
-pub const MAX_PLAYERS_IN_TEAM_AT_START: u16 = 12;
+pub const MAX_PLAYERS_IN_TEAM: u16 = 1024;
+pub const MAX_TEAMS: u16 = 14; // TODO: sync with ZappyColor
 pub const HP_MODULO: u8 = 126;
 pub const HP_ON_THE_START: u16 = 1260;
 pub const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";

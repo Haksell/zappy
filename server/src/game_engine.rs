@@ -2,12 +2,17 @@ use crate::args::ServerArgs;
 use derive_getters::Getters;
 use shared::player::Direction;
 use shared::team::Team;
-use shared::LogicalError::{MaxPlayersReached, TeamDoesntExist};
+use shared::LogicalError::TeamDoesntExist;
 use shared::TechnicalError::IsNotConnectedToServer;
 use shared::ZappyError::{Logical, Technical};
-use shared::{commands::PlayerCommand, map::Map, player::{Player, Side}, resource::Resource, Egg, ServerResponse, ZappyError, HP_MODULO, HP_ON_THE_START, MAX_COMMANDS};
+use shared::{
+    commands::PlayerCommand,
+    map::Map,
+    player::{Player, Side},
+    resource::Resource,
+    Egg, ServerResponse, ZappyError, HP_MODULO, HP_ON_THE_START, MAX_COMMANDS,
+};
 use std::{collections::HashMap, error::Error};
-use std::collections::VecDeque;
 
 #[derive(Debug, Getters)]
 pub struct GameEngine {
@@ -24,17 +29,19 @@ impl GameEngine {
         let teams = args
             .names
             .iter()
-            .map(|k| {
-                //let mut positions = VecDeque::with_capacity(args.clients as usize);
-                (0..args.clients() as usize).map(|_| map.random_position()).collect()
-                
-                (k.clone(), Team::new(args.clients))
-            } )
+            .map(|team_name| {
+                let spawn_positions = (0..args.clients).map(|_| map.random_position()).collect();
+                (
+                    team_name.clone(),
+                    Team::new(team_name.clone(), spawn_positions),
+                )
+            })
             .collect();
         Ok(Self {
             teams,
             players: HashMap::new(),
             eggs: HashMap::new(),
+            map,
             frame: 0,
         })
     }
@@ -182,12 +189,12 @@ impl GameEngine {
 
         let mut commands_to_process = Vec::new();
         for (id, player) in &mut self.players {
-                if current_frame - player.spawn_frame() >= HP_ON_THE_START as u64
-                    && current_frame - player.spawn_frame() % HP_MODULO as u64 == 0
-                {
-                    log::warn!("On this frame we should check if player has food. Then consume it or mark him as dead");
-                }
-            
+            if current_frame - player.spawn_frame() >= HP_ON_THE_START as u64
+                && current_frame - player.spawn_frame() % HP_MODULO as u64 == 0
+            {
+                log::warn!("On this frame we should check if player has food. Then consume it or mark him as dead");
+            }
+
             if !player.commands().is_empty() && current_frame >= *player.next_frame() {
                 let command = player.pop_command_from_queue().unwrap();
                 player.set_next_frame(current_frame + command.delay());
@@ -201,48 +208,35 @@ impl GameEngine {
 
         if let Some(eggs_to_hatch) = self.eggs.remove(&current_frame) {
             for egg in eggs_to_hatch {
-                if let (Some(egg_on_field), Some(team)) = (
+                if let (Some((unhatched, hatched)), Some(team)) = (
                     self.map.field[egg.position.y][egg.position.x]
                         .eggs
                         .get_mut(&egg.team_name),
                     self.teams.get_mut(&egg.team_name),
                 ) {
-                    *egg_on_field = egg_on_field.checked_sub(1).unwrap_or(0);
-                    //TODO: the next connection should for this team should be on this coord
-                    team.increment_max_members();
-                    log::info!(
-                        "Team {}: hatched egg! New connection number {}",
-                        egg.team_name,
-                        team.max_members()
-                    );
+                    *unhatched -= 1;
+                    *hatched += 1;
+                    team.add_next_spawn_position(egg.position);
+                    log::info!("Team {}: hatched egg at {}!", egg.team_name, egg.position);
                 }
             }
         }
     }
 
-    pub fn add_player(&mut self, player_id: u16, team: String) -> Result<usize, ZappyError> {
-        log::debug!("{player_id} wants to join {team}");
-        let remaining_clients = self.remaining_clients(&team)?;
-        if remaining_clients > 0 {
-            let player = Player::new(
-                player_id,
-                team.clone(),
-                self.map.random_position(),
-                self.frame,
-            );
-            self.map.add_player(*player.id(), player.position());
-            self.teams.get_mut(&team).unwrap().add_member(player_id)?;
-            let log_successful_insert = format!(
-                "The player with id: {} has successfully joined the \"{}\" team.",
-                player.id(),
-                player.team()
-            );
-            self.players.insert(player_id, player);
-            log::info!("{log_successful_insert}");
-            Ok((remaining_clients - 1) as usize)
-        } else {
-            Err(Logical(MaxPlayersReached(player_id, remaining_clients)))
-        }
+    pub fn add_player(&mut self, player_id: u16, team_name: String) -> Result<u16, ZappyError> {
+        log::debug!("{player_id} wants to join {team_name}");
+        let team = self.teams.get_mut(&team_name).unwrap();
+        let pos = team.add_member(player_id)?;
+        let player = Player::new(player_id, team_name.clone(), pos, self.frame);
+        self.map.add_player(*player.id(), player.position());
+        let log_successful_insert = format!(
+            "The player with id: {} has successfully joined the \"{}\" team.",
+            player.id(),
+            player.team()
+        );
+        self.players.insert(player_id, player);
+        log::info!("{log_successful_insert}");
+        Ok(team.remaining_members())
     }
 
     pub fn remove_player(&mut self, player_id: &u16) {
