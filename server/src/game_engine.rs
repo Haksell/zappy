@@ -197,7 +197,24 @@ impl GameEngine {
                 result.push((player_id, ServerResponse::Ok));
                 result
             }
-            PlayerCommand::Broadcast { .. } => todo!(),
+            PlayerCommand::Broadcast { text } => {
+                let sender_pos = self.players.get(&player_id).unwrap().position();
+                self.players
+                    .keys()
+                    .map(|&id| {
+                        let resp = if id == player_id {
+                            ServerResponse::Ok
+                        } else {
+                            let receiver_pos = self.players.get(&id).unwrap().position();
+                            ServerResponse::Message(
+                                self.map.find_broadcast_source(sender_pos, receiver_pos),
+                                text.clone(),
+                            )
+                        };
+                        (id, resp)
+                    })
+                    .collect()
+            }
             PlayerCommand::Incantation => todo!(),
             PlayerCommand::Fork => {
                 // TODO: use MAX_PLAYERS to not abuse spamming

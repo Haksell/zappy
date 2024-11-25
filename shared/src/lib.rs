@@ -85,6 +85,7 @@ pub enum ServerResponse {
     Mort,
     ActionQueueIsFull,
     Movement(Direction),
+    Message(u8, String),
 }
 
 impl Display for ServerResponse {
@@ -103,6 +104,7 @@ impl Display for ServerResponse {
                 write!(f, "The action queue is full, please try later.")
             }
             ServerResponse::Movement(from) => write!(f, "deplacement {from}"),
+            ServerResponse::Message(source, text) => write!(f, "message {source},{text}"),
         }
     }
 }
@@ -123,5 +125,5 @@ pub const MAX_PLAYER_LVL: u8 = 8;
 pub const MAX_PLAYERS_IN_TEAM: u16 = 1024;
 pub const MAX_TEAMS: u16 = 14; // TODO: sync with ZappyColor
 
-pub const LIFE_TICKS: u64 = 126;
+pub const LIFE_TICKS: u64 = 444 * 126;
 pub const LIVES_START: u64 = 10;
