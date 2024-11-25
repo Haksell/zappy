@@ -65,7 +65,6 @@ pub async fn client_routine(
                     }
                 }
             }
-            let _ = client.writeln("Disconnected").await;
         });
     }
 }
@@ -80,19 +79,19 @@ async fn handle_client(
             result = client.read() => {
                 let n = result?;
                 let trimmed = n.trim_end();
-                    match PlayerCommand::try_from(trimmed) {
-                        Ok(command) => {
-                            log::info!("{}: sends command: {:?}", client.id(), command);
-                            if let Some(e)= server.lock().await.take_command(&client.id(), command)? {
-                                log::info!("Player {} tried to push {} in to a full queue.", client.id(), trimmed);
-                                client.writeln(&e.to_string()).await?;
-                            }
-                        },
-                        Err(err) => {
-                            log::error!("{}: {}", client.id(), err);
-                            client.writeln(&err).await?;
+                match PlayerCommand::try_from(trimmed) {
+                    Ok(command) => {
+                        log::info!("{}: sends command: {:?}", client.id(), command);
+                        if let Some(e)= server.lock().await.take_command(&client.id(), command)? {
+                            log::info!("Player {} tried to push {} in to a full queue.", client.id(), trimmed);
+                            client.writeln(&e.to_string()).await?;
                         }
+                    },
+                    Err(err) => {
+                        log::error!("{}: {}", client.id(), err);
+                        client.writeln(&err).await?;
                     }
+                }
             }
             Some(cmd) = cmd_rx.recv() => {
                 match cmd {

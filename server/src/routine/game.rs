@@ -26,10 +26,15 @@ pub async fn game_routine(
                 //TODO: investigate is "slow reader" case is possible?
                 //TODO: for example can send take a lot of time to block us here?
                 if let Err(e) = connection
-                    .send(ServerCommandToClient::SendMessage(response))
+                    .send(ServerCommandToClient::SendMessage(response.clone()))
                     .await
                 {
                     log::error!("Failed to send message to client: {:?}", e);
+                }
+                if let ServerResponse::Mort = response {
+                    if let Err(e) = connection.send(ServerCommandToClient::Shutdown).await {
+                        log::error!("Failed to send message to client: {:?}", e);
+                    }
                 }
             } else {
                 log::warn!("Can't find the player with id {client_id} to send the action execution result. Probably already disconnected.");

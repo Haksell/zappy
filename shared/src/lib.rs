@@ -73,7 +73,7 @@ pub enum ServerCommandToClient {
     SendMessage(ServerResponse),
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
 pub enum ServerResponse {
     Ok,
     Ko,
