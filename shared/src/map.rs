@@ -3,14 +3,14 @@ use crate::resource::Resource;
 use derive_getters::Getters;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 //TODO: change fields to private?
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Cell {
-    pub players: HashSet<u16>,
+    pub players: BTreeSet<u16>,
     pub resources: [usize; Resource::SIZE],
-    pub eggs: HashMap<String, (usize, usize)>,
+    pub eggs: BTreeMap<String, (usize, usize)>,
 }
 
 //TODO: change fields to private?
@@ -25,14 +25,14 @@ pub struct Map {
 impl Cell {
     pub fn new() -> Self {
         Self {
-            players: HashSet::new(),
+            players: BTreeSet::new(),
             resources: [0; Resource::SIZE],
-            eggs: HashMap::new(),
+            eggs: BTreeMap::new(),
         }
     }
 
     pub fn add_resource(&mut self, resource: Resource) {
-        self.resources[resource as usize] += 1;
+        self.resources[usize::try_from(resource).unwrap()] += 1;
     }
 }
 

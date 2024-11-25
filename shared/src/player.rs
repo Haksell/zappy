@@ -1,4 +1,5 @@
 use crate::position::{Position, Side};
+use crate::resource::Mining;
 use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS, MAX_PLAYER_LVL};
 use crate::{LIFE_TICKS, LIVES_START};
 use derive_getters::Getters;
@@ -13,33 +14,33 @@ pub struct Player {
     next_frame: u64,
     commands: VecDeque<PlayerCommand>,
     position: Position,
-    inventory: [usize; Resource::SIZE],
+    inventory: [usize; Mining::SIZE],
     level: u8,
-    death_frame: u64,
+    remaining_life: u64,
 }
 
 impl Player {
-    const LEVEL_RESOURCES_MASKS: [[usize; Resource::SIZE]; 7] = [
-        //D  L  M  N  P  S  T
-        [0, 1, 0, 0, 0, 0, 0],
-        [1, 1, 0, 0, 0, 1, 0],
-        [0, 2, 0, 0, 2, 1, 0],
-        [1, 1, 0, 0, 1, 2, 0],
-        [2, 1, 3, 0, 0, 1, 0],
-        [2, 1, 0, 0, 1, 3, 0],
-        [2, 2, 2, 0, 2, 2, 1],
+    const LEVEL_RESOURCES_MASKS: [[usize; Mining::SIZE]; 7] = [
+        // D  L  M  P  S  T
+        [0, 1, 0, 0, 0, 0],
+        [1, 1, 0, 0, 1, 0],
+        [0, 2, 0, 2, 1, 0],
+        [1, 1, 0, 1, 2, 0],
+        [2, 1, 3, 0, 1, 0],
+        [2, 1, 0, 1, 3, 0],
+        [2, 2, 2, 2, 2, 1],
     ];
 
-    pub fn new(id: u16, team: String, position: Position, spawn_frame: u64) -> Self {
+    pub fn new(id: u16, team: String, position: Position) -> Self {
         Self {
             id,
             team,
             next_frame: 0,
             commands: VecDeque::with_capacity(MAX_COMMANDS),
             position,
-            inventory: [0; Resource::SIZE],
+            inventory: [0; Mining::SIZE],
             level: 1,
-            death_frame: spawn_frame + LIFE_TICKS * LIVES_START,
+            remaining_life: LIFE_TICKS * LIVES_START,
         }
     }
 
@@ -55,7 +56,7 @@ impl Player {
         self.position.y = y;
     }
 
-    fn get_right_resource_mask(level: u8) -> &'static [usize; Resource::SIZE] {
+    fn get_right_resource_mask(level: u8) -> &'static [usize; Mining::SIZE] {
         &Self::LEVEL_RESOURCES_MASKS[level as usize - 1]
     }
 
@@ -99,16 +100,38 @@ impl Player {
     }
 
     pub fn add_to_inventory(&mut self, resource: Resource) {
-        self.inventory[resource as usize] += 1;
+        match resource {
+            Resource::Mining(mining) => {
+                self.inventory[mining as usize] += 1;
+            }
+            Resource::Nourriture => {
+                self.remaining_life += LIFE_TICKS;
+            }
+        }
     }
 
     pub fn remove_from_inventory(&mut self, resource: Resource) -> bool {
-        if self.inventory[resource as usize] >= 1 {
-            self.inventory[resource as usize] -= 1;
-            true
-        } else {
-            false
+        match resource {
+            Resource::Mining(mining) => {
+                if self.inventory[mining as usize] >= 1 {
+                    self.inventory[mining as usize] -= 1;
+                    true
+                } else {
+                    false
+                }
+            }
+            Resource::Nourriture => match self.remaining_life.checked_sub(LIFE_TICKS) {
+                Some(remaining_life) => {
+                    self.remaining_life = remaining_life;
+                    true
+                }
+                None => false,
+            },
         }
+    }
+
+    pub fn decrement_life(&mut self) {
+        self.remaining_life -= 1;
     }
 }
 

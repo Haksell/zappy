@@ -101,8 +101,9 @@ impl GameEngine {
                     .map(|resource| {
                         let player = self.players.get_mut(&player_id).unwrap();
                         let cell = &mut self.map.field[player.position().y][player.position().x];
-                        if cell.resources[resource as usize] >= 1 {
-                            cell.resources[resource as usize] -= 1;
+                        let resource_idx = usize::try_from(resource).unwrap();
+                        if cell.resources[resource_idx] >= 1 {
+                            cell.resources[resource_idx] -= 1;
                             player.add_to_inventory(resource);
                             (player_id, ServerResponse::Ok)
                         } else {
@@ -118,7 +119,7 @@ impl GameEngine {
                         let player = self.players.get_mut(&player_id).unwrap();
                         let cell = &mut self.map.field[player.position().y][player.position().x];
                         if player.remove_from_inventory(resource) {
-                            cell.resources[resource as usize] += 1;
+                            cell.resources[usize::try_from(resource).unwrap()] += 1;
                             (player_id, ServerResponse::Ok)
                         } else {
                             (player_id, ServerResponse::Ko)
@@ -134,7 +135,7 @@ impl GameEngine {
                     .inventory()
                     .iter()
                     .enumerate()
-                    .map(|(i, b)| format!("{} {}", Resource::try_from(i as u8).unwrap(), b))
+                    .map(|(i, b)| format!("{} {}", Resource::try_from(i).unwrap(), b))
                     .collect::<Vec<String>>();
                 vec![(player_id, ServerResponse::Inventory(inventory))]
             }
@@ -202,7 +203,7 @@ impl GameEngine {
 
         let mut dead_players = HashSet::new();
         for (id, player) in &mut self.players {
-            if current_frame == *player.death_frame() {
+            if *player.remaining_life() == 0 {
                 log::info!(
                     "Player {} from {} died at ({}, {})",
                     player.id(),
@@ -214,6 +215,8 @@ impl GameEngine {
                 dead_players.insert(*player.id());
                 continue;
             }
+
+            player.decrement_life();
 
             if !player.commands().is_empty() && current_frame >= *player.next_frame() {
                 let command = player.pop_command_from_queue().unwrap();
@@ -251,7 +254,7 @@ impl GameEngine {
         log::debug!("{player_id} wants to join {team_name}");
         let team = self.teams.get_mut(&team_name).unwrap();
         let pos = team.add_member(player_id)?;
-        let player = Player::new(player_id, team_name.clone(), pos, self.frame);
+        let player = Player::new(player_id, team_name.clone(), pos);
         self.map
             .add_player(*player.id(), player.team(), player.position());
         let log_successful_insert = format!(

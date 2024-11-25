@@ -10,7 +10,7 @@ use ratatui::{
 };
 use shared::player::Player;
 use shared::position::Direction;
-use shared::resource::Resource;
+use shared::resource::{Mining, Resource};
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::Receiver;
 
@@ -28,12 +28,33 @@ fn direction_to_emoji(direction: &Direction) -> &'static str {
     }
 }
 
-fn map_resource_to_vec_span(resources: &[usize; 7]) -> Vec<Span> {
+fn map_resource_to_vec_span(resources: &[usize; Resource::SIZE]) -> Vec<Span> {
     resources
         .iter()
         .enumerate()
         .map(|(i, &cnt)| {
-            let c = Resource::try_from(i as u8).unwrap().alias();
+            let c = Resource::try_from(i).unwrap().alias();
+            let resource_str = (0..cnt).map(|_| c).collect::<String>();
+            if !resource_str.is_empty() {
+                Span::styled(
+                    resource_str,
+                    Style::default()
+                        .fg(ServerData::COLORS[i % ServerData::COLORS.len()].to_ratatui_value())
+                        .bold(),
+                )
+            } else {
+                Span::raw("")
+            }
+        })
+        .collect::<Vec<Span>>()
+}
+
+fn map_mining_to_vec_span(resources: &[usize; Mining::SIZE]) -> Vec<Span> {
+    resources
+        .iter()
+        .enumerate()
+        .map(|(i, &cnt)| {
+            let c = Resource::try_from(i).unwrap().alias();
             let resource_str = (0..cnt).map(|_| c).collect::<String>();
             if !resource_str.is_empty() {
                 Span::styled(
@@ -115,13 +136,13 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
                 .collect::<Vec<_>>();
 
             let mut spans = vec![];
-            spans.extend(mapped_player);
-            spans.push(Span::raw(", ".to_string()));
-            spans.extend(mapped_eggs);
-
-            if !mapped_map_resources.is_empty() {
-                spans.push(Span::raw(", "));
-                spans.extend(mapped_map_resources);
+            for vec in [mapped_player, mapped_eggs, mapped_map_resources] {
+                if !vec.is_empty() {
+                    if !spans.is_empty() {
+                        spans.push(Span::raw(" "));
+                    }
+                    spans.extend(vec);
+                }
             }
 
             let widget = Paragraph::new(Line::from(spans))
@@ -158,17 +179,21 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
         })
         .collect::<BTreeMap<String, Vec<Vec<Span>>>>();
 
-    for (_, player) in &data.players {
+    for player in data.players.values() {
         if let Some(details) = teams_data.get_mut(player.team()) {
             let mut current_player_details: Vec<Span> = Vec::new();
+            let style =
+                Style::default().fg(data.teams.get(player.team()).unwrap().0.to_ratatui_value());
+            current_player_details.push(Span::styled(format!("🧬 {}", player.id()), style));
+            current_player_details.push(Span::raw(" | "));
             current_player_details.push(Span::styled(
-                player.id().to_string(),
-                Style::default().fg(data.teams.get(player.team()).unwrap().0.to_ratatui_value()),
+                format!("💜 {}", player.remaining_life()),
+                style,
             ));
             current_player_details.push(Span::raw(" | "));
             current_player_details.push(Span::raw("⭐".repeat(*player.level() as usize)));
             current_player_details.push(Span::raw(" | 🎒 "));
-            current_player_details.extend(map_resource_to_vec_span(player.inventory()));
+            current_player_details.extend(map_mining_to_vec_span(player.inventory()));
             current_player_details.push(Span::raw(" |"));
 
             details.push(current_player_details);
