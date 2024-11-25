@@ -64,12 +64,12 @@ fn eggs_to_span(eggs: (usize, usize), color: Color) -> Span<'static> {
     let s = match eggs {
         (0, 0) => "".to_string(),
         (unhatched, hatched) => format!(
-            "{}{}",
+            "({}{})",
             "🥚".to_string().repeat(unhatched),
             "🐣".to_string().repeat(hatched),
         ),
     };
-    Span::styled(s, Style::default().bg(color))
+    Span::styled(s, Style::default().fg(color))
 }
 
 fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {

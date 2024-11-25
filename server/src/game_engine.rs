@@ -1,6 +1,6 @@
 use crate::args::ServerArgs;
 use derive_getters::Getters;
-use shared::player::Direction;
+use shared::player::{Direction, Position};
 use shared::team::Team;
 use shared::LogicalError::TeamDoesntExist;
 use shared::TechnicalError::IsNotConnectedToServer;
@@ -12,6 +12,7 @@ use shared::{
     resource::Resource,
     Egg, ServerResponse, ZappyError, HP_MODULO, HP_ON_THE_START, MAX_COMMANDS,
 };
+use std::collections::VecDeque;
 use std::{collections::HashMap, error::Error};
 
 #[derive(Debug, Getters)]
@@ -25,12 +26,20 @@ pub struct GameEngine {
 
 impl GameEngine {
     pub async fn from(args: &ServerArgs) -> Result<Self, Box<dyn Error>> {
-        let map = Map::new(args.width, args.height);
+        let mut map = Map::new(args.width, args.height);
         let teams = args
             .names
             .iter()
             .map(|team_name| {
-                let spawn_positions = (0..args.clients).map(|_| map.random_position()).collect();
+                let spawn_positions: VecDeque<Position> =
+                    (0..args.clients).map(|_| map.random_position()).collect();
+                for pos in &spawn_positions {
+                    map.field[pos.y][pos.x]
+                        .eggs
+                        .entry(team_name.clone())
+                        .or_insert((0, 0))
+                        .1 += 1;
+                }
                 (
                     team_name.clone(),
                     Team::new(team_name.clone(), spawn_positions),
@@ -228,7 +237,8 @@ impl GameEngine {
         let team = self.teams.get_mut(&team_name).unwrap();
         let pos = team.add_member(player_id)?;
         let player = Player::new(player_id, team_name.clone(), pos, self.frame);
-        self.map.add_player(*player.id(), player.position());
+        self.map
+            .add_player(*player.id(), player.team(), player.position());
         let log_successful_insert = format!(
             "The player with id: {} has successfully joined the \"{}\" team.",
             player.id(),
