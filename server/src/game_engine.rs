@@ -163,8 +163,8 @@ impl GameEngine {
                 self.map.field[player.position().y][player.position().x]
                     .eggs
                     .entry(player.team().clone())
-                    .and_modify(|v| *v += 1)
-                    .or_insert(1);
+                    .and_modify(|(unhatched, _)| *unhatched += 1)
+                    .or_insert((1, 0));
                 vec![(player_id, ServerResponse::Ok)]
             }
             PlayerCommand::ConnectNbr => {

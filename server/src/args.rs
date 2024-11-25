@@ -38,7 +38,6 @@ pub(crate) struct ServerArgs {
         long,
         help = "List of team names",
         required = true,
-        value_parser = validate_clients,
         num_args = 1..=MAX_TEAMS as usize // TODO: test
     )]
     pub(crate) names: Vec<String>,

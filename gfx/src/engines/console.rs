@@ -60,8 +60,16 @@ fn map_player_to_span(color: Color, player: &Player) -> Span {
     )
 }
 
-fn map_team_to_span(count: usize, color: Color) -> Span<'static> {
-    Span::styled("(🥚)".to_string().repeat(count), Style::default().fg(color))
+fn eggs_to_span(eggs: (usize, usize), color: Color) -> Span<'static> {
+    let s = match eggs {
+        (0, 0) => "".to_string(),
+        (unhatched, hatched) => format!(
+            "{}{}",
+            "🥚".to_string().repeat(unhatched),
+            "🐣".to_string().repeat(hatched),
+        ),
+    };
+    Span::styled(s, Style::default().bg(color))
 }
 
 fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
@@ -88,9 +96,9 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
             let mapped_eggs = cell
                 .eggs
                 .iter()
-                .map(|e| {
-                    let color = data.teams.get(e.0).unwrap().0;
-                    map_team_to_span(*e.1, color.to_ratatui_value())
+                .map(|(team_name, &eggs)| {
+                    let color = data.teams.get(team_name).unwrap().0;
+                    eggs_to_span(eggs, color.to_ratatui_value())
                 })
                 .collect::<Vec<_>>();
             let mapped_player = cell
