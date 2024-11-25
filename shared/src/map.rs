@@ -63,12 +63,9 @@ impl Map {
 
     pub fn add_player(&mut self, id: u16, team_name: &str, position: &Position) {
         log::debug!("Adding {} to the game field.", id);
-        self.field[position.y][position.x].players.insert(id);
-        self.field[position.y][position.x]
-            .eggs
-            .get_mut(team_name)
-            .unwrap()
-            .1 -= 1;
+        let cell = &mut self.field[position.y][position.x];
+        cell.players.insert(id);
+        cell.eggs.get_mut(team_name).unwrap().1 -= 1;
     }
 
     pub fn remove_player(&mut self, id: &u16, position: &Position) {

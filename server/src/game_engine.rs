@@ -148,7 +148,7 @@ impl GameEngine {
             }
             PlayerCommand::Expel => {
                 let (target_ids, direction) = {
-                    let player = self.players.get_mut(&player_id).unwrap();
+                    let player = self.players.get(&player_id).unwrap();
                     let ids: Vec<u16> = self.map.field[player.position().y][player.position().x]
                         .players
                         .iter()
@@ -169,9 +169,8 @@ impl GameEngine {
             PlayerCommand::Broadcast { .. } => todo!(),
             PlayerCommand::Incantation => todo!(),
             PlayerCommand::Fork => {
-                //TODO: I don't see any limit or cooldown for fork..
-                //TODO: Regarding the subject it is possible to spam it
-                let player = self.players.get_mut(&player_id).unwrap();
+                // TODO: use MAX_PLAYERS to not abuse spamming
+                let player = self.players.get(&player_id).unwrap();
                 let egg = Egg {
                     team_name: player.team().clone(),
                     position: player.position().clone(),
@@ -188,12 +187,12 @@ impl GameEngine {
                 vec![(player_id, ServerResponse::Ok)]
             }
             PlayerCommand::ConnectNbr => {
-                let player = self.players.get_mut(&player_id).unwrap();
+                let team_name = self.players.get(&player_id).unwrap().team();
                 vec![(
                     player_id,
                     ServerResponse::Value(
                         self.teams
-                            .get_mut(player.team())
+                            .get(team_name)
                             .unwrap()
                             .remaining_members()
                             .to_string(),
