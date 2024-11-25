@@ -17,7 +17,6 @@ use bevy::{
     },
     window::WindowResolution,
 };
-use crossterm::event::KeyEvent;
 use rand::{rngs::StdRng, Rng, SeedableRng as _};
 use shared::{utils::lerp, PROJECT_NAME};
 use std::{
@@ -29,8 +28,8 @@ use std::{
 use tokio::sync::mpsc::Receiver;
 
 // TODO: read from server
-const WIDTH: u8 = 12;
-const HEIGHT: u8 = 8;
+const WIDTH: u8 = 5;
+const HEIGHT: u8 = 5;
 
 const SUBDIVISIONS: &[u16] = &[1, 2, 3, 5, 8, 13, 21, 34];
 
@@ -66,15 +65,13 @@ impl Default for TorusTransform {
 #[derive(Resource)]
 struct ServerLink {
     data_rx: Arc<Mutex<Receiver<ServerData>>>,
-    conn_rx: Arc<Mutex<Receiver<bool>>>,
     game_state: Arc<Mutex<ServerData>>,
 }
 
 impl ServerLink {
-    fn new(data_rx: Receiver<ServerData>, conn_rx: Receiver<bool>) -> Self {
+    fn new(data_rx: Receiver<ServerData>) -> Self {
         Self {
             data_rx: Arc::new(Mutex::new(data_rx)),
-            conn_rx: Arc::new(Mutex::new(conn_rx)),
             game_state: Default::default(),
         }
     }
@@ -123,11 +120,7 @@ impl QuadBundle {
     }
 }
 
-pub async fn render(
-    mut _event_rx: Receiver<KeyEvent>,
-    data_rx: Receiver<ServerData>,
-    conn_rx: Receiver<bool>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn render(data_rx: Receiver<ServerData>) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -138,7 +131,7 @@ pub async fn render(
             ..Default::default()
         }))
         .init_resource::<TorusTransform>()
-        .insert_resource(ServerLink::new(data_rx, conn_rx))
+        .insert_resource(ServerLink::new(data_rx))
         .add_systems(Startup, (setup, network_setup))
         .add_systems(
             Update,
@@ -197,12 +190,10 @@ fn setup(
 
 fn network_setup(server_link: ResMut<ServerLink>) {
     let data_rx = Arc::clone(&server_link.data_rx);
-    let conn_rx = Arc::clone(&server_link.conn_rx);
     let game_state = Arc::clone(&server_link.game_state);
 
     thread::spawn(move || {
         let mut data_rx = data_rx.lock().unwrap();
-        let mut conn_rx = conn_rx.lock().unwrap();
         let mut game_state = game_state.lock().unwrap();
 
         tokio::runtime::Runtime::new()
@@ -212,9 +203,6 @@ fn network_setup(server_link: ResMut<ServerLink>) {
                     tokio::select! {
                         Some(new_data) = data_rx.recv() => {
                             *game_state = new_data;
-                        }
-                        Some(is_connected) = conn_rx.recv() => {
-                            println!("is_connected: {is_connected}");
                         }
                         // Helps not crashing when closing bevy. TODO: find a better way?
                         _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep

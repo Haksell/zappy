@@ -109,7 +109,7 @@ impl Engine {
     ) -> Result<(), Box<dyn std::error::Error>> {
         match self {
             Engine::Console => console::render(event_rx, data_rx, conn_rx).await,
-            Engine::Torus => torus::render(event_rx, data_rx, conn_rx).await,
+            Engine::Torus => torus::render(data_rx).await,
         }
     }
 }
