@@ -62,25 +62,22 @@ impl Default for TorusTransform {
     }
 }
 
-// TODO: find a way
+// TODO: don't clone and lock all this
 #[derive(Resource)]
-struct ArgsResource {
-    data_rx: Arc<Mutex<Receiver<ServerData>>>, // TODO: not Mutex
-    conn_rx: Arc<Mutex<Receiver<bool>>>,       // TODO: not Mutex
+struct ServerLink {
+    data_rx: Arc<Mutex<Receiver<ServerData>>>,
+    conn_rx: Arc<Mutex<Receiver<bool>>>,
+    game_state: Arc<Mutex<ServerData>>,
 }
 
-impl ArgsResource {
+impl ServerLink {
     fn new(data_rx: Receiver<ServerData>, conn_rx: Receiver<bool>) -> Self {
         Self {
             data_rx: Arc::new(Mutex::new(data_rx)),
             conn_rx: Arc::new(Mutex::new(conn_rx)),
+            game_state: Default::default(),
         }
     }
-}
-
-#[derive(Resource)]
-struct NetworkResource {
-    game_state: Arc<Mutex<ServerData>>, // TODO: not Option
 }
 
 #[derive(Component, Debug)]
@@ -141,7 +138,7 @@ pub async fn render(
             ..Default::default()
         }))
         .init_resource::<TorusTransform>()
-        .insert_resource(ArgsResource::new(data_rx, conn_rx))
+        .insert_resource(ServerLink::new(data_rx, conn_rx))
         .add_systems(Startup, (setup, network_setup))
         .add_systems(
             Update,
@@ -198,38 +195,32 @@ fn setup(
     }
 }
 
-fn network_setup(mut commands: Commands, args: ResMut<ArgsResource>) {
-    // let (mut data_rx, mut conn_rx) = connect_to_server(&args.0);
-    let game_state = Arc::new(Mutex::new(ServerData::default()));
-
-    let network_resource = NetworkResource {
-        game_state: Arc::clone(&game_state),
-    };
-
-    commands.insert_resource(network_resource);
-
-    let data_rx = Arc::clone(&args.data_rx);
-    let conn_rx = Arc::clone(&args.conn_rx);
+fn network_setup(server_link: ResMut<ServerLink>) {
+    let data_rx = Arc::clone(&server_link.data_rx);
+    let conn_rx = Arc::clone(&server_link.conn_rx);
+    let game_state = Arc::clone(&server_link.game_state);
 
     thread::spawn(move || {
         let mut data_rx = data_rx.lock().unwrap();
         let mut conn_rx = conn_rx.lock().unwrap();
+        let mut game_state = game_state.lock().unwrap();
 
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async move {
-            loop {
-                tokio::select! {
-                    Some(new_data) = data_rx.recv() => {
-                        println!("{new_data:?}");
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async move {
+                loop {
+                    tokio::select! {
+                        Some(new_data) = data_rx.recv() => {
+                            *game_state = new_data;
+                        }
+                        Some(is_connected) = conn_rx.recv() => {
+                            println!("is_connected: {is_connected}");
+                        }
+                        // Helps not crashing when closing bevy. TODO: find a better way?
+                        _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep
                     }
-                    Some(is_connected) = conn_rx.recv() => {
-                        println!("is_connected: {is_connected}");
-                    }
-                    // Helps not crashing when closing bevy. TODO: find a better way?
-                    _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep
                 }
-            }
-        });
+            });
     });
 }
 
