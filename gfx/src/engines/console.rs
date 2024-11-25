@@ -1,3 +1,5 @@
+// TODO: if enough lines, one line for each team
+
 use crate::engines::ServerData;
 use crossterm::event::KeyEvent;
 use itertools::Itertools as _;

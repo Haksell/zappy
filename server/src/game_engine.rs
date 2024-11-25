@@ -297,7 +297,12 @@ impl GameEngine {
                     *unhatched -= 1;
                     *hatched += 1;
                     team.add_next_spawn_position(egg.position);
-                    log::info!("Team {}: hatched egg at {}!", egg.team_name, egg.position);
+                    log::info!(
+                        "Team {}: hatched egg at ({}, {})!",
+                        egg.team_name,
+                        egg.position.x,
+                        egg.position.y
+                    );
                 }
             }
         }
