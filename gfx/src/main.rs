@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     let (event_tx, event_rx) = mpsc::channel(100);
-    let (tx, data_rx) = mpsc::channel(100);
+    let (data_tx, data_rx) = mpsc::channel(100);
     let (conn_tx, conn_rx) = mpsc::channel(10);
 
     tokio::spawn(async move {
@@ -72,7 +72,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 let teams: Result<BTreeMap<String, usize>, _> =
                                     serde_json::from_value(json_data["teams"].clone());
                                 if let (Ok(map), Ok(players), Ok(teams)) = (map, players, teams) {
-                                    if tx.send(ServerData::new(map, players, teams)).await.is_err()
+                                    if data_tx
+                                        .send(ServerData::new(map, players, teams))
+                                        .await
+                                        .is_err()
                                     {
                                         break;
                                     }
