@@ -1,5 +1,6 @@
 use crate::position::{Position, Side};
 use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS, MAX_PLAYER_LVL};
+use crate::{LIFE_TICKS, LIVES_START};
 use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -14,7 +15,7 @@ pub struct Player {
     position: Position,
     inventory: [usize; Resource::SIZE],
     level: u8,
-    spawn_frame: u64,
+    death_frame: u64,
 }
 
 impl Player {
@@ -38,7 +39,7 @@ impl Player {
             position,
             inventory: [0; Resource::SIZE],
             level: 1,
-            spawn_frame,
+            death_frame: spawn_frame + LIFE_TICKS * LIVES_START,
         }
     }
 

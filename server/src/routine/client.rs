@@ -49,7 +49,7 @@ pub async fn client_routine(
 
             //Specific client loop ends here, cleanup before quiting async task
             client_senders_clone.lock().await.remove(&id);
-            server_arc_for_disconnect.lock().await.remove_player(&id);
+            server_arc_for_disconnect.lock().await.remove_player(id);
             log::debug!("{} has been deleted by server", id);
             if let Err(err) = handle_result {
                 match err {

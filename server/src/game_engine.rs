@@ -11,10 +11,10 @@ use shared::{
     TechnicalError::IsNotConnectedToServer,
     ZappyError,
     ZappyError::Technical,
-    HP_MODULO, HP_ON_THE_START, MAX_COMMANDS,
+    MAX_COMMANDS,
 };
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     error::Error,
 };
 
@@ -198,13 +198,21 @@ impl GameEngine {
     pub fn tick(&mut self, execution_results: &mut Vec<(u16, ServerResponse)>) {
         self.frame += 1;
         let current_frame = self.frame;
-
         let mut commands_to_process = Vec::new();
+
+        let mut dead_players = HashSet::new();
         for (id, player) in &mut self.players {
-            if current_frame - player.spawn_frame() >= HP_ON_THE_START as u64
-                && current_frame - player.spawn_frame() % HP_MODULO as u64 == 0
-            {
-                log::warn!("On this frame we should check if player has food. Then consume it or mark him as dead");
+            if current_frame == *player.death_frame() {
+                log::info!(
+                    "Player {} from {} died at ({}, {})",
+                    player.id(),
+                    player.team(),
+                    player.position().x,
+                    player.position().y
+                );
+                execution_results.push((*player.id(), ServerResponse::Mort));
+                dead_players.insert(*player.id());
+                continue;
             }
 
             if !player.commands().is_empty() && current_frame >= *player.next_frame() {
@@ -212,6 +220,10 @@ impl GameEngine {
                 player.set_next_frame(current_frame + command.delay());
                 commands_to_process.push((*id, command));
             }
+        }
+
+        for player_id in dead_players {
+            self.remove_player(player_id);
         }
 
         for (player_id, command) in commands_to_process {
@@ -252,14 +264,14 @@ impl GameEngine {
         Ok(team.remaining_members())
     }
 
-    pub fn remove_player(&mut self, player_id: &u16) {
-        if let Some(player) = self.players.remove(player_id) {
+    pub fn remove_player(&mut self, player_id: u16) {
+        if let Some(player) = self.players.remove(&player_id) {
             log::debug!("Client {player_id} has been removed from the server");
             self.map.remove_player(player.id(), player.position());
             self.teams
                 .get_mut(player.team())
                 .unwrap()
-                .remove_member(*player_id);
+                .remove_member(player_id);
         }
     }
 
