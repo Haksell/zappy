@@ -10,7 +10,7 @@ use ratatui::{
 };
 use shared::player::Player;
 use shared::position::Direction;
-use shared::resource::{Mining, Resource};
+use shared::resource::{Resource, Stone};
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::Receiver;
 
@@ -49,7 +49,7 @@ fn map_resource_to_vec_span(resources: &[usize; Resource::SIZE]) -> Vec<Span> {
         .collect::<Vec<Span>>()
 }
 
-fn map_mining_to_vec_span(resources: &[usize; Mining::SIZE]) -> Vec<Span> {
+fn map_stones_to_vec_span(resources: &[usize; Stone::SIZE]) -> Vec<Span> {
     resources
         .iter()
         .enumerate()
@@ -193,7 +193,7 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
             current_player_details.push(Span::raw(" | "));
             current_player_details.push(Span::raw("⭐".repeat(*player.level() as usize)));
             current_player_details.push(Span::raw(" | 🎒 "));
-            current_player_details.extend(map_mining_to_vec_span(player.inventory()));
+            current_player_details.extend(map_stones_to_vec_span(player.inventory()));
             current_player_details.push(Span::raw(" |"));
 
             details.push(current_player_details);

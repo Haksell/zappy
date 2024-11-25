@@ -4,7 +4,7 @@ use std::fmt::Display;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
 #[repr(u8)]
-pub enum Mining {
+pub enum Stone {
     Deraumere,
     Linemate,
     Mendiane,
@@ -13,50 +13,50 @@ pub enum Mining {
     Thystame,
 }
 
-impl TryFrom<u8> for Mining {
+impl TryFrom<u8> for Stone {
     type Error = &'static str;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(Mining::Deraumere),
-            1 => Ok(Mining::Linemate),
-            2 => Ok(Mining::Mendiane),
-            3 => Ok(Mining::Phiras),
-            4 => Ok(Mining::Sibur),
-            5 => Ok(Mining::Thystame),
+            0 => Ok(Stone::Deraumere),
+            1 => Ok(Stone::Linemate),
+            2 => Ok(Stone::Mendiane),
+            3 => Ok(Stone::Phiras),
+            4 => Ok(Stone::Sibur),
+            5 => Ok(Stone::Thystame),
             _ => unreachable!(),
         }
     }
 }
 
-impl From<Mining> for usize {
-    fn from(value: Mining) -> Self {
+impl From<Stone> for usize {
+    fn from(value: Stone) -> Self {
         value as u8 as Self
     }
 }
 
-impl Mining {
+impl Stone {
     pub const SIZE: usize = 6; // TODO: dynamic
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum Resource {
-    Mining(Mining),
+    Stone(Stone),
     Nourriture,
 }
 
 impl Resource {
-    pub const SIZE: usize = Mining::SIZE + 1;
+    pub const SIZE: usize = Stone::SIZE + 1;
 
     pub fn alias(&self) -> char {
         match self {
-            Resource::Mining(mining) => match mining {
-                Mining::Deraumere => 'D',
-                Mining::Linemate => 'L',
-                Mining::Mendiane => 'M',
-                Mining::Phiras => 'P',
-                Mining::Sibur => 'S',
-                Mining::Thystame => 'T',
+            Resource::Stone(stone) => match stone {
+                Stone::Deraumere => 'D',
+                Stone::Linemate => 'L',
+                Stone::Mendiane => 'M',
+                Stone::Phiras => 'P',
+                Stone::Sibur => 'S',
+                Stone::Thystame => 'T',
             },
             Resource::Nourriture => 'N',
         }
@@ -64,13 +64,13 @@ impl Resource {
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Resource::Mining(mining) => match mining {
-                Mining::Deraumere => "deraumere",
-                Mining::Linemate => "linemate",
-                Mining::Mendiane => "mendiane",
-                Mining::Phiras => "phiras",
-                Mining::Sibur => "sibur",
-                Mining::Thystame => "thystame",
+            Resource::Stone(stone) => match stone {
+                Stone::Deraumere => "deraumere",
+                Stone::Linemate => "linemate",
+                Stone::Mendiane => "mendiane",
+                Stone::Phiras => "phiras",
+                Stone::Sibur => "sibur",
+                Stone::Thystame => "thystame",
             },
             Resource::Nourriture => "nourriture",
         }
@@ -78,12 +78,12 @@ impl Resource {
 
     pub fn random() -> Self {
         static RESOURCES: [Resource; Resource::SIZE] = [
-            Resource::Mining(Mining::Deraumere),
-            Resource::Mining(Mining::Linemate),
-            Resource::Mining(Mining::Mendiane),
-            Resource::Mining(Mining::Phiras),
-            Resource::Mining(Mining::Sibur),
-            Resource::Mining(Mining::Thystame),
+            Resource::Stone(Stone::Deraumere),
+            Resource::Stone(Stone::Linemate),
+            Resource::Stone(Stone::Mendiane),
+            Resource::Stone(Stone::Phiras),
+            Resource::Stone(Stone::Sibur),
+            Resource::Stone(Stone::Thystame),
             Resource::Nourriture,
         ];
 
@@ -103,12 +103,12 @@ impl TryFrom<&str> for Resource {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value.to_ascii_lowercase().as_str() {
-            "deraumere" | "d" => Ok(Resource::Mining(Mining::Deraumere)),
-            "linemate" | "l" => Ok(Resource::Mining(Mining::Linemate)),
-            "mendiane" | "m" => Ok(Resource::Mining(Mining::Mendiane)),
-            "phiras" | "p" => Ok(Resource::Mining(Mining::Phiras)),
-            "sibur" | "s" => Ok(Resource::Mining(Mining::Sibur)),
-            "thystame" | "t" => Ok(Resource::Mining(Mining::Thystame)),
+            "deraumere" | "d" => Ok(Resource::Stone(Stone::Deraumere)),
+            "linemate" | "l" => Ok(Resource::Stone(Stone::Linemate)),
+            "mendiane" | "m" => Ok(Resource::Stone(Stone::Mendiane)),
+            "phiras" | "p" => Ok(Resource::Stone(Stone::Phiras)),
+            "sibur" | "s" => Ok(Resource::Stone(Stone::Sibur)),
+            "thystame" | "t" => Ok(Resource::Stone(Stone::Thystame)),
             "nourriture" | "n" => Ok(Resource::Nourriture),
             _ => Err(()),
         }
@@ -120,8 +120,8 @@ impl TryFrom<usize> for Resource {
 
     fn try_from(value: usize) -> Result<Self, Self::Error> {
         match value {
-            0..Mining::SIZE => Ok(Resource::Mining(Mining::try_from(value as u8).unwrap())),
-            Mining::SIZE => Ok(Resource::Nourriture),
+            0..Stone::SIZE => Ok(Resource::Stone(Stone::try_from(value as u8).unwrap())),
+            Stone::SIZE => Ok(Resource::Nourriture),
             _ => unreachable!(),
         }
     }
@@ -130,8 +130,8 @@ impl TryFrom<usize> for Resource {
 impl From<Resource> for usize {
     fn from(value: Resource) -> Self {
         match value {
-            Resource::Mining(mining) => mining as usize,
-            Resource::Nourriture => Mining::SIZE,
+            Resource::Stone(stone) => stone as usize,
+            Resource::Nourriture => Stone::SIZE,
         }
     }
 }

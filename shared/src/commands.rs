@@ -72,6 +72,8 @@ impl TryFrom<&str> for PlayerCommand {
 
 impl PlayerCommand {
     pub const EGG_FETCH_TIME_DELAY: u64 = 600;
+    pub const INCANTATION_DURATION: u64 = 300;
+
     pub fn delay(&self) -> u64 {
         match self {
             PlayerCommand::Move => 7,
@@ -83,7 +85,7 @@ impl PlayerCommand {
             PlayerCommand::Put { .. } => 7,
             PlayerCommand::Expel => 7,
             PlayerCommand::Broadcast { .. } => 7,
-            PlayerCommand::Incantation => 300,
+            PlayerCommand::Incantation => 0,
             PlayerCommand::Fork => 42,
             PlayerCommand::ConnectNbr => 0,
         }

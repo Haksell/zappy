@@ -1,5 +1,5 @@
 use crate::position::{Position, Side};
-use crate::resource::Mining;
+use crate::resource::Stone;
 use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS, MAX_PLAYER_LVL};
 use crate::{LIFE_TICKS, LIVES_START};
 use derive_getters::Getters;
@@ -14,13 +14,13 @@ pub struct Player {
     next_frame: u64,
     commands: VecDeque<PlayerCommand>,
     position: Position,
-    inventory: [usize; Mining::SIZE],
+    inventory: [usize; Stone::SIZE],
     level: u8,
     remaining_life: u64,
 }
 
 impl Player {
-    const LEVEL_RESOURCES_MASKS: [[usize; Mining::SIZE]; 7] = [
+    const LEVEL_RESOURCES_MASKS: [[usize; Stone::SIZE]; 7] = [
         // D  L  M  P  S  T
         [0, 1, 0, 0, 0, 0],
         [1, 1, 0, 0, 1, 0],
@@ -38,7 +38,7 @@ impl Player {
             next_frame: 0,
             commands: VecDeque::with_capacity(MAX_COMMANDS),
             position,
-            inventory: [0; Mining::SIZE],
+            inventory: [0; Stone::SIZE],
             level: 1,
             remaining_life: LIFE_TICKS * LIVES_START,
         }
@@ -56,7 +56,7 @@ impl Player {
         self.position.y = y;
     }
 
-    fn get_right_resource_mask(level: u8) -> &'static [usize; Mining::SIZE] {
+    fn get_right_resource_mask(level: u8) -> &'static [usize; Stone::SIZE] {
         &Self::LEVEL_RESOURCES_MASKS[level as usize - 1]
     }
 
@@ -101,8 +101,8 @@ impl Player {
 
     pub fn add_to_inventory(&mut self, resource: Resource) {
         match resource {
-            Resource::Mining(mining) => {
-                self.inventory[mining as usize] += 1;
+            Resource::Stone(stone) => {
+                self.inventory[stone as usize] += 1;
             }
             Resource::Nourriture => {
                 self.remaining_life += LIFE_TICKS;
@@ -112,9 +112,9 @@ impl Player {
 
     pub fn remove_from_inventory(&mut self, resource: Resource) -> bool {
         match resource {
-            Resource::Mining(mining) => {
-                if self.inventory[mining as usize] >= 1 {
-                    self.inventory[mining as usize] -= 1;
+            Resource::Stone(stone) => {
+                if self.inventory[stone as usize] >= 1 {
+                    self.inventory[stone as usize] -= 1;
                     true
                 } else {
                     false
