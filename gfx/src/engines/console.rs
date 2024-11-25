@@ -1,16 +1,19 @@
 use crate::engines::ServerData;
 use crossterm::event::KeyEvent;
-use itertools::Itertools;
-use ratatui::prelude::{Alignment, Color, Line, Rect, Span, Style, Stylize};
-use ratatui::widgets::{BorderType, Borders, Paragraph, Wrap};
-use ratatui::{crossterm::event::KeyCode, widgets::Block};
+use itertools::Itertools as _;
 use ratatui::{
+    crossterm::event::KeyCode,
     layout::{Constraint, Layout},
+    prelude::{Alignment, Color, Line, Rect, Span, Style, Stylize},
+    widgets::Block,
+    widgets::{BorderType, Borders, Paragraph, Wrap},
     Frame,
 };
-use shared::player::Player;
-use shared::position::Direction;
-use shared::resource::{Resource, Stone};
+use shared::{
+    player::Player,
+    position::Direction,
+    resource::{Resource, Stone},
+};
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::Receiver;
 
