@@ -104,7 +104,7 @@ impl Map {
             (false, west)
         };
 
-        match dx.cmp(&dy) {
+        let source_if_east = match dx.cmp(&dy) {
             std::cmp::Ordering::Less => {
                 if from_north {
                     3
@@ -125,7 +125,16 @@ impl Map {
                     5
                 }
             }
-        }
+        };
+
+        let dir_shift = match receiver_pos.direction {
+            Direction::North => 6,
+            Direction::East => 0,
+            Direction::South => 2,
+            Direction::West => 4,
+        };
+
+        ((source_if_east + dir_shift - 1) & 7) + 1
     }
 }
 
@@ -142,9 +151,13 @@ mod tests {
     }
 
     #[test]
-    fn test_broadcast_source() {
+    fn test_broadcast_source_center() {
         let map = Map::new(5, 5);
-        let center = pos(2, 2);
+        let receiver = Position {
+            x: 2,
+            y: 2,
+            direction: Direction::East,
+        };
         let expected = vec![
             vec![4, 3, 3, 3, 2],
             vec![5, 4, 3, 2, 1],
@@ -155,7 +168,32 @@ mod tests {
         for y in 0..5 {
             for x in 0..5 {
                 assert_eq!(
-                    map.find_broadcast_source(&pos(x, y), &center),
+                    map.find_broadcast_source(&pos(x, y), &receiver),
+                    expected[y][x]
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_broadcast_source_asymetric() {
+        let map = Map::new(5, 5);
+        let receiver = Position {
+            x: 0,
+            y: 1,
+            direction: Direction::North,
+        };
+        let expected = vec![
+            vec![1, 8, 7, 3, 2],
+            vec![0, 7, 7, 3, 3],
+            vec![5, 6, 7, 3, 4],
+            vec![5, 5, 6, 4, 5],
+            vec![1, 1, 8, 2, 1],
+        ];
+        for y in 0..5 {
+            for x in 0..5 {
+                assert_eq!(
+                    map.find_broadcast_source(&pos(x, y), &receiver),
                     expected[y][x]
                 );
             }
