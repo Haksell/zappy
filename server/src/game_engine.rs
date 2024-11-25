@@ -1,18 +1,22 @@
 use crate::args::ServerArgs;
 use derive_getters::Getters;
-use shared::player::{Direction, Position};
-use shared::team::Team;
-use shared::TechnicalError::IsNotConnectedToServer;
-use shared::ZappyError::Technical;
 use shared::{
     commands::PlayerCommand,
     map::Map,
-    player::{Player, Side},
+    player::Player,
+    position::{Direction, Position, Side},
     resource::Resource,
-    Egg, ServerResponse, ZappyError, HP_MODULO, HP_ON_THE_START, MAX_COMMANDS,
+    team::Team,
+    Egg, ServerResponse,
+    TechnicalError::IsNotConnectedToServer,
+    ZappyError,
+    ZappyError::Technical,
+    HP_MODULO, HP_ON_THE_START, MAX_COMMANDS,
 };
-use std::collections::VecDeque;
-use std::{collections::HashMap, error::Error};
+use std::{
+    collections::{HashMap, VecDeque},
+    error::Error,
+};
 
 #[derive(Debug, Getters)]
 pub struct GameEngine {

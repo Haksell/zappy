@@ -5,11 +5,12 @@ use ratatui::{
     layout::{Constraint, Layout},
     Frame,
 };
+use shared::position::Direction;
 
 use crate::engines::ServerData;
 use itertools::Itertools;
 use ratatui::prelude::{Alignment, Color, Line, Rect, Span, Style, Stylize};
-use shared::player::{Direction, Player};
+use shared::player::Player;
 use shared::resource::Resource;
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::Receiver;

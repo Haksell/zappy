@@ -1,4 +1,4 @@
-use crate::player::{Direction, Position};
+use crate::position::{Direction, Position};
 use crate::resource::Resource;
 use derive_getters::Getters;
 use rand::Rng;

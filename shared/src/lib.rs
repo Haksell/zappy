@@ -1,12 +1,13 @@
 pub mod commands;
 pub mod map;
 pub mod player;
+pub mod position;
 pub mod resource;
 pub mod team;
 pub mod utils;
 
-use crate::player::{Direction, Position};
 use commands::PlayerCommand;
+use position::{Direction, Position};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 

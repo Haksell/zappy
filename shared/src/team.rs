@@ -1,4 +1,4 @@
-use crate::player::Position;
+use crate::position::Position;
 use crate::LogicalError::NoPlaceAvailable;
 use crate::ZappyError;
 use serde::{Deserialize, Serialize};
