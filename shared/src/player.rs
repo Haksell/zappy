@@ -104,20 +104,6 @@ pub struct Player {
     spawn_frame: u64,
 }
 
-
-/*
-
-Player: 
-        death_frame: 1260 + 126 + connect_frame
-
-
-        11
-
-
-
-norriture: 1
- */
-
 impl Player {
     const LEVEL_RESOURCES_MASKS: [[usize; Resource::SIZE]; 7] = [
         //D  L  M  N  P  S  T
@@ -158,13 +144,8 @@ impl Player {
     fn get_right_resource_mask(level: u8) -> &'static [usize; Resource::SIZE] {
         &Self::LEVEL_RESOURCES_MASKS[level as usize - 1]
     }
-    
-    fn consume_food(&mut self) -> bool {
-          self.inventory[Resource::Nourriture as usize];
-        todo!()
-    }
 
-    //TODO: need to test
+    // TODO: need to test
     pub fn level_up(&mut self) -> bool {
         if self.level == MAX_PLAYER_LVL {
             log::error!(

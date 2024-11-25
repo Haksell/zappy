@@ -73,9 +73,9 @@ pub async fn admin_routine(
 }
 
 async fn handle_admin(
-    server: Arc<Mutex<GameEngine>>,
+    _server: Arc<Mutex<GameEngine>>,
     client: &mut Connection,
-    player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
+    _player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
 ) -> Result<(), ZappyError> {
     loop {
         let msg = client.read().await?;

@@ -2,9 +2,8 @@ use crate::args::ServerArgs;
 use derive_getters::Getters;
 use shared::player::{Direction, Position};
 use shared::team::Team;
-use shared::LogicalError::TeamDoesntExist;
 use shared::TechnicalError::IsNotConnectedToServer;
-use shared::ZappyError::{Logical, Technical};
+use shared::ZappyError::Technical;
 use shared::{
     commands::PlayerCommand,
     map::Map,
@@ -257,14 +256,6 @@ impl GameEngine {
                 .get_mut(player.team())
                 .unwrap()
                 .remove_member(*player_id);
-        }
-    }
-
-    pub fn remaining_clients(&self, team_name: &str) -> Result<u16, ZappyError> {
-        if let Some(team) = self.teams.get(team_name) {
-            Ok(team.remaining_members())
-        } else {
-            Err(Logical(TeamDoesntExist(team_name.to_string())))
         }
     }
 
