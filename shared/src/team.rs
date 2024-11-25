@@ -1,19 +1,20 @@
 use crate::LogicalError::MaxPlayersReached;
 use crate::ZappyError;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
+use crate::player::Position;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Team {
     members: HashSet<u16>,
-    max_members: u16,
+    spawn_positions : VecDeque<Position>
 }
 
 impl Team {
-    pub fn new(max_members: u16) -> Self {
+    pub fn new(spawn_position: VecDeque<Position>) -> Self {
         Self {
-            members: HashSet::with_capacity(max_members as usize),
-            max_members,
+            members: HashSet::with_capacity(spawn_position.len()),
+            spawn_positions
         }
     }
 

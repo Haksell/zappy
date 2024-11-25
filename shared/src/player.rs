@@ -49,7 +49,7 @@ impl Direction {
         }
     }
 
-    pub fn opposite_side(&self) -> Self {
+    pub fn opposite(&self) -> Self {
         match self {
             Direction::North => Direction::South,
             Direction::East => Direction::West,
@@ -101,7 +101,22 @@ pub struct Player {
     position: Position,
     inventory: [usize; Resource::SIZE],
     level: u8,
+    spawn_frame: u64,
 }
+
+
+/*
+
+Player: 
+        death_frame: 1260 + 126 + connect_frame
+
+
+        11
+
+
+
+norriture: 1
+ */
 
 impl Player {
     const LEVEL_RESOURCES_MASKS: [[usize; Resource::SIZE]; 7] = [
@@ -115,7 +130,7 @@ impl Player {
         [2, 2, 2, 0, 2, 2, 1],
     ];
 
-    pub fn new(id: u16, team: String, position: Position) -> Self {
+    pub fn new(id: u16, team: String, position: Position, spawn_frame: u64) -> Self {
         Self {
             id,
             team,
@@ -124,6 +139,7 @@ impl Player {
             position,
             inventory: [0; Resource::SIZE],
             level: 1,
+            spawn_frame,
         }
     }
 
@@ -141,6 +157,11 @@ impl Player {
 
     fn get_right_resource_mask(level: u8) -> &'static [usize; Resource::SIZE] {
         &Self::LEVEL_RESOURCES_MASKS[level as usize - 1]
+    }
+    
+    fn consume_food(&mut self) -> bool {
+          self.inventory[Resource::Nourriture as usize];
+        todo!()
     }
 
     //TODO: need to test
