@@ -217,7 +217,6 @@ impl GameEngine {
                     })
                     .collect()
             }
-            //TODO: what to do with commands in queue
             PlayerCommand::Incantation => {
                 let player = self.players.get(&player_id).unwrap();
                 let position = player.position();
@@ -233,7 +232,6 @@ impl GameEngine {
                         }
                     })
                     .collect::<Vec<_>>();
-                //TODO: or == ?
                 if same_lvl_players.len() >= player.nxt_lvl_player_cnt_requirements()
                     && self.map.field[position.y][position.x]
                         .stones
@@ -308,7 +306,6 @@ impl GameEngine {
                 continue;
             }
 
-            //TODO: for incantation as well?
             player.decrement_life();
 
             if !player.commands().is_empty() && current_frame >= *player.next_frame() {

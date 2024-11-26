@@ -1,4 +1,5 @@
 # Zappy 42
+
 ## Server configuration
 
 ### .env
@@ -24,11 +25,13 @@ openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -node
 ### Server
 
 Learn about server args:
+
 ```shell
 cargo run -q --bin server -- --help
 ```
 
 A basic launch:
+
 ```shell
 cargo run --bin server -- -p 8080 -x 5 -y 5 -n anton axel victor -c 1 -t 4
 ```
@@ -189,7 +192,7 @@ the players are immaterial and can all occupy the same position
 
 view:
 what happens if field of view is bigger than map? do we allow repetitions?
-player dont see themselves
+player don't see themselves
 
 incantation:
 
@@ -198,7 +201,11 @@ incantation:
 3. The incantation itself lasts 300 ticks
 4. Stones must be put on the cell, and disappear when the incantation starts
 5. All players of the same level as the starter on the same cell will participate, whether they want it or not
-6. during incantation, players that try to do actions receive an "elevation en cours"
+6. During incantation, players that try to do actions receive an "elevation en cours"
+7. During incantation player loses his HP as well
+8. If even there are already other commands in the queue after, it will postpone for 300 ticks
+9. Kick??
+10. Death during the inc???
 
 kick:
 ko if no one here?

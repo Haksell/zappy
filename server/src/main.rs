@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         _ = admin_routine(Arc::clone(&server), Arc::clone(&player_senders), (admin_listener, acceptor), Arc::clone(&security_context)) => {},
         _ = gfx_routine(Arc::clone(&server), gfx_listener) => {},
         _ = game_routine(server, Arc::clone(&player_senders), args.tud) => {},
-    };
+    }
 
     Ok(())
 }
