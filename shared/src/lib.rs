@@ -80,13 +80,13 @@ pub enum ServerResponse {
     Cases(Vec<String>),
     Inventory(Vec<String>),
     See(Vec<String>),
-    ElevationInProgress,
+    IncantationInProgress,
+    CurrentLevel(u8),
     Value(String),
     Mort,
     ActionQueueIsFull,
     Movement(Direction),
     Message(u8, String),
-    Incantation,
 }
 
 impl Display for ServerResponse {
@@ -98,7 +98,8 @@ impl Display for ServerResponse {
             ServerResponse::Inventory(items) | ServerResponse::See(items) => {
                 write!(f, "{{{}}}", items.join(", "))
             }
-            ServerResponse::ElevationInProgress => todo!(),
+            ServerResponse::IncantationInProgress => write!(f, "elevation en cours"),
+            ServerResponse::CurrentLevel(level) => write!(f, "niveau actuel : {level}"),
             ServerResponse::Value(value) => write!(f, "{}", value),
             ServerResponse::Mort => write!(f, "Mort"),
             ServerResponse::ActionQueueIsFull => {
@@ -106,7 +107,6 @@ impl Display for ServerResponse {
             }
             ServerResponse::Movement(from) => write!(f, "deplacement {from}"),
             ServerResponse::Message(source, text) => write!(f, "message {source},{text}"),
-            ServerResponse::Incantation => write!(f, "elevation en cours"),
         }
     }
 }

@@ -217,3 +217,13 @@ Circular buffers were implemented for read and write?
 There is a global action list using an insertion soft so that actions requiring the shortest execution time are at the
 beginning of the list?
 The slots managemeng is correct (-c flag and fork)?
+
+## bonus
+
+- [ ] 3d
+- [x] ratatui
+- [ ] admin
+- [ ] admin client
+- [ ] admin SSL
+- [ ] music
+- [ ] ???

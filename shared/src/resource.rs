@@ -10,21 +10,15 @@ pub trait StoneSetOperations {
 
 impl StoneSetOperations for StoneSet {
     fn reduce_current_from(&mut self, other: &StoneSet) -> bool {
-        let has_enough_resources = self.iter()
-            .zip(other.iter())
-            .all(|(a, b)| a >= b);
-        if !has_enough_resources {
-            println!("Doesn't have enough resources");
-            false
-        } else {
+        let has_enough_resources = self.iter().zip(other.iter()).all(|(a, b)| a >= b);
+        if has_enough_resources {
             for (idx, count) in other.iter().enumerate() {
                 self[idx] -= count;
             }
-            true
         }
+        has_enough_resources
     }
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
 #[repr(u8)]
@@ -114,7 +108,6 @@ impl Resource {
         let mut rng = thread_rng();
         *RESOURCES.choose(&mut rng).unwrap()
     }
-    
 }
 
 impl Display for Resource {
@@ -160,4 +153,3 @@ impl From<Resource> for usize {
         }
     }
 }
-

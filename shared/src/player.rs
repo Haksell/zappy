@@ -66,19 +66,6 @@ impl Player {
         Self::LEVEL_REQUIREMENTS[self.level as usize - 1].1
     }
 
-    pub fn level_up(&mut self) -> bool {
-        if self.level == MAX_PLAYER_LVL {
-            log::error!(
-                "Trying to level up {}, but the max level is already reached",
-                self.id
-            );
-            false
-        } else {
-            self.level += 1;
-            true
-        }
-    }
-
     pub fn pop_command_from_queue(&mut self) -> Option<PlayerCommand> {
         // not an Option?
         self.commands.pop_front()
@@ -131,8 +118,24 @@ impl Player {
         self.is_performing_incantation = true;
     }
 
-    pub fn stop_incantation(&mut self) {
-        self.is_performing_incantation = false;
+    pub fn stop_incantation(&mut self) -> Option<u8> {
+        if self.level == MAX_PLAYER_LVL {
+            log::error!(
+                "Trying to stop incantation {}, but the max level is already reached",
+                self.id
+            );
+            None
+        } else if !self.is_performing_incantation {
+            log::error!(
+                "Trying to stop incantation {}, but no incantation is happening",
+                self.id
+            );
+            None
+        } else {
+            self.is_performing_incantation = false;
+            self.level += 1;
+            Some(self.level)
+        }
     }
 }
 

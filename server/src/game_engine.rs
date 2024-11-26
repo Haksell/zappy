@@ -220,12 +220,17 @@ impl GameEngine {
             PlayerCommand::Incantation => {
                 let player = self.players.get(&player_id).unwrap();
                 let position = player.position();
+                if *player.remaining_life() < PlayerCommand::INCANTATION_DURATION {
+                    return vec![(player_id, ServerResponse::Ko)];
+                }
                 let same_lvl_players = self.map.field[position.y][position.x]
                     .players
                     .iter()
                     .filter_map(|&lvl| {
                         let other = self.players.get(&lvl).unwrap();
-                        if *other.level() == *player.level() {
+                        if *other.level() == *player.level()
+                            && *other.remaining_life() >= PlayerCommand::INCANTATION_DURATION
+                        {
                             Some(*other.id())
                         } else {
                             None
@@ -245,7 +250,7 @@ impl GameEngine {
                                 .and_modify(|v| v.push(id))
                                 .or_insert(vec![id]);
                             self.players.get_mut(&id).unwrap().start_incantation();
-                            (id, ServerResponse::Incantation)
+                            (id, ServerResponse::IncantationInProgress)
                         })
                         .collect()
                 } else {
@@ -320,15 +325,16 @@ impl GameEngine {
         }
 
         for (player_id, command) in commands_to_process {
-            let command_execution_result = self.apply_cmd(player_id, &command);
-            //TODO: here is additional delay for the next command, is it enough?
-            if command == PlayerCommand::Incantation
-                && !command_execution_result.contains(&(player_id, ServerResponse::Ko))
+            if *self
+                .players
+                .get(&player_id)
+                .unwrap()
+                .is_performing_incantation()
             {
-                let player = self.players.get_mut(&player_id).unwrap();
-                player.set_next_frame(player.next_frame() + PlayerCommand::INCANTATION_DURATION)
+                execution_results.push((player_id, ServerResponse::IncantationInProgress));
+            } else {
+                execution_results.extend(self.apply_cmd(player_id, &command));
             }
-            execution_results.extend(command_execution_result);
         }
 
         if let Some(eggs_to_hatch) = self.eggs.remove(&current_frame) {
@@ -355,9 +361,10 @@ impl GameEngine {
         if let Some(players_to_stop_incantation) = self.incantation.remove(&current_frame) {
             for id in players_to_stop_incantation {
                 let player = self.players.get_mut(&id).unwrap();
-                player.level_up();
-                player.stop_incantation();
-                execution_results.push((id, ServerResponse::Ok));
+                execution_results.push((
+                    id,
+                    ServerResponse::CurrentLevel(player.stop_incantation().unwrap()),
+                ));
             }
         }
     }
@@ -396,9 +403,7 @@ impl GameEngine {
         cmd: PlayerCommand,
     ) -> Result<Option<ServerResponse>, ZappyError> {
         if let Some(player) = self.players.get_mut(player_id) {
-            Ok(if *player.is_performing_incantation() {
-                Some(ServerResponse::Incantation)
-            } else if player.commands().len() >= MAX_COMMANDS {
+            Ok(if player.commands().len() >= MAX_COMMANDS {
                 Some(ServerResponse::ActionQueueIsFull)
             } else {
                 player.push_command_to_queue(cmd);
