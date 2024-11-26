@@ -15,6 +15,7 @@ use bevy::{
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
         render_resource::{Extent3d, TextureDimension, TextureFormat},
+        texture::ImageSampler,
     },
     window::WindowResolution,
 };
@@ -28,7 +29,7 @@ use std::{
 };
 use tokio::sync::mpsc::Receiver;
 
-const SUBDIVISIONS: &[u16] = &[3, 5, 8, 13, 21, 34, 55, 89, 144];
+const SUBDIVISIONS: &[u16] = &[8, 13, 21, 34, 55, 89, 144, 233];
 
 const ROTATION_SPEED: f32 = 0.8;
 const MOUSE_WHEEL_SPEED: f32 = 3.0;
@@ -114,7 +115,7 @@ pub async fn render(data_rx: Receiver<ServerData>) -> Result<(), Box<dyn std::er
         }))
         .init_resource::<TorusTransform>()
         .insert_resource(ServerLink::new(data_rx))
-        .insert_resource(ColorGrid::random(42, 42))
+        .insert_resource(ColorGrid::random(12, 8))
         .add_systems(Startup, (setup, network_setup))
         .add_systems(
             Update,
@@ -197,7 +198,7 @@ fn create_texture_from_color_grid(
         }
     }
 
-    let texture = Image::new(
+    let mut texture = Image::new(
         Extent3d {
             width,
             height,
@@ -208,6 +209,7 @@ fn create_texture_from_color_grid(
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::default(),
     );
+    texture.sampler = ImageSampler::nearest();
 
     images.add(texture)
 }
