@@ -28,10 +28,10 @@ use std::{
 use tokio::sync::mpsc::Receiver;
 
 // TODO: read from server
-const WIDTH: u8 = 12;
-const HEIGHT: u8 = 8;
+const WIDTH: u8 = 1;
+const HEIGHT: u8 = 1;
 
-const SUBDIVISIONS: &[u16] = &[1, 2, 3, 5, 8, 13, 21, 34];
+const SUBDIVISIONS: &[u16] = &[3, 5, 8, 13, 21, 34, 55, 89, 144];
 
 const ROTATION_SPEED: f32 = 0.8;
 const MOUSE_WHEEL_SPEED: f32 = 3.0;
@@ -54,7 +54,6 @@ impl Default for TorusTransform {
             // TODO: next two values depend on grid size
             minor_radius: 0.42,
             subdiv_idx: 4,
-            // TODO Mouse drag update
             rotate_x: 0.,
             rotate_y: 0.,
         }
@@ -78,10 +77,7 @@ impl ServerLink {
 }
 
 #[derive(Component, Debug)]
-struct QuadInfo {
-    x: u8,
-    y: u8,
-}
+struct QuadInfo;
 
 #[derive(Bundle)]
 struct QuadBundle {
@@ -95,15 +91,13 @@ impl QuadBundle {
         meshes: &mut ResMut<Assets<Mesh>>,
         materials: &mut ResMut<Assets<StandardMaterial>>,
         torus_transform: &Res<TorusTransform>,
-        x: u8,
-        y: u8,
     ) -> Self {
         // TODO: refactor
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
             RenderAssetUsages::default(),
         );
-        fill_torus_cell_mesh(&mut mesh, torus_transform, x, y);
+        fill_torus_cell_mesh(&mut mesh, torus_transform);
         let material = StandardMaterial {
             base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
             metallic: 0.5,
@@ -115,7 +109,7 @@ impl QuadBundle {
             material: materials.add(material),
             ..Default::default()
         };
-        let quad_info = QuadInfo { x, y };
+        let quad_info = QuadInfo;
         Self { pbr, quad_info }
     }
 }
@@ -173,19 +167,13 @@ fn setup(
         ..Default::default()
     });
 
-    let mut rng = StdRng::seed_from_u64(0);
-    for y in 0..HEIGHT {
-        for x in 0..WIDTH {
-            commands.spawn(QuadBundle::new(
-                &mut rng,
-                &mut meshes,
-                &mut materials,
-                &torus_transform,
-                x,
-                y,
-            ));
-        }
-    }
+    let mut rng = StdRng::seed_from_u64(27);
+    commands.spawn(QuadBundle::new(
+        &mut rng,
+        &mut meshes,
+        &mut materials,
+        &torus_transform,
+    ));
 }
 
 fn network_setup(server_link: ResMut<ServerLink>) {
@@ -194,7 +182,6 @@ fn network_setup(server_link: ResMut<ServerLink>) {
 
     thread::spawn(move || {
         let mut data_rx = data_rx.lock().unwrap();
-        let mut game_state = game_state.lock().unwrap();
 
         tokio::runtime::Runtime::new()
             .unwrap()
@@ -202,7 +189,7 @@ fn network_setup(server_link: ResMut<ServerLink>) {
                 loop {
                     tokio::select! {
                         Some(new_data) = data_rx.recv() => {
-                            *game_state = new_data;
+                            *game_state.lock().unwrap() = new_data;
                         }
                         // Helps not crashing when closing bevy. TODO: find a better way?
                         _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep
@@ -212,13 +199,13 @@ fn network_setup(server_link: ResMut<ServerLink>) {
     });
 }
 
-fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, x: u8, y: u8) {
+fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
     let ttsd = SUBDIVISIONS[torus_transform.subdiv_idx];
 
-    let v_start = y as f32 / HEIGHT as f32 + torus_transform.shift_major;
+    let v_start = torus_transform.shift_major;
     let v_end = v_start + 1. / HEIGHT as f32;
 
-    let u_start = x as f32 / WIDTH as f32 + torus_transform.shift_minor;
+    let u_start = torus_transform.shift_minor;
     let u_end = u_start + 1. / WIDTH as f32;
 
     let mut positions = Vec::new();
@@ -275,7 +262,7 @@ fn update_cell_mesh(
     if torus_transform.is_changed() {
         for (mesh_handle, quad_info) in &query {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
-                fill_torus_cell_mesh(mesh, &torus_transform, quad_info.x, quad_info.y);
+                fill_torus_cell_mesh(mesh, &torus_transform);
             }
         }
     }
