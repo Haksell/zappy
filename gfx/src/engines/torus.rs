@@ -77,15 +77,15 @@ impl ServerLink {
 }
 
 #[derive(Component, Debug)]
-struct QuadInfo;
+struct Torus;
 
 #[derive(Bundle)]
-struct QuadBundle {
+struct TorusBundle {
     pbr: PbrBundle,
-    quad_info: QuadInfo,
+    quad_info: Torus,
 }
 
-impl QuadBundle {
+impl TorusBundle {
     fn new(
         rng: &mut StdRng,
         meshes: &mut ResMut<Assets<Mesh>>,
@@ -109,7 +109,7 @@ impl QuadBundle {
             material: materials.add(material),
             ..Default::default()
         };
-        let quad_info = QuadInfo;
+        let quad_info = Torus;
         Self { pbr, quad_info }
     }
 }
@@ -168,7 +168,7 @@ fn setup(
     });
 
     let mut rng = StdRng::seed_from_u64(27);
-    commands.spawn(QuadBundle::new(
+    commands.spawn(TorusBundle::new(
         &mut rng,
         &mut meshes,
         &mut materials,
@@ -210,6 +210,7 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) 
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
+    let mut uvs = Vec::new();
     for y in 0..=subdiv {
         let v_ratio = lerp(v_start, v_end, y as f32 / subdiv as f32);
         let phi = v_ratio * TAU;
@@ -227,10 +228,12 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) 
 
             positions.push([tx, ty, tz]);
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
+            uvs.push([u_ratio, v_ratio]);
         }
     }
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
 
     let mut indices = Vec::new();
     for y in 0..subdiv {
@@ -255,12 +258,12 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) 
 }
 
 fn update_cell_mesh(
-    query: Query<(&Handle<Mesh>, &QuadInfo)>,
+    query: Query<(&Handle<Mesh>, &Torus)>,
     mut meshes: ResMut<Assets<Mesh>>,
     torus_transform: Res<TorusTransform>,
 ) {
     if torus_transform.is_changed() {
-        if let Ok((mesh_handle, quad_info)) = query.get_single() {
+        if let Ok((mesh_handle, _)) = query.get_single() {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
                 fill_torus_cell_mesh(mesh, &torus_transform);
             }
