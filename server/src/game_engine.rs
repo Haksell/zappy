@@ -363,7 +363,7 @@ impl GameEngine {
                 let player = self.players.get_mut(&id).unwrap();
                 execution_results.push((
                     id,
-                    ServerResponse::CurrentLevel(player.stop_incantation().unwrap()),
+                    ServerResponse::CurrentLevel(player.stop_incantation().unwrap()), // TODO: handle level 8
                 ));
             }
         }
