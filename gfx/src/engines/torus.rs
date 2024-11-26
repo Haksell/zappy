@@ -28,8 +28,8 @@ use std::{
 use tokio::sync::mpsc::Receiver;
 
 // TODO: read from server
-const WIDTH: u8 = 5;
-const HEIGHT: u8 = 5;
+const WIDTH: u8 = 12;
+const HEIGHT: u8 = 8;
 
 const SUBDIVISIONS: &[u16] = &[1, 2, 3, 5, 8, 13, 21, 34];
 
