@@ -285,6 +285,7 @@ fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
         }
     }
     mesh.insert_indices(Indices::U32(indices));
+
     mesh.rotate_by(Quat::from_axis_angle(Vec3::X, torus_transform.rotate_x));
     mesh.rotate_by(Quat::from_axis_angle(Vec3::Y, torus_transform.rotate_y));
 }
