@@ -200,7 +200,7 @@ fn network_setup(server_link: ResMut<ServerLink>) {
 }
 
 fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
-    let ttsd = SUBDIVISIONS[torus_transform.subdiv_idx];
+    let subdiv = SUBDIVISIONS[torus_transform.subdiv_idx];
 
     let v_start = torus_transform.shift_major;
     let v_end = v_start + 1. / HEIGHT as f32;
@@ -210,13 +210,13 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) 
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
-    for y in 0..=ttsd {
-        let v_ratio = lerp(v_start, v_end, y as f32 / ttsd as f32);
+    for y in 0..=subdiv {
+        let v_ratio = lerp(v_start, v_end, y as f32 / subdiv as f32);
         let phi = v_ratio * TAU;
         let (sin_phi, cos_phi) = phi.sin_cos();
 
-        for x in 0..=ttsd {
-            let u_ratio = lerp(u_start, u_end, x as f32 / ttsd as f32);
+        for x in 0..=subdiv {
+            let u_ratio = lerp(u_start, u_end, x as f32 / subdiv as f32);
             let theta = u_ratio * TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
             let r = 1. + torus_transform.minor_radius * cos_theta;
@@ -233,12 +233,12 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) 
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
     let mut indices = Vec::new();
-    for y in 0..ttsd {
-        for x in 0..ttsd {
-            let i0 = y * (ttsd + 1) + x;
-            let i1 = y * (ttsd + 1) + x + 1;
-            let i2 = (y + 1) * (ttsd + 1) + x;
-            let i3 = (y + 1) * (ttsd + 1) + x + 1;
+    for y in 0..subdiv {
+        for x in 0..subdiv {
+            let i0 = y * (subdiv + 1) + x;
+            let i1 = y * (subdiv + 1) + x + 1;
+            let i2 = (y + 1) * (subdiv + 1) + x;
+            let i3 = (y + 1) * (subdiv + 1) + x + 1;
 
             indices.push(i0 as u32);
             indices.push(i2 as u32);
