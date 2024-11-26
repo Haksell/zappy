@@ -55,6 +55,10 @@ impl From<Stone> for usize {
 
 impl Stone {
     pub const SIZE: usize = 6; // TODO: dynamic
+
+    pub fn index(self) -> usize {
+        self as usize
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
@@ -139,18 +143,8 @@ impl TryFrom<usize> for Resource {
 
     fn try_from(value: usize) -> Result<Self, Self::Error> {
         match value {
-            0..Stone::SIZE => Ok(Resource::Stone(Stone::try_from(value as u8).unwrap())),
-            Stone::SIZE => Ok(Resource::Nourriture),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<Resource> for usize {
-    fn from(value: Resource) -> Self {
-        match value {
-            Resource::Stone(stone) => stone as usize,
-            Resource::Nourriture => Stone::SIZE,
+            0..Stone::SIZE => Ok(Resource::Stone(Stone::try_from(value as u8)?)),
+            _ => Ok(Resource::Nourriture),
         }
     }
 }

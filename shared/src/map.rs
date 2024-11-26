@@ -35,31 +35,36 @@ impl Cell {
 
     pub fn add_resource(&mut self, resource: Resource) {
         match resource {
-            Resource::Stone(stone) => self.stones[usize::try_from(stone).unwrap()] += 1,
+            Resource::Stone(stone) => self.stones[stone.index()] += 1,
             Resource::Nourriture => self.nourriture += 1,
         }
     }
 
     pub fn remove_resource(&mut self, resource: &Resource) -> bool {
-        match resource {
-            Resource::Stone(stone) => {
-                let stone_count = &mut self.stones[usize::try_from(*stone).unwrap()];
-                if *stone_count > 0 {
-                    *stone_count -= 1;
-                    true
-                } else {
-                    false
-                }
-            }
-            Resource::Nourriture => {
-                if self.nourriture > 0 {
-                    self.nourriture -= 1;
-                    true
-                } else {
-                    false
-                }
+        let count = match resource {
+            Resource::Stone(stone) => &mut self.stones[stone.index()],
+            Resource::Nourriture => &mut self.nourriture,
+        };
+
+        if *count == 0 {
+            false
+        } else {
+            *count -= 1;
+            true
+        }
+    }
+
+    pub fn get_resources_copy(&self) -> Vec<Resource> {
+        let mut res = Vec::with_capacity(self.nourriture + self.stones.iter().sum::<usize>());
+        res.extend(std::iter::repeat(Resource::Nourriture).take(self.nourriture));
+        for (stone_idx, &count) in self.stones.iter().enumerate() {
+            if count > 0 {
+                let stone = Resource::try_from(stone_idx).unwrap();
+                res.extend(std::iter::repeat(stone).take(count));
             }
         }
+
+        res
     }
 }
 

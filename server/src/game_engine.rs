@@ -150,12 +150,12 @@ impl GameEngine {
                         let cell = &self.map.field[y][x];
                         let mut cell_response =
                             vec!["player"; cell.players.len() - is_same_pos as usize];
-                        for (resource_idx, &cnt) in cell.stones.iter().enumerate() {
-                            for _ in 0..cnt {
-                                cell_response
-                                    .push(Resource::try_from(resource_idx).unwrap().as_str());
-                            }
-                        }
+                        cell_response.extend(
+                            cell.get_resources_copy()
+                                .iter()
+                                .map(|resource| resource.as_str())
+                                .collect::<Vec<&str>>(),
+                        );
                         response.push(cell_response.join(" "));
                     }
                 }
