@@ -96,13 +96,14 @@ impl Resource {
 
     pub fn random() -> Self {
         //TODO: nouriture is deleted
-        static RESOURCES: [Resource; Stone::SIZE] = [
+        static RESOURCES: [Resource; Resource::SIZE] = [
             Resource::Stone(Stone::Deraumere),
             Resource::Stone(Stone::Linemate),
             Resource::Stone(Stone::Mendiane),
             Resource::Stone(Stone::Phiras),
             Resource::Stone(Stone::Sibur),
             Resource::Stone(Stone::Thystame),
+            Resource::Nourriture,
         ];
 
         let mut rng = thread_rng();

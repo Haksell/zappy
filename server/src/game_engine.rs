@@ -104,9 +104,7 @@ impl GameEngine {
                     .map(|resource| {
                         let player = self.players.get_mut(&player_id).unwrap();
                         let cell = &mut self.map.field[player.position().y][player.position().x];
-                        let resource_idx = usize::try_from(resource).unwrap();
-                        if cell.stones[resource_idx] >= 1 {
-                            cell.stones[resource_idx] -= 1;
+                        if cell.remove_resource(&resource) {
                             player.add_to_inventory(resource);
                             ServerResponse::Ok
                         } else {
@@ -122,7 +120,7 @@ impl GameEngine {
                         let player = self.players.get_mut(&player_id).unwrap();
                         let cell = &mut self.map.field[player.position().y][player.position().x];
                         if player.remove_from_inventory(resource) {
-                            cell.stones[usize::try_from(resource).unwrap()] += 1;
+                            cell.add_resource(resource);
                             ServerResponse::Ok
                         } else {
                             ServerResponse::Ko

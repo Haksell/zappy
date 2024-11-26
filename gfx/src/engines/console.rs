@@ -33,26 +33,30 @@ fn direction_to_emoji(direction: &Direction) -> &'static str {
     }
 }
 
-//TODO: nourriture is deleted
-fn map_resource_to_vec_span(resources: &[usize; Stone::SIZE]) -> Vec<Span> {
-    resources
-        .iter()
-        .enumerate()
-        .map(|(i, &cnt)| {
-            let c = Resource::try_from(i).unwrap().alias();
-            let resource_str = (0..cnt).map(|_| c).collect::<String>();
-            if !resource_str.is_empty() {
-                Span::styled(
-                    resource_str,
-                    Style::default()
-                        .fg(ServerData::COLORS[i % ServerData::COLORS.len()].to_ratatui_value())
-                        .bold(),
-                )
-            } else {
-                Span::raw("")
-            }
-        })
-        .collect::<Vec<Span>>()
+fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) -> Vec<Span> {
+    let mut spans = Vec::new();
+
+    // Add nourriture spans
+    let nourriture_color = ServerData::COLORS[(Stone::SIZE + 1) % ServerData::COLORS.len()];
+    let nourriture_style = Style::default()
+        .fg(nourriture_color.to_ratatui_value())
+        .bold();
+    spans.extend(vec![Span::styled("N", nourriture_style); nourriture]);
+
+    // Add resource spans
+    for (i, &count) in stones.iter().enumerate() {
+        if count == 0 {
+            continue;
+        }
+
+        let color = ServerData::COLORS[i % ServerData::COLORS.len()];
+        let style = Style::default().fg(color.to_ratatui_value()).bold();
+        let char = Resource::try_from(i).unwrap().alias();
+        let resource_str = char.to_string().repeat(count);
+        spans.push(Span::styled(resource_str, style));
+    }
+
+    spans
 }
 
 fn map_stones_to_vec_span(resources: &[usize; Stone::SIZE]) -> Vec<Span> {
@@ -124,7 +128,7 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
         for x in 0..*data.map.width() {
             let col = cols.next().unwrap();
             let cell = &data.map.field[y][x];
-            let mapped_map_resources = map_resource_to_vec_span(&cell.stones);
+            let mapped_map_resources = map_resource_to_vec_span(cell.nourriture, &cell.stones);
             let mapped_eggs = cell
                 .eggs
                 .iter()

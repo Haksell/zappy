@@ -34,7 +34,32 @@ impl Cell {
     }
 
     pub fn add_resource(&mut self, resource: Resource) {
-        self.stones[usize::try_from(resource).unwrap()] += 1;
+        match resource {
+            Resource::Stone(stone) => self.stones[usize::try_from(stone).unwrap()] += 1,
+            Resource::Nourriture => self.nourriture += 1,
+        }
+    }
+
+    pub fn remove_resource(&mut self, resource: &Resource) -> bool {
+        match resource {
+            Resource::Stone(stone) => {
+                let stone_count = &mut self.stones[usize::try_from(*stone).unwrap()];
+                if *stone_count > 0 {
+                    *stone_count -= 1;
+                    true
+                } else {
+                    false
+                }
+            }
+            Resource::Nourriture => {
+                if self.nourriture > 0 {
+                    self.nourriture -= 1;
+                    true
+                } else {
+                    false
+                }
+            }
+        }
     }
 }
 
