@@ -14,11 +14,12 @@ use bevy::{
         camera::CameraRenderGraph,
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
+        render_resource::{Extent3d, TextureDimension, TextureFormat},
     },
     window::WindowResolution,
 };
-use rand::{rngs::StdRng, Rng, SeedableRng as _};
-use shared::{utils::lerp, PROJECT_NAME};
+use rand::Rng;
+use shared::PROJECT_NAME;
 use std::{
     f32::consts::TAU,
     sync::{Arc, Mutex},
@@ -27,11 +28,7 @@ use std::{
 };
 use tokio::sync::mpsc::Receiver;
 
-// TODO: read from server
-const WIDTH: u8 = 5;
-const HEIGHT: u8 = 5;
-
-const SUBDIVISIONS: &[u16] = &[1, 2, 3, 5, 8, 13, 21, 34];
+const SUBDIVISIONS: &[u16] = &[3, 5, 8, 13, 21, 34, 55, 89, 144];
 
 const ROTATION_SPEED: f32 = 0.8;
 const MOUSE_WHEEL_SPEED: f32 = 3.0;
@@ -54,7 +51,6 @@ impl Default for TorusTransform {
             // TODO: next two values depend on grid size
             minor_radius: 0.42,
             subdiv_idx: 4,
-            // TODO Mouse drag update
             rotate_x: 0.,
             rotate_y: 0.,
         }
@@ -77,48 +73,34 @@ impl ServerLink {
     }
 }
 
-#[derive(Component, Debug)]
-struct QuadInfo {
-    x: u8,
-    y: u8,
+#[derive(Resource)]
+struct ColorGrid {
+    grid: Vec<Vec<Color>>,
 }
 
-#[derive(Bundle)]
-struct QuadBundle {
-    pbr: PbrBundle,
-    quad_info: QuadInfo,
-}
+impl ColorGrid {
+    fn random(width: usize, height: usize) -> Self {
+        let mut rng = rand::thread_rng();
 
-impl QuadBundle {
-    fn new(
-        rng: &mut StdRng,
-        meshes: &mut ResMut<Assets<Mesh>>,
-        materials: &mut ResMut<Assets<StandardMaterial>>,
-        torus_transform: &Res<TorusTransform>,
-        x: u8,
-        y: u8,
-    ) -> Self {
-        // TODO: refactor
-        let mut mesh = Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        );
-        fill_torus_cell_mesh(&mut mesh, torus_transform, x, y);
-        let material = StandardMaterial {
-            base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
-            metallic: 0.5,
-            perceptual_roughness: 0.2,
-            ..Default::default()
-        };
-        let pbr = PbrBundle {
-            mesh: meshes.add(mesh),
-            material: materials.add(material),
-            ..Default::default()
-        };
-        let quad_info = QuadInfo { x, y };
-        Self { pbr, quad_info }
+        let grid = (0..height)
+            .map(|_| {
+                (0..width)
+                    .map(|_| {
+                        let r = rng.gen::<f32>();
+                        let g = rng.gen::<f32>();
+                        let b = rng.gen::<f32>();
+                        Color::srgb(r, g, b)
+                    })
+                    .collect()
+            })
+            .collect();
+
+        Self { grid }
     }
 }
+
+#[derive(Component, Debug)]
+struct Torus;
 
 pub async fn render(data_rx: Receiver<ServerData>) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
@@ -132,6 +114,7 @@ pub async fn render(data_rx: Receiver<ServerData>) -> Result<(), Box<dyn std::er
         }))
         .init_resource::<TorusTransform>()
         .insert_resource(ServerLink::new(data_rx))
+        .insert_resource(ColorGrid::random(800, 800))
         .add_systems(Startup, (setup, network_setup))
         .add_systems(
             Update,
@@ -155,7 +138,9 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
     torus_transform: Res<TorusTransform>,
+    color_grid: Res<ColorGrid>,
 ) {
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0., 0., camera_distance(torus_transform.minor_radius))
@@ -173,19 +158,58 @@ fn setup(
         ..Default::default()
     });
 
-    let mut rng = StdRng::seed_from_u64(0);
-    for y in 0..HEIGHT {
-        for x in 0..WIDTH {
-            commands.spawn(QuadBundle::new(
-                &mut rng,
-                &mut meshes,
-                &mut materials,
-                &torus_transform,
-                x,
-                y,
-            ));
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    fill_torus_mesh(&mut mesh, &torus_transform);
+    let material = StandardMaterial {
+        base_color_texture: Some(create_texture_from_color_grid(&color_grid, &mut images)),
+        metallic: 0.5,
+        perceptual_roughness: 0.2,
+        ..Default::default()
+    };
+    let pbr = PbrBundle {
+        mesh: meshes.add(mesh),
+        material: materials.add(material),
+        ..Default::default()
+    };
+    commands.spawn((pbr, Torus));
+}
+
+fn create_texture_from_color_grid(
+    color_grid: &ColorGrid,
+    images: &mut ResMut<Assets<Image>>,
+) -> Handle<Image> {
+    let width = color_grid.grid[0].len() as u32;
+    let height = color_grid.grid.len() as u32;
+
+    let mut data = Vec::new();
+
+    for row in &color_grid.grid {
+        for color in row {
+            // Convert Color to RGBA8
+            let srgba = color.to_srgba();
+            data.push((srgba.red * 255.0) as u8);
+            data.push((srgba.green * 255.0) as u8);
+            data.push((srgba.blue * 255.0) as u8);
+            data.push((srgba.alpha * 255.0) as u8);
         }
     }
+
+    let texture = Image::new(
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        data,
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+
+    images.add(texture)
 }
 
 fn network_setup(server_link: ResMut<ServerLink>) {
@@ -194,7 +218,6 @@ fn network_setup(server_link: ResMut<ServerLink>) {
 
     thread::spawn(move || {
         let mut data_rx = data_rx.lock().unwrap();
-        let mut game_state = game_state.lock().unwrap();
 
         tokio::runtime::Runtime::new()
             .unwrap()
@@ -202,7 +225,7 @@ fn network_setup(server_link: ResMut<ServerLink>) {
                 loop {
                     tokio::select! {
                         Some(new_data) = data_rx.recv() => {
-                            *game_state = new_data;
+                            *game_state.lock().unwrap() = new_data;
                         }
                         // Helps not crashing when closing bevy. TODO: find a better way?
                         _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep
@@ -212,25 +235,21 @@ fn network_setup(server_link: ResMut<ServerLink>) {
     });
 }
 
-fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, x: u8, y: u8) {
-    let ttsd = SUBDIVISIONS[torus_transform.subdiv_idx];
-
-    let v_start = y as f32 / HEIGHT as f32 + torus_transform.shift_major;
-    let v_end = v_start + 1. / HEIGHT as f32;
-
-    let u_start = x as f32 / WIDTH as f32 + torus_transform.shift_minor;
-    let u_end = u_start + 1. / WIDTH as f32;
+fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
+    let subdiv = SUBDIVISIONS[torus_transform.subdiv_idx];
 
     let mut positions = Vec::new();
     let mut normals = Vec::new();
-    for y in 0..=ttsd {
-        let v_ratio = lerp(v_start, v_end, y as f32 / ttsd as f32);
-        let phi = v_ratio * TAU;
+    let mut uvs = Vec::new();
+
+    for y in 0..=subdiv {
+        let v_ratio = y as f32 / subdiv as f32;
+        let phi = (v_ratio + torus_transform.shift_major) * TAU;
         let (sin_phi, cos_phi) = phi.sin_cos();
 
-        for x in 0..=ttsd {
-            let u_ratio = lerp(u_start, u_end, x as f32 / ttsd as f32);
-            let theta = u_ratio * TAU;
+        for x in 0..=subdiv {
+            let u_ratio = x as f32 / subdiv as f32;
+            let theta = (u_ratio + torus_transform.shift_minor) * TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
             let r = 1. + torus_transform.minor_radius * cos_theta;
 
@@ -240,18 +259,21 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
 
             positions.push([tx, ty, tz]);
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
+            uvs.push([u_ratio, v_ratio]);
         }
     }
+
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
 
     let mut indices = Vec::new();
-    for y in 0..ttsd {
-        for x in 0..ttsd {
-            let i0 = y * (ttsd + 1) + x;
-            let i1 = y * (ttsd + 1) + x + 1;
-            let i2 = (y + 1) * (ttsd + 1) + x;
-            let i3 = (y + 1) * (ttsd + 1) + x + 1;
+    for y in 0..subdiv {
+        for x in 0..subdiv {
+            let i0 = y * (subdiv + 1) + x;
+            let i1 = y * (subdiv + 1) + x + 1;
+            let i2 = (y + 1) * (subdiv + 1) + x;
+            let i3 = (y + 1) * (subdiv + 1) + x + 1;
 
             indices.push(i0 as u32);
             indices.push(i2 as u32);
@@ -268,14 +290,14 @@ fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>, 
 }
 
 fn update_cell_mesh(
-    query: Query<(&Handle<Mesh>, &QuadInfo)>,
+    query: Query<(&Handle<Mesh>, &Torus)>,
     mut meshes: ResMut<Assets<Mesh>>,
     torus_transform: Res<TorusTransform>,
 ) {
     if torus_transform.is_changed() {
-        for (mesh_handle, quad_info) in &query {
+        if let Ok((mesh_handle, _)) = query.get_single() {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
-                fill_torus_cell_mesh(mesh, &torus_transform, quad_info.x, quad_info.y);
+                fill_torus_mesh(mesh, &torus_transform);
             }
         }
     }
