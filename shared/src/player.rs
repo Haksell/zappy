@@ -40,7 +40,7 @@ impl Player {
             commands: VecDeque::with_capacity(MAX_COMMANDS),
             position,
             inventory: [0; Stone::SIZE],
-            level: 1,
+            level: 3,
             remaining_life: LIFE_TICKS * LIVES_START,
             is_performing_incantation: false,
         }

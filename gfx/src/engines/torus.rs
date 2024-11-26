@@ -114,7 +114,7 @@ pub async fn render(data_rx: Receiver<ServerData>) -> Result<(), Box<dyn std::er
         }))
         .init_resource::<TorusTransform>()
         .insert_resource(ServerLink::new(data_rx))
-        .insert_resource(ColorGrid::random(800, 800))
+        .insert_resource(ColorGrid::random(42, 42))
         .add_systems(Startup, (setup, network_setup))
         .add_systems(
             Update,
@@ -355,7 +355,7 @@ fn handle_keyboard(
     ) {
         let change = keys.pressed(key_add) as u32 as f32 - keys.pressed(key_sub) as u32 as f32;
         if change != 0. {
-            *val = (*val - change * dt * ROTATION_SPEED * modulo + modulo) % modulo;
+            *val = (*val - change * dt * ROTATION_SPEED * modulo).rem_euclid(modulo);
         }
     }
 

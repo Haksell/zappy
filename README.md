@@ -178,7 +178,7 @@ death no more nourriture
 all the player's stones (and food?) are put on the cell
 
 nourriture:
-how do we now how much we ate of the current food? ((frame - connection) % 126)
+we start with 1260 life, each tick decrements it
 
 resources:
 linemate, deraumere, sibur, mendiane, phiras, thystame, nourriture generated randomly on each cell of the map

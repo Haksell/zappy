@@ -77,13 +77,7 @@ impl ServerData {
             .iter()
             .enumerate()
             .map(|(i, (name, &members_count))| {
-                (
-                    name.clone(),
-                    (
-                        ServerData::COLORS[i % ServerData::COLORS.len()],
-                        members_count,
-                    ),
-                )
+                (name.clone(), (ServerData::color(i), members_count))
             })
             .collect::<BTreeMap<String, (ZappyColor, usize)>>();
         Self {
@@ -91,6 +85,10 @@ impl ServerData {
             players,
             teams,
         }
+    }
+
+    pub fn color(color_idx: usize) -> ZappyColor {
+        Self::COLORS[color_idx % Self::COLORS.len()]
     }
 }
 

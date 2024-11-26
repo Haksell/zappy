@@ -67,8 +67,8 @@ impl GameEngine {
         let current_y = player.position().y;
 
         let (dx, dy) = direction.dx_dy();
-        player.set_x(((current_x + self.map.width()) as isize + dx) as usize % self.map.width());
-        player.set_y(((current_y + self.map.height()) as isize + dy) as usize % self.map.height());
+        player.set_x((current_x as isize + dx).rem_euclid(*self.map.width() as isize) as usize);
+        player.set_y((current_y as isize + dy).rem_euclid(*self.map.height() as isize) as usize);
 
         self.map.field[current_y][current_x]
             .players
@@ -132,20 +132,21 @@ impl GameEngine {
             PlayerCommand::See => {
                 let player = self.players.get(&player_id).unwrap();
                 let pos = *player.position();
-                let (x, y) = (pos.x as isize, pos.y as isize);
+                let (player_x, player_y) = (pos.x as isize, pos.y as isize);
                 let (width, height) = (self.map_width() as isize, self.map_height() as isize);
                 let mut response = Vec::with_capacity((*player.level() as usize + 1).pow(2));
                 for line in 0..=(*player.level() as isize) {
                     for idx in -line..=line {
-                        let (x, y) = match pos.direction {
-                            Direction::North => (x + idx, y - line),
-                            Direction::East => (x + line, y + idx),
-                            Direction::South => (x - idx, y + line),
-                            Direction::West => (x - line, y - idx),
+                        let (x, y) = {
+                            let (x, y) = match pos.direction {
+                                Direction::North => (player_x + idx, player_y - line),
+                                Direction::East => (player_x + line, player_y + idx),
+                                Direction::South => (player_x - idx, player_y + line),
+                                Direction::West => (player_x - line, player_y - idx),
+                            };
+                            (x.rem_euclid(width) as usize, y.rem_euclid(height) as usize)
                         };
-                        let x = ((x % width + width) % width) as usize;
-                        let y = ((y % height + height) % height) as usize;
-                        let is_same_pos = x == pos.x && y == pos.y;
+                        let is_same_pos = x == player.position().x && y == player.position().y;
                         let cell = &self.map.field[y][x];
                         let mut cell_response =
                             vec!["player"; cell.players.len() - is_same_pos as usize];
