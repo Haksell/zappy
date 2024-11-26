@@ -14,6 +14,7 @@ use bevy::{
         camera::CameraRenderGraph,
         mesh::{Indices, PrimitiveTopology},
         render_asset::RenderAssetUsages,
+        render_resource::{Extent3d, TextureDimension, TextureFormat},
     },
     window::WindowResolution,
 };
@@ -72,6 +73,32 @@ impl ServerLink {
     }
 }
 
+#[derive(Resource)]
+struct ColorGrid {
+    grid: Vec<Vec<Color>>,
+}
+
+impl ColorGrid {
+    fn random(width: usize, height: usize) -> Self {
+        let mut rng = rand::thread_rng();
+
+        let grid = (0..height)
+            .map(|_| {
+                (0..width)
+                    .map(|_| {
+                        let r = rng.gen::<f32>();
+                        let g = rng.gen::<f32>();
+                        let b = rng.gen::<f32>();
+                        Color::srgb(r, g, b)
+                    })
+                    .collect()
+            })
+            .collect();
+
+        Self { grid }
+    }
+}
+
 #[derive(Component, Debug)]
 struct Torus;
 
@@ -87,6 +114,7 @@ pub async fn render(data_rx: Receiver<ServerData>) -> Result<(), Box<dyn std::er
         }))
         .init_resource::<TorusTransform>()
         .insert_resource(ServerLink::new(data_rx))
+        .insert_resource(ColorGrid::random(800, 800))
         .add_systems(Startup, (setup, network_setup))
         .add_systems(
             Update,
@@ -110,8 +138,9 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
     torus_transform: Res<TorusTransform>,
-    asset_server: Res<AssetServer>,
+    color_grid: Res<ColorGrid>,
 ) {
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0., 0., camera_distance(torus_transform.minor_radius))
@@ -129,16 +158,13 @@ fn setup(
         ..Default::default()
     });
 
-    let texture_handle1: Handle<Image> =
-        asset_server.load("/mnt/nfs/homes/axbrisse/Downloads/dtelnov.png");
-
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
         RenderAssetUsages::default(),
     );
     fill_torus_mesh(&mut mesh, &torus_transform);
     let material = StandardMaterial {
-        base_color_texture: Some(texture_handle1.clone()),
+        base_color_texture: Some(create_texture_from_color_grid(&color_grid, &mut images)),
         metallic: 0.5,
         perceptual_roughness: 0.2,
         ..Default::default()
@@ -149,6 +175,41 @@ fn setup(
         ..Default::default()
     };
     commands.spawn((pbr, Torus));
+}
+
+fn create_texture_from_color_grid(
+    color_grid: &ColorGrid,
+    images: &mut ResMut<Assets<Image>>,
+) -> Handle<Image> {
+    let width = color_grid.grid[0].len() as u32;
+    let height = color_grid.grid.len() as u32;
+
+    let mut data = Vec::new();
+
+    for row in &color_grid.grid {
+        for color in row {
+            // Convert Color to RGBA8
+            let srgba = color.to_srgba();
+            data.push((srgba.red * 255.0) as u8);
+            data.push((srgba.green * 255.0) as u8);
+            data.push((srgba.blue * 255.0) as u8);
+            data.push((srgba.alpha * 255.0) as u8);
+        }
+    }
+
+    let texture = Image::new(
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        data,
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+
+    images.add(texture)
 }
 
 fn network_setup(server_link: ResMut<ServerLink>) {
