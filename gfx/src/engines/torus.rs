@@ -115,7 +115,7 @@ pub async fn render(data_rx: Receiver<ServerData>) -> Result<(), Box<dyn std::er
         }))
         .init_resource::<TorusTransform>()
         .insert_resource(ServerLink::new(data_rx))
-        .insert_resource(ColorGrid::random(12, 8))
+        .insert_resource(ColorGrid::random(12, 7))
         .add_systems(Startup, (setup, network_setup))
         .add_systems(
             Update,
@@ -189,12 +189,11 @@ fn create_texture_from_color_grid(
 
     for row in &color_grid.grid {
         for color in row {
-            // Convert Color to RGBA8
             let srgba = color.to_srgba();
-            data.push((srgba.red * 255.0) as u8);
-            data.push((srgba.green * 255.0) as u8);
-            data.push((srgba.blue * 255.0) as u8);
-            data.push((srgba.alpha * 255.0) as u8);
+            data.push((srgba.red * 255.).round() as u8);
+            data.push((srgba.green * 255.).round() as u8);
+            data.push((srgba.blue * 255.).round() as u8);
+            data.push((srgba.alpha * 255.).round() as u8);
         }
     }
 
