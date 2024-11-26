@@ -260,7 +260,7 @@ fn update_cell_mesh(
     torus_transform: Res<TorusTransform>,
 ) {
     if torus_transform.is_changed() {
-        for (mesh_handle, quad_info) in &query {
+        if let Ok((mesh_handle, quad_info)) = query.get_single() {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
                 fill_torus_cell_mesh(mesh, &torus_transform);
             }
