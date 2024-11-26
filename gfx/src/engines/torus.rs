@@ -133,7 +133,8 @@ fn setup(
         ..Default::default()
     });
 
-    let mut rng = StdRng::seed_from_u64(27);
+    let texture_handle1: Handle<Image> =
+        asset_server.load("/mnt/nfs/homes/axbrisse/Downloads/pacman.png");
 
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
@@ -141,7 +142,7 @@ fn setup(
     );
     fill_torus_mesh(&mut mesh, &torus_transform);
     let material = StandardMaterial {
-        base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
+        base_color_texture: Some(texture_handle1.clone()),
         metallic: 0.5,
         perceptual_roughness: 0.2,
         ..Default::default()
