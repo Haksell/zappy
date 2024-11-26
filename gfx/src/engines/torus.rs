@@ -27,10 +27,6 @@ use std::{
 };
 use tokio::sync::mpsc::Receiver;
 
-// TODO: read from server
-const WIDTH: u8 = 1;
-const HEIGHT: u8 = 1;
-
 const SUBDIVISIONS: &[u16] = &[3, 5, 8, 13, 21, 34, 55, 89, 144];
 
 const ROTATION_SPEED: f32 = 0.8;
@@ -134,7 +130,7 @@ fn setup(
     });
 
     let texture_handle1: Handle<Image> =
-        asset_server.load("/mnt/nfs/homes/axbrisse/Downloads/pacman.png");
+        asset_server.load("/mnt/nfs/homes/axbrisse/Downloads/dtelnov.png");
 
     let mut mesh = Mesh::new(
         PrimitiveTopology::TriangleList,
@@ -181,23 +177,18 @@ fn network_setup(server_link: ResMut<ServerLink>) {
 fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
     let subdiv = SUBDIVISIONS[torus_transform.subdiv_idx];
 
-    let v_start = torus_transform.shift_major;
-    let v_end = v_start + 1. / HEIGHT as f32;
-
-    let u_start = torus_transform.shift_minor;
-    let u_end = u_start + 1. / WIDTH as f32;
-
     let mut positions = Vec::new();
     let mut normals = Vec::new();
     let mut uvs = Vec::new();
+
     for y in 0..=subdiv {
-        let v_ratio = lerp(v_start, v_end, y as f32 / subdiv as f32);
-        let phi = v_ratio * TAU;
+        let v_ratio = y as f32 / subdiv as f32;
+        let phi = (v_ratio + torus_transform.shift_major) * TAU;
         let (sin_phi, cos_phi) = phi.sin_cos();
 
         for x in 0..=subdiv {
-            let u_ratio = lerp(u_start, u_end, x as f32 / subdiv as f32);
-            let theta = u_ratio * TAU;
+            let u_ratio = x as f32 / subdiv as f32;
+            let theta = (u_ratio + torus_transform.shift_minor) * TAU;
             let (sin_theta, cos_theta) = theta.sin_cos();
             let r = 1. + torus_transform.minor_radius * cos_theta;
 
@@ -210,6 +201,7 @@ fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
             uvs.push([u_ratio, v_ratio]);
         }
     }
+
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
