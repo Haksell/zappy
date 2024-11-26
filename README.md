@@ -1,6 +1,10 @@
-## Quickstart
+# Zappy 42
+## Server configuration
 
 ### .env
+
+The environment file contains a single **ADMIN_CREDENTIALS** variable where the value is a set of comma separated
+username:password. The **.env.template** contains an example.
 
 ```shell
 cp .env.template .env
@@ -8,29 +12,37 @@ cp .env.template .env
 
 ### TLS
 
-server requires certificates for enabling secured TLS connection.\
-Generate certificates:
+server requires certificates for enabling secured TLS connection for admin.\
+Generate certificates in the project root:
 
 ```shell
 openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
 ```
 
+## Binaries
+
 ### Server
 
+Learn about server args:
 ```shell
-cargo run -p server -- -p 8080 -x 20 -y 10 -n anton axel victor -c 1 -t 4
+cargo run -q --bin server -- --help
+```
+
+A basic launch:
+```shell
+cargo run --bin server -- -p 8080 -x 5 -y 5 -n anton axel victor -c 1 -t 4
 ```
 
 ### 3d GUI:
 
 ```shell
-cargo run -p gfx
+cargo run --bin gfx
 ```
 
 ### terminal ui:
 
 ```shell
-cargo run -p gfx -- -e console
+cargo run --bin gfx -- -e console
 ```
 
 ### admin connection:
@@ -46,7 +58,7 @@ openssl s_client -connect localhost:4444
 via our custom admin client:
 
 ```shell
-cargo run -p admin_client
+cargo run --bin admin_client
 ```
 
 ### raw nc client:
@@ -99,7 +111,7 @@ Ko
 | prend       | take           | ✅      |
 | pose        | put            | ✅      |
 | expulse     | expel, exp     | ✅      |
-| broadcast   |                | ✅      |
+| broadcast   | bc             | ✅      |
 | incantation | inc            | ❌      |
 | fork        |                | ✅      |
 | connect_nbr | cn             | ✅      |
@@ -124,11 +136,24 @@ Ko
 
 | Command | Shortcut | Status |
 |---------|----------|--------|
-| avance  | move     | ✅      |
-| droite  | right    | ✅      |
+| todo1   | move     | ✅      |
+| todo2   | right    | ❌      |
 
 ---
 
+---
+
+## Level requirements table:
+
+| Elevation | Players<br/>min nb | linemate | deraumere | sibur | mendiane | phiras | thystame |
+|-----------|--------------------|----------|-----------|-------|----------|--------|----------|
+| 1-2       | 1                  | 1        | 0         | 0     | 0        | 0      | 0        |
+| 2-3       | 2                  | 1        | 1         | 1     | 0        | 0      | 0        |
+| 3-4       | 2                  | 2        | 0         | 1     | 0        | 2      | 0        |
+| 4-5       | 4                  | 1        | 1         | 2     | 0        | 1      | 0        |
+| 5-6       | 4                  | 1        | 2         | 1     | 3        | 0      | 0        |
+| 6-7       | 6                  | 1        | 2         | 3     | 0        | 1      | 0        |
+| 7-8       | 6                  | 2        | 2         | 2     | 2        | 2      | 1        |
 
 Todo client:
 
@@ -167,10 +192,13 @@ what happens if field of view is bigger than map? do we allow repetitions?
 player dont see themselves
 
 incantation:
-begin incantation command is instantaneous, the incantation itself lasts 300 ticks
-stones must be put on the cell, and disappear when the incantation starts
-all the players of the same level as the starter on the same cell will participate, whether they want it or not
-during incantation, players that try to do actions receive a "elevation en cours"
+
+1. Begin incantation command is instantaneous
+2. Player is blocked during the spell casting
+3. The incantation itself lasts 300 ticks
+4. Stones must be put on the cell, and disappear when the incantation starts
+5. All players of the same level as the starter on the same cell will participate, whether they want it or not
+6. during incantation, players that try to do actions receive an "elevation en cours"
 
 kick:
 ko if no one here?

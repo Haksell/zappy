@@ -59,10 +59,10 @@ impl TryFrom<&str> for PlayerCommand {
                 resource_name: parts[1].to_string(),
             }),
             ("expulse" | "expel" | "exp", 1) => Ok(PlayerCommand::Expel),
-            ("broadcast", 2) => Ok(PlayerCommand::Broadcast {
+            ("broadcast" | "bc", 2) => Ok(PlayerCommand::Broadcast {
                 text: parts[1].to_string(),
             }),
-            ("incantation", 1) => Ok(PlayerCommand::Incantation),
+            ("incantation" | "inc", 1) => Ok(PlayerCommand::Incantation),
             ("fork", 1) => Ok(PlayerCommand::Fork),
             ("connect_nbr" | "cn", 1) => Ok(PlayerCommand::ConnectNbr),
             _ => Err(format!("Unknown command: \"{s}\"")),
