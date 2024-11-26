@@ -18,8 +18,8 @@ use bevy::{
     },
     window::WindowResolution,
 };
-use rand::{rngs::StdRng, Rng, SeedableRng as _};
-use shared::{utils::lerp, PROJECT_NAME};
+use rand::Rng;
+use shared::PROJECT_NAME;
 use std::{
     f32::consts::TAU,
     sync::{Arc, Mutex},
