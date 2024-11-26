@@ -79,41 +79,6 @@ impl ServerLink {
 #[derive(Component, Debug)]
 struct Torus;
 
-#[derive(Bundle)]
-struct TorusBundle {
-    pbr: PbrBundle,
-    quad_info: Torus,
-}
-
-impl TorusBundle {
-    fn new(
-        rng: &mut StdRng,
-        meshes: &mut ResMut<Assets<Mesh>>,
-        materials: &mut ResMut<Assets<StandardMaterial>>,
-        torus_transform: &Res<TorusTransform>,
-    ) -> Self {
-        // TODO: refactor
-        let mut mesh = Mesh::new(
-            PrimitiveTopology::TriangleList,
-            RenderAssetUsages::default(),
-        );
-        fill_torus_cell_mesh(&mut mesh, torus_transform);
-        let material = StandardMaterial {
-            base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
-            metallic: 0.5,
-            perceptual_roughness: 0.2,
-            ..Default::default()
-        };
-        let pbr = PbrBundle {
-            mesh: meshes.add(mesh),
-            material: materials.add(material),
-            ..Default::default()
-        };
-        let quad_info = Torus;
-        Self { pbr, quad_info }
-    }
-}
-
 pub async fn render(data_rx: Receiver<ServerData>) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -150,6 +115,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     torus_transform: Res<TorusTransform>,
+    asset_server: Res<AssetServer>,
 ) {
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0., 0., camera_distance(torus_transform.minor_radius))
@@ -168,12 +134,24 @@ fn setup(
     });
 
     let mut rng = StdRng::seed_from_u64(27);
-    commands.spawn(TorusBundle::new(
-        &mut rng,
-        &mut meshes,
-        &mut materials,
-        &torus_transform,
-    ));
+
+    let mut mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    fill_torus_mesh(&mut mesh, &torus_transform);
+    let material = StandardMaterial {
+        base_color: Color::srgb(rng.gen(), rng.gen(), rng.gen()),
+        metallic: 0.5,
+        perceptual_roughness: 0.2,
+        ..Default::default()
+    };
+    let pbr = PbrBundle {
+        mesh: meshes.add(mesh),
+        material: materials.add(material),
+        ..Default::default()
+    };
+    commands.spawn((pbr, Torus));
 }
 
 fn network_setup(server_link: ResMut<ServerLink>) {
@@ -199,7 +177,7 @@ fn network_setup(server_link: ResMut<ServerLink>) {
     });
 }
 
-fn fill_torus_cell_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
+fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
     let subdiv = SUBDIVISIONS[torus_transform.subdiv_idx];
 
     let v_start = torus_transform.shift_major;
@@ -265,7 +243,7 @@ fn update_cell_mesh(
     if torus_transform.is_changed() {
         if let Ok((mesh_handle, _)) = query.get_single() {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
-                fill_torus_cell_mesh(mesh, &torus_transform);
+                fill_torus_mesh(mesh, &torus_transform);
             }
         }
     }
