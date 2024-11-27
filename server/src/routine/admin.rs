@@ -2,8 +2,7 @@ use crate::connection::{AsyncReadWrite, Connection};
 use crate::game_engine::GameEngine;
 use crate::security::security_context::SecurityContext;
 use shared::commands::AdminCommand;
-use shared::LogicalError::WrongUsernameOrPassword;
-use shared::{ServerCommandToClient, ZappyError};
+use shared::{PlayerError, ServerCommandToClient, ZappyError};
 use std::collections::HashMap;
 use std::error::Error;
 use std::pin::Pin;
@@ -41,7 +40,9 @@ pub async fn admin_routine(
                         let password = client.read().await?.trim_end().to_string();
                         {
                             if !security_context.lock().await.is_valid(&username, &password) {
-                                return Err(ZappyError::Logical(WrongUsernameOrPassword));
+                                return Err(ZappyError::Player(
+                                    PlayerError::WrongUsernameOrPassword,
+                                ));
                             }
                         }
                         client.writeln("Hi admin!").await?;
@@ -53,8 +54,9 @@ pub async fn admin_routine(
                     log::debug!("Admin: {} has been deleted by server", id);
                     if let Err(err) = handle_result {
                         match err {
-                            ZappyError::Technical(err) => log::error!("{err}"),
-                            ZappyError::Logical(err) => {
+                            ZappyError::Network(err) => log::error!("{err}"),
+                            ZappyError::Game(err) => log::error!("{err}"),
+                            ZappyError::Player(err) => {
                                 let msg = err.to_string();
                                 //TODO: handle?
                                 let _ = client.writeln(msg.as_str()).await;

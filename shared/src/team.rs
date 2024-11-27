@@ -1,10 +1,10 @@
 use crate::position::Position;
-use crate::LogicalError::NoPlaceAvailable;
+use crate::PlayerError::NoPlaceAvailable;
 use crate::ZappyError;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashSet, VecDeque};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Team {
     name: String,
     members: HashSet<u16>,
@@ -21,9 +21,12 @@ impl Team {
     }
 
     pub fn add_member(&mut self, member_id: u16) -> Result<Position, ZappyError> {
-        self.spawn_positions
+        let pos = self
+            .spawn_positions
             .pop_front()
-            .ok_or_else(|| ZappyError::Logical(NoPlaceAvailable(member_id, self.name.clone())))
+            .ok_or_else(|| ZappyError::Player(NoPlaceAvailable(member_id, self.name.clone())))?;
+        self.members.insert(member_id);
+        Ok(pos)
     }
 
     pub fn remove_member(&mut self, member: u16) {
@@ -36,6 +39,10 @@ impl Team {
 
     pub fn members_count(&self) -> usize {
         self.members.len()
+    }
+
+    pub fn has_member(&self, member_id: &u16) -> bool {
+        self.members.contains(member_id)
     }
 
     pub fn add_next_spawn_position(&mut self, position: Position) {

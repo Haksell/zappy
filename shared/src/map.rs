@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 //TODO: change fields to private?
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Cell {
     pub players: BTreeSet<u16>,
     pub stones: [usize; Stone::SIZE],
@@ -15,7 +15,7 @@ pub struct Cell {
 }
 
 //TODO: change fields to private?
-#[derive(Debug, Serialize, Deserialize, Getters, Default)]
+#[derive(Debug, Serialize, Deserialize, Getters, Default, Clone, PartialEq)]
 pub struct Map {
     #[getter(skip)]
     pub field: Vec<Vec<Cell>>,
@@ -89,7 +89,7 @@ impl Map {
         Position {
             x: thread_rng.gen_range(0..self.width),
             y: thread_rng.gen_range(0..self.height),
-            direction: Direction::random(),
+            dir: Direction::random(),
         }
     }
 
@@ -159,7 +159,7 @@ impl Map {
             }
         };
 
-        let dir_shift = match receiver_pos.direction {
+        let dir_shift = match receiver_pos.dir {
             Direction::North => 6,
             Direction::East => 0,
             Direction::South => 2,
@@ -178,7 +178,7 @@ mod tests {
         Position {
             x,
             y,
-            direction: Direction::random(),
+            dir: Direction::random(),
         }
     }
 
@@ -188,7 +188,7 @@ mod tests {
         let receiver = Position {
             x: 2,
             y: 2,
-            direction: Direction::East,
+            dir: Direction::East,
         };
         let expected = vec![
             vec![4, 3, 3, 3, 2],
@@ -213,7 +213,7 @@ mod tests {
         let receiver = Position {
             x: 0,
             y: 1,
-            direction: Direction::North,
+            dir: Direction::North,
         };
         let expected = vec![
             vec![1, 8, 7, 3, 2],

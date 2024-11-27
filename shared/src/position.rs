@@ -3,7 +3,7 @@ use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum Direction {
     North,
     East,
@@ -76,15 +76,15 @@ impl Display for Direction {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
-    pub direction: Direction,
+    pub dir: Direction,
 }
 
 impl Display for Position {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(f, "({}, {}, {:?})", self.x, self.y, self.direction)
+        write!(f, "({}, {}, {:?})", self.x, self.y, self.dir)
     }
 }

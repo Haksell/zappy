@@ -6,7 +6,6 @@ pub mod resource;
 pub mod team;
 pub mod utils;
 
-use commands::PlayerCommand;
 use position::{Direction, Position};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
@@ -14,12 +13,15 @@ use std::fmt::{Display, Formatter};
 pub const PROJECT_NAME: &'static str = "zappy";
 
 //TODO: move from lib to server
+#[derive(Debug, PartialEq)]
 pub enum ZappyError {
-    Technical(TechnicalError),
-    Logical(LogicalError),
+    Network(NetworkError),
+    Game(GameError),
+    Player(PlayerError),
 }
 
-pub enum TechnicalError {
+#[derive(Debug, PartialEq)]
+pub enum NetworkError {
     ConnectionClosedByClient(u16),
     ConnectionCorrupted(u16, String),
     AlreadyConnected(u16),
@@ -31,38 +33,59 @@ pub enum TechnicalError {
     MessageIsTooBig(u16),
 }
 
-pub enum LogicalError {
+#[derive(Debug, PartialEq)]
+pub enum GameError {
+    IncreasingLevelButIsAlreadyMax(u16),
+    IncreasingLevelWithNoIncantations(u16),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum PlayerError {
     TeamDoesntExist(String),
     NoPlaceAvailable(u16, String),
     WrongUsernameOrPassword,
 }
 
-impl Display for LogicalError {
+impl Display for GameError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let msg = match self {
-            LogicalError::TeamDoesntExist(team) => format!("Team does not exist: {}", team),
-            LogicalError::NoPlaceAvailable(_, team_name) => {
-                format!("No place available on team {team_name}")
+            GameError::IncreasingLevelWithNoIncantations(id) => {
+                format!("{id}: trying to stop incantation, but no incantation is happening")
             }
-            LogicalError::WrongUsernameOrPassword => "Wrong username or password".to_string(),
+            GameError::IncreasingLevelButIsAlreadyMax(id) => {
+                format!("{id}: trying to stop incantation, but the max level is already reached")
+            }
         };
         write!(f, "{}", msg)
     }
 }
 
-impl Display for TechnicalError {
+impl Display for NetworkError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let msg = match self {
-            TechnicalError::ConnectionClosedByClient(id) => format!("{id}: client disconnected"),
-            TechnicalError::ConnectionCorrupted(id, str) => {
+            NetworkError::ConnectionClosedByClient(id) => format!("{id}: client disconnected"),
+            NetworkError::ConnectionCorrupted(id, str) => {
                 format!("{id}: connection corrupted: {str}")
             }
-            TechnicalError::AlreadyConnected(id) => format!("{id}: already connected"),
-            TechnicalError::IsNotConnectedToServer(id) => format!("{id}: is not connected"),
-            TechnicalError::FailedToWriteToSocket(id, msg) => format!("{id}: {msg}"),
-            TechnicalError::FailedToReadFromSocket(id, msg) => format!("{id}: {msg}"),
-            TechnicalError::MessageCantBeMappedToFromUtf8(id, msg) => format!("{id}: {msg}"),
-            TechnicalError::MessageIsTooBig(id) => format!("{id}: message is too large"),
+            NetworkError::AlreadyConnected(id) => format!("{id}: already connected"),
+            NetworkError::IsNotConnectedToServer(id) => format!("{id}: is not connected"),
+            NetworkError::FailedToWriteToSocket(id, msg) => format!("{id}: {msg}"),
+            NetworkError::FailedToReadFromSocket(id, msg) => format!("{id}: {msg}"),
+            NetworkError::MessageCantBeMappedToFromUtf8(id, msg) => format!("{id}: {msg}"),
+            NetworkError::MessageIsTooBig(id) => format!("{id}: message is too large"),
+        };
+        write!(f, "{}", msg)
+    }
+}
+
+impl Display for PlayerError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let msg = match self {
+            PlayerError::TeamDoesntExist(team) => format!("Team does not exist: {}", team),
+            PlayerError::NoPlaceAvailable(_, team_name) => {
+                format!("No place available on team {team_name}")
+            }
+            PlayerError::WrongUsernameOrPassword => "Wrong username or password".to_string(),
         };
         write!(f, "{}", msg)
     }
@@ -73,7 +96,7 @@ pub enum ServerCommandToClient {
     SendMessage(ServerResponse),
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub enum ServerResponse {
     Ok,
     Ko,
@@ -111,7 +134,7 @@ impl Display for ServerResponse {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Egg {
     pub team_name: String,
     pub position: Position,

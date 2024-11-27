@@ -90,7 +90,7 @@ fn map_player_to_span(color: Color, player: &Player) -> Span {
                 ""
             },
             player.id(),
-            direction_to_emoji(&player.position().direction),
+            direction_to_emoji(&player.position().dir),
         ),
         Style::default().fg(color),
     )

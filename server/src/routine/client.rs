@@ -1,6 +1,6 @@
 use crate::connection::{AsyncReadWrite, Connection};
 use crate::game_engine::GameEngine;
-use shared::{commands::PlayerCommand, ServerCommandToClient, ZappyError};
+use shared::{commands::PlayerCmd, ServerCommandToClient, ZappyError};
 use std::collections::HashMap;
 use std::error::Error;
 use std::pin::Pin;
@@ -53,12 +53,10 @@ pub async fn client_routine(
             log::debug!("{} has been deleted by server", id);
             if let Err(err) = handle_result {
                 match err {
-                    ZappyError::Technical(err) => {
-                        log::error!("{err}");
-                    }
-                    ZappyError::Logical(err) => {
+                    ZappyError::Network(err) => log::error!("{err}"),
+                    ZappyError::Game(err) => log::error!("{err}"),
+                    ZappyError::Player(err) => {
                         let msg = err.to_string();
-
                         //TODO: handle?
                         let _ = client.writeln(msg.as_str()).await;
                         log::info!("{}", err);
@@ -79,7 +77,7 @@ async fn handle_client(
             result = client.read() => {
                 let n = result?;
                 let trimmed = n.trim_end();
-                match PlayerCommand::try_from(trimmed) {
+                match PlayerCmd::try_from(trimmed) {
                     Ok(command) => {
                         log::info!("{}: sends command: {:?}", client.id(), command);
                         if let Some(e)= server.lock().await.take_command(&client.id(), command)? {

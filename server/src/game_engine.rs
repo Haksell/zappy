@@ -1,25 +1,24 @@
 use crate::args::ServerArgs;
 use derive_getters::Getters;
 use shared::resource::StoneSetOperations;
+use shared::ZappyError::Network;
 use shared::{
-    commands::PlayerCommand,
+    commands::PlayerCmd,
     map::Map,
     player::Player,
     position::{Direction, Position, Side},
     resource::Resource,
     team::Team,
-    Egg, ServerResponse,
-    TechnicalError::IsNotConnectedToServer,
-    ZappyError,
-    ZappyError::Technical,
-    MAX_COMMANDS,
+    Egg,
+    NetworkError::IsNotConnectedToServer,
+    PlayerError, ServerResponse, ZappyError, MAX_COMMANDS,
 };
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     error::Error,
 };
 
-#[derive(Debug, Getters)]
+#[derive(Debug, Getters, Clone, PartialEq)]
 pub struct GameEngine {
     teams: HashMap<String, Team>,
     players: HashMap<u16, Player>,
@@ -30,7 +29,7 @@ pub struct GameEngine {
 }
 
 impl GameEngine {
-    pub async fn from(args: &ServerArgs) -> Result<Self, Box<dyn Error>> {
+    pub fn from(args: &ServerArgs) -> Result<Self, Box<dyn Error>> {
         let mut map = Map::new(args.width, args.height);
         let teams = args
             .names
@@ -78,28 +77,28 @@ impl GameEngine {
             .insert(*player.id());
     }
 
-    fn apply_cmd(&mut self, player_id: u16, command: &PlayerCommand) -> Vec<(u16, ServerResponse)> {
+    fn apply_cmd(&mut self, player_id: u16, command: &PlayerCmd) -> Vec<(u16, ServerResponse)> {
         log::debug!("Executing command: {:?} for {}", command, player_id);
         match command {
-            PlayerCommand::Left => {
+            PlayerCmd::Left => {
                 let player = self.players.get_mut(&player_id).unwrap();
                 player.turn(Side::Left);
                 vec![(player_id, ServerResponse::Ok)]
             }
-            PlayerCommand::Right => {
+            PlayerCmd::Right => {
                 let player = self.players.get_mut(&player_id).unwrap();
                 player.turn(Side::Right);
                 vec![(player_id, ServerResponse::Ok)]
             }
-            PlayerCommand::Move => {
+            PlayerCmd::Move => {
                 let player_direction = {
                     let player = self.players.get_mut(&player_id).unwrap();
-                    player.position().direction
+                    player.position().dir
                 };
                 self.handle_move(player_id, &player_direction);
                 vec![(player_id, ServerResponse::Ok)]
             }
-            PlayerCommand::Take { resource_name } => {
+            PlayerCmd::Take { resource_name } => {
                 let response = Resource::try_from(resource_name.as_str())
                     .map(|resource| {
                         let player = self.players.get_mut(&player_id).unwrap();
@@ -114,7 +113,7 @@ impl GameEngine {
                     .unwrap_or(ServerResponse::Ko);
                 vec![(player_id, response)]
             }
-            PlayerCommand::Put { resource_name } => {
+            PlayerCmd::Put { resource_name } => {
                 let response = Resource::try_from(resource_name.as_str())
                     .map(|resource| {
                         let player = self.players.get_mut(&player_id).unwrap();
@@ -129,7 +128,7 @@ impl GameEngine {
                     .unwrap_or(ServerResponse::Ko);
                 vec![(player_id, response)]
             }
-            PlayerCommand::See => {
+            PlayerCmd::See => {
                 let player = self.players.get(&player_id).unwrap();
                 let pos = *player.position();
                 let (player_x, player_y) = (pos.x as isize, pos.y as isize);
@@ -138,7 +137,7 @@ impl GameEngine {
                 for line in 0..=(*player.level() as isize) {
                     for idx in -line..=line {
                         let (x, y) = {
-                            let (x, y) = match pos.direction {
+                            let (x, y) = match pos.dir {
                                 Direction::North => (player_x + idx, player_y - line),
                                 Direction::East => (player_x + line, player_y + idx),
                                 Direction::South => (player_x - idx, player_y + line),
@@ -161,7 +160,7 @@ impl GameEngine {
                 }
                 vec![(player_id, ServerResponse::See(response))]
             }
-            PlayerCommand::Inventory => {
+            PlayerCmd::Inventory => {
                 let player = self.players.get(&player_id).unwrap();
                 let mut inventory = vec![format!(
                     "{} {}",
@@ -178,7 +177,7 @@ impl GameEngine {
                 );
                 vec![(player_id, ServerResponse::Inventory(inventory))]
             }
-            PlayerCommand::Expel => {
+            PlayerCmd::Expel => {
                 let (target_ids, direction) = {
                     let player = self.players.get(&player_id).unwrap();
                     let ids: Vec<u16> = self.map.field[player.position().y][player.position().x]
@@ -186,7 +185,7 @@ impl GameEngine {
                         .iter()
                         .filter_map(|&id| if id != player_id { Some(id) } else { None })
                         .collect();
-                    (ids, player.position().direction)
+                    (ids, player.position().dir)
                 };
                 let mut result: Vec<(u16, ServerResponse)> = target_ids
                     .iter()
@@ -198,7 +197,7 @@ impl GameEngine {
                 result.push((player_id, ServerResponse::Ok));
                 result
             }
-            PlayerCommand::Broadcast { text } => {
+            PlayerCmd::Broadcast { text } => {
                 let sender_pos = self.players.get(&player_id).unwrap().position();
                 self.players
                     .keys()
@@ -216,10 +215,10 @@ impl GameEngine {
                     })
                     .collect()
             }
-            PlayerCommand::Incantation => {
+            PlayerCmd::Incantation => {
                 let player = self.players.get(&player_id).unwrap();
                 let position = player.position();
-                if *player.remaining_life() < PlayerCommand::INCANTATION_DURATION {
+                if *player.remaining_life() < PlayerCmd::INCANTATION_DURATION {
                     return vec![(player_id, ServerResponse::Ko)];
                 }
                 let same_lvl_players = self.map.field[position.y][position.x]
@@ -228,7 +227,7 @@ impl GameEngine {
                     .filter_map(|&lvl| {
                         let other = self.players.get(&lvl).unwrap();
                         if *other.level() == *player.level()
-                            && *other.remaining_life() >= PlayerCommand::INCANTATION_DURATION
+                            && *other.remaining_life() >= PlayerCmd::INCANTATION_DURATION
                         {
                             Some(*other.id())
                         } else {
@@ -245,7 +244,7 @@ impl GameEngine {
                         .iter()
                         .map(|&id| {
                             self.incantation
-                                .entry(self.frame + PlayerCommand::INCANTATION_DURATION)
+                                .entry(self.frame + PlayerCmd::INCANTATION_DURATION)
                                 .and_modify(|v| v.push(id))
                                 .or_insert(vec![id]);
                             self.players.get_mut(&id).unwrap().start_incantation();
@@ -256,7 +255,7 @@ impl GameEngine {
                     vec![(player_id, ServerResponse::Ko)]
                 }
             }
-            PlayerCommand::Fork => {
+            PlayerCmd::Fork => {
                 // TODO: use MAX_PLAYERS to not abuse spamming
                 let player = self.players.get(&player_id).unwrap();
                 let egg = Egg {
@@ -264,7 +263,7 @@ impl GameEngine {
                     position: player.position().clone(),
                 };
                 self.eggs
-                    .entry(self.frame + PlayerCommand::EGG_FETCH_TIME_DELAY)
+                    .entry(self.frame + PlayerCmd::EGG_FETCH_TIME_DELAY)
                     .and_modify(|v| v.push(egg.clone()))
                     .or_insert(vec![egg]);
                 self.map.field[player.position().y][player.position().x]
@@ -274,7 +273,7 @@ impl GameEngine {
                     .or_insert((1, 0));
                 vec![(player_id, ServerResponse::Ok)]
             }
-            PlayerCommand::ConnectNbr => {
+            PlayerCmd::ConnectNbr => {
                 let team_name = self.players.get(&player_id).unwrap().team();
                 vec![(
                     player_id,
@@ -359,18 +358,21 @@ impl GameEngine {
 
         if let Some(players_to_stop_incantation) = self.incantation.remove(&current_frame) {
             for id in players_to_stop_incantation {
-                let player = self.players.get_mut(&id).unwrap();
-                execution_results.push((
-                    id,
-                    ServerResponse::CurrentLevel(player.stop_incantation().unwrap()), // TODO: handle level 8
-                ));
+                if let Some(player) = self.players.get_mut(&id) {
+                    match player.stop_incantation() {
+                        Ok(lvl) => execution_results.push((id, ServerResponse::CurrentLevel(lvl))),
+                        Err(e) => log::error!("{e}"),
+                    }
+                }
             }
         }
     }
 
     pub fn add_player(&mut self, player_id: u16, team_name: String) -> Result<u16, ZappyError> {
         log::debug!("{player_id} wants to join {team_name}");
-        let team = self.teams.get_mut(&team_name).unwrap();
+        let team = self.teams.get_mut(&team_name).ok_or(ZappyError::Player(
+            PlayerError::TeamDoesntExist(team_name.clone()),
+        ))?;
         let pos = team.add_member(player_id)?;
         let player = Player::new(player_id, team_name.clone(), pos);
         self.map
@@ -399,7 +401,7 @@ impl GameEngine {
     pub fn take_command(
         &mut self,
         player_id: &u16,
-        cmd: PlayerCommand,
+        cmd: PlayerCmd,
     ) -> Result<Option<ServerResponse>, ZappyError> {
         if let Some(player) = self.players.get_mut(player_id) {
             Ok(if player.commands().len() >= MAX_COMMANDS {
@@ -409,7 +411,7 @@ impl GameEngine {
                 None
             })
         } else {
-            Err(Technical(IsNotConnectedToServer(*player_id)))
+            Err(Network(IsNotConnectedToServer(*player_id)))
         }
     }
 
@@ -419,5 +421,348 @@ impl GameEngine {
 
     pub fn map_height(&self) -> usize {
         *self.map.height()
+    }
+}
+
+#[cfg(test)]
+mod game_engine_tests {
+    use super::*;
+
+    // Common test constants
+    const GAME_WIDTH: usize = 3;
+    const GAME_HEIGHT: usize = 3;
+    const MAX_CLIENTS: u16 = 1;
+    const TEST_TEAM_NAME_STR: &str = "Axel";
+
+    // Common test helpers
+    fn test_team_names() -> Vec<String> {
+        vec![TEST_TEAM_NAME_STR.to_string()]
+    }
+
+    fn test_team_name() -> String {
+        TEST_TEAM_NAME_STR.to_string()
+    }
+
+    fn build_game_engine() -> GameEngine {
+        let args = create_test_args();
+        GameEngine::from(&args).unwrap()
+    }
+
+    fn one_player_game_engine() -> (u16, GameEngine) {
+        let player_id = 20;
+        let team_name = test_team_name();
+        let mut game = build_game_engine();
+        game.add_player(player_id, team_name).unwrap();
+        (player_id, game)
+    }
+
+    fn create_test_args() -> ServerArgs {
+        ServerArgs {
+            port: 8080,
+            width: GAME_WIDTH,
+            height: GAME_HEIGHT,
+            clients: MAX_CLIENTS,
+            tud: 100,
+            names: test_team_names(),
+        }
+    }
+
+    mod creation {
+        use super::*;
+
+        #[test]
+        fn successfully_creates_new_game() {
+            // Given
+            let args = create_test_args();
+
+            // When
+            let game = GameEngine::from(&args).unwrap();
+
+            // Then
+            assert!(game.players.is_empty(), "New game should have no players");
+            assert_eq!(
+                game.teams.keys().cloned().collect::<Vec<_>>(),
+                test_team_names(),
+                "Game should have exactly one team named 'axel'"
+            );
+            assert!(game.eggs.is_empty(), "New game should have no eggs");
+            assert!(
+                game.incantation.is_empty(),
+                "New game should have no active incantations"
+            );
+            assert_eq!(game.frame, 0, "Game should start at frame 0");
+            assert_eq!(
+                game.map_width(),
+                GAME_WIDTH,
+                "Game map width should match configured width"
+            );
+            assert_eq!(
+                game.map_height(),
+                GAME_HEIGHT,
+                "Game map height should match configured height"
+            );
+            assert_eq!(
+                game.map.field.iter().map(|v| v.len()).sum::<usize>(),
+                GAME_HEIGHT * GAME_WIDTH,
+                "Game map should contain exactly width * height cells"
+            );
+            let (map_unhatched_count, map_hatched_count) =
+                game.map.field.iter().flatten().fold((0, 0), |acc, cell| {
+                    let (unhatched, hatched) = cell
+                        .eggs
+                        .get(&test_team_name())
+                        .map_or((0, 0), |(u, h)| (*u, *h));
+                    (acc.0 + unhatched, acc.1 + hatched)
+                });
+            assert_eq!(MAX_CLIENTS as usize, map_hatched_count);
+            assert_eq!(map_unhatched_count, 0)
+        }
+    }
+
+    mod player_management {
+        use super::*;
+
+        #[test]
+        fn fails_to_add_player_with_invalid_team() {
+            // Given
+            let player_id = 20;
+            let not_existing_team = "Doesn't exist".to_string();
+            let mut game = build_game_engine();
+            let initial_game_state = game.clone();
+
+            // When
+            let result = game.add_player(player_id, not_existing_team.clone());
+
+            // Then
+            assert_eq!(
+                result,
+                Err(ZappyError::Player(PlayerError::TeamDoesntExist(
+                    not_existing_team
+                )))
+            );
+            assert_eq!(
+                game, initial_game_state,
+                "Game should not be changed after failed player insertion"
+            );
+        }
+
+        #[test]
+        fn fails_to_add_player_with_full_team() {
+            // Given
+            let player_in_team_id = 20;
+            let player_to_join_id = 21;
+            let team_name = test_team_name();
+            let mut game = build_game_engine();
+            game.add_player(player_in_team_id, team_name.clone())
+                .unwrap();
+            let initial_game_state = game.clone();
+
+            // When
+            let result = game.add_player(player_to_join_id, team_name.clone());
+
+            // Then
+            assert_eq!(
+                result,
+                Err(ZappyError::Player(PlayerError::NoPlaceAvailable(
+                    player_to_join_id,
+                    team_name
+                ))),
+            );
+            assert_eq!(
+                game, initial_game_state,
+                "Game should not be changed after failed player insertion"
+            );
+        }
+
+        #[test]
+        fn successfully_adds_player_to_valid_team() {
+            // Given
+            let player_id = 20;
+            let team_name = test_team_name();
+            let mut game = build_game_engine();
+
+            // When
+            let result = game.add_player(player_id, team_name);
+
+            // Then
+            let player = game.players.get(&player_id).unwrap();
+            assert_eq!(
+                result.unwrap(),
+                MAX_CLIENTS - 1,
+                "Should return maximum number of players - 1"
+            );
+            assert_eq!(
+                game.players.len(),
+                1,
+                "Should add a new player to the players list"
+            );
+            assert!(
+                game.map.field[player.position().y][player.position().x]
+                    .players
+                    .contains(player.id()),
+                "Should add a new player to the map"
+            );
+            assert!(
+                game.teams
+                    .get_mut(player.team())
+                    .unwrap()
+                    .has_member(&player_id),
+                "Should add a new player to the team"
+            );
+        }
+    }
+
+    mod commands_management {
+        use super::*;
+
+        #[test]
+        fn successfully_takes_command() {
+            // Given
+            let (player_id, mut game) = one_player_game_engine();
+            let player_commands_before = game.players.get(&player_id).unwrap().commands().clone();
+            let command = PlayerCmd::Move;
+
+            // When
+            let result = game.take_command(&player_id, command.clone());
+
+            // Then
+            let player_commands_after = game.players.get(&player_id).unwrap().commands();
+            assert!(player_commands_before.is_empty());
+            assert_eq!(result, Ok(None));
+            assert_eq!(player_commands_after.len(), 1);
+            assert_eq!(player_commands_after[0], command);
+        }
+
+        #[test]
+        fn fails_to_take_player_command_queue_is_full() {
+            // Given
+            let (player_id, mut game) = one_player_game_engine();
+            for _ in 0..MAX_COMMANDS {
+                game.take_command(&player_id, PlayerCmd::Move).unwrap();
+            }
+
+            // When
+            let result_of_inserting_command_in_the_full_queue =
+                game.take_command(&player_id, PlayerCmd::Move);
+
+            // Then
+            assert_eq!(
+                result_of_inserting_command_in_the_full_queue,
+                Ok(Some(ServerResponse::ActionQueueIsFull))
+            );
+        }
+    }
+
+    mod commands_execution {
+        use super::*;
+        use rstest::rstest;
+        use std::collections::BTreeMap;
+        use Direction::East;
+        use Direction::North;
+        use Direction::South;
+        use Direction::West;
+
+        fn one_player_game_engine_with_player_init_pos(position: Position) -> (u16, GameEngine) {
+            let player_id = 20;
+            let team_name = test_team_name();
+            let mut game = build_game_engine();
+            game.teams = HashMap::from([(
+                test_team_name(),
+                Team::new(test_team_name(), VecDeque::from([position])),
+            )]);
+            game.map.field[position.y][position.x].eggs =
+                BTreeMap::from([(team_name.clone(), (0, 1))]);
+            game.add_player(player_id, team_name).unwrap();
+            (player_id, game)
+        }
+
+        #[rstest]
+        // Movement tests - North/South
+        #[case(Position { x: 0, y: 0, dir: North }, Position { x: 0, y: 2, dir: North }, PlayerCmd::Move)]
+        #[case(Position { x: 1, y: 0, dir: North }, Position { x: 1, y: 2, dir: North }, PlayerCmd::Move)]
+        #[case(Position { x: 2, y: 0, dir: North }, Position { x: 2, y: 2, dir: North }, PlayerCmd::Move)]
+        #[case(Position { x: 0, y: 2, dir: South }, Position { x: 0, y: 0, dir: South }, PlayerCmd::Move)]
+        #[case(Position { x: 1, y: 2, dir: South }, Position { x: 1, y: 0, dir: South }, PlayerCmd::Move)]
+        #[case(Position { x: 2, y: 2, dir: South }, Position { x: 2, y: 0, dir: South }, PlayerCmd::Move)]
+        // Movement tests - East/West
+        #[case(Position { x: 0, y: 0, dir: West }, Position { x: 2, y: 0, dir: West }, PlayerCmd::Move)]
+        #[case(Position { x: 0, y: 1, dir: West }, Position { x: 2, y: 1, dir: West }, PlayerCmd::Move)]
+        #[case(Position { x: 0, y: 2, dir: West }, Position { x: 2, y: 2, dir: West }, PlayerCmd::Move)]
+        #[case(Position { x: 2, y: 0, dir: East }, Position { x: 0, y: 0, dir: East }, PlayerCmd::Move)]
+        #[case(Position { x: 2, y: 1, dir: East }, Position { x: 0, y: 1, dir: East }, PlayerCmd::Move)]
+        #[case(Position { x: 2, y: 2, dir: East }, Position { x: 0, y: 2, dir: East }, PlayerCmd::Move)]
+        // Rotation tests - Left
+        #[case(Position { x: 1, y: 1, dir: North }, Position { x: 1, y: 1, dir: West }, PlayerCmd::Left)]
+        #[case(Position { x: 1, y: 1, dir: West }, Position { x: 1, y: 1, dir: South }, PlayerCmd::Left)]
+        #[case(Position { x: 1, y: 1, dir: South }, Position { x: 1, y: 1, dir: East }, PlayerCmd::Left)]
+        #[case(Position { x: 1, y: 1, dir: East }, Position { x: 1, y: 1, dir: North }, PlayerCmd::Left)]
+        // Rotation tests - Right
+        #[case(Position { x: 1, y: 1, dir: North }, Position { x: 1, y: 1, dir: East }, PlayerCmd::Right)]
+        #[case(Position { x: 1, y: 1, dir: East }, Position { x: 1, y: 1, dir: South }, PlayerCmd::Right)]
+        #[case(Position { x: 1, y: 1, dir: South }, Position { x: 1, y: 1, dir: West }, PlayerCmd::Right)]
+        #[case(Position { x: 1, y: 1, dir: West }, Position { x: 1, y: 1, dir: North }, PlayerCmd::Right)]
+        fn test_player_movement_and_rotation(
+            #[case] start: Position,
+            #[case] expected: Position,
+            #[case] command: PlayerCmd,
+        ) {
+            // Given
+            let (player_id, mut game) = one_player_game_engine_with_player_init_pos(start);
+            let mut execution_results_buffer = Vec::new();
+
+            // Set initial position
+            game.players
+                .get_mut(&player_id)
+                .unwrap()
+                .set_position(start);
+
+            // When
+            game.take_command(&player_id, command.clone()).unwrap();
+
+            // Execute command
+            for _ in 0..command.delay() {
+                game.tick(&mut execution_results_buffer)
+            }
+
+            // Then
+            let player = game.players.get(&player_id).unwrap();
+            let new_position = player.position();
+
+            // Verify player is at new position
+            assert!(
+                game.map.field[new_position.y][new_position.x]
+                    .players
+                    .contains(&player_id),
+                "Player should be present at new position"
+            );
+
+            // Verify player is not at old position (only for movement)
+            if (start.x, start.y) != (expected.x, expected.y) {
+                assert!(
+                    !game.map.field[start.y][start.x]
+                        .players
+                        .contains(&player_id),
+                    "Player should not be present at old position"
+                );
+            }
+
+            // Verify game state
+            assert_eq!(
+                game.frame,
+                command.delay(),
+                "Game frame should match command delay"
+            );
+            assert_eq!(
+                *new_position, expected,
+                "Player position should match expected"
+            );
+
+            // Verify response
+            assert_eq!(
+                execution_results_buffer,
+                vec![(player_id, ServerResponse::Ok)],
+                "Should receive OK response"
+            );
+        }
     }
 }

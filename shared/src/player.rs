@@ -1,18 +1,19 @@
+use crate::commands::PlayerCmd;
 use crate::position::{Position, Side};
 use crate::resource::{Stone, StoneSet};
-use crate::{resource::Resource, PlayerCommand, MAX_COMMANDS, MAX_PLAYER_LVL};
+use crate::{resource::Resource, GameError, MAX_COMMANDS, MAX_PLAYER_LVL};
 use crate::{LIFE_TICKS, LIVES_START};
 use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fmt::{Display, Formatter};
 
-#[derive(Getters, Serialize, Deserialize, Debug, Clone)]
+#[derive(Getters, Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Player {
     team: String,
     id: u16,
     next_frame: u64,
-    commands: VecDeque<PlayerCommand>,
+    commands: VecDeque<PlayerCmd>,
     position: Position,
     inventory: [usize; Stone::SIZE],
     level: u8,
@@ -47,7 +48,7 @@ impl Player {
     }
 
     pub fn turn(&mut self, side: Side) {
-        self.position.direction = self.position.direction.turn(side);
+        self.position.dir = self.position.dir.turn(side);
     }
 
     pub fn set_x(&mut self, x: usize) {
@@ -58,6 +59,10 @@ impl Player {
         self.position.y = y;
     }
 
+    pub fn set_position(&mut self, position: Position) {
+        self.position = position;
+    }
+
     pub fn nxt_lvl_stone_requirements(&self) -> &'static StoneSet {
         &Self::LEVEL_REQUIREMENTS[self.level as usize - 1].0
     }
@@ -66,12 +71,12 @@ impl Player {
         Self::LEVEL_REQUIREMENTS[self.level as usize - 1].1
     }
 
-    pub fn pop_command_from_queue(&mut self) -> Option<PlayerCommand> {
+    pub fn pop_command_from_queue(&mut self) -> Option<PlayerCmd> {
         // not an Option?
         self.commands.pop_front()
     }
 
-    pub fn push_command_to_queue(&mut self, command: PlayerCommand) {
+    pub fn push_command_to_queue(&mut self, command: PlayerCmd) {
         self.commands.push_back(command);
     }
 
@@ -118,23 +123,15 @@ impl Player {
         self.is_performing_incantation = true;
     }
 
-    pub fn stop_incantation(&mut self) -> Option<u8> {
+    pub fn stop_incantation(&mut self) -> Result<u8, GameError> {
         if self.level == MAX_PLAYER_LVL {
-            log::error!(
-                "Trying to stop incantation {}, but the max level is already reached",
-                self.id
-            );
-            None
+            Err(GameError::IncreasingLevelButIsAlreadyMax(self.id))
         } else if !self.is_performing_incantation {
-            log::error!(
-                "Trying to stop incantation {}, but no incantation is happening",
-                self.id
-            );
-            None
+            Err(GameError::IncreasingLevelWithNoIncantations(self.id))
         } else {
             self.is_performing_incantation = false;
             self.level += 1;
-            Some(self.level)
+            Ok(self.level)
         }
     }
 }

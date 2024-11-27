@@ -1,8 +1,8 @@
-use shared::TechnicalError::{
+use shared::NetworkError::{
     ConnectionClosedByClient, FailedToReadFromSocket, FailedToWriteToSocket,
     MessageCantBeMappedToFromUtf8, MessageIsTooBig,
 };
-use shared::ZappyError::Technical;
+use shared::ZappyError::Network;
 use shared::{ZappyError, HANDSHAKE_MSG};
 use std::pin::Pin;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -33,14 +33,14 @@ impl Connection {
         self.stream
             .write_all(format!("{}\n", message).as_bytes())
             .await
-            .map_err(|e| Technical(FailedToWriteToSocket(self.id, e.to_string())))
+            .map_err(|e| Network(FailedToWriteToSocket(self.id, e.to_string())))
     }
 
     pub async fn write(&mut self, message: &str) -> Result<(), ZappyError> {
         self.stream
             .write_all(message.as_bytes())
             .await
-            .map_err(|e| Technical(FailedToWriteToSocket(self.id, e.to_string())))
+            .map_err(|e| Network(FailedToWriteToSocket(self.id, e.to_string())))
     }
 
     // TODO: handle multiline commands and buffer with Ctrl+D like ft_irc/webserv
@@ -49,15 +49,15 @@ impl Connection {
             .stream
             .read(&mut *self.buf)
             .await
-            .map_err(|e| Technical(FailedToReadFromSocket(self.id, e.to_string())))?;
+            .map_err(|e| Network(FailedToReadFromSocket(self.id, e.to_string())))?;
         if n == 0 {
-            Err(Technical(ConnectionClosedByClient(self.id)))
+            Err(Network(ConnectionClosedByClient(self.id)))
         } else if n > BUF_SIZE {
             //TODO: handle properly
-            Err(Technical(MessageIsTooBig(self.id)))
+            Err(Network(MessageIsTooBig(self.id)))
         } else {
             Ok(String::from_utf8(self.buf[..n].to_vec())
-                .map_err(|e| Technical(MessageCantBeMappedToFromUtf8(self.id, e.to_string())))?)
+                .map_err(|e| Network(MessageCantBeMappedToFromUtf8(self.id, e.to_string())))?)
         }
     }
 
