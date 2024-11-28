@@ -1,10 +1,12 @@
 use clap::Parser;
+use derive_builder::Builder;
 use shared::{MAX_PLAYERS_IN_TEAM, MAX_TEAMS};
 
 // TODO: more default values
 // TODO: min max value for width and height
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Builder, Default)]
+#[builder(setter(into))]
 #[command(version, about, long_about = None)]
 pub(crate) struct ServerArgs {
     #[arg(short, long, help = "Port number", default_value_t = 8080)]

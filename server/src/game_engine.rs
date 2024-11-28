@@ -427,6 +427,7 @@ impl GameEngine {
 #[cfg(test)]
 mod game_engine_tests {
     use super::*;
+    use crate::args::ServerArgsBuilder;
 
     // Common test constants
     const GAME_WIDTH: usize = 3;
@@ -434,37 +435,31 @@ mod game_engine_tests {
     const MAX_CLIENTS: u16 = 1;
     const TEST_TEAM_NAME_STR: &str = "Axel";
 
-    // Common test helpers
-    fn test_team_names() -> Vec<String> {
-        vec![TEST_TEAM_NAME_STR.to_string()]
-    }
-
     fn test_team_name() -> String {
         TEST_TEAM_NAME_STR.to_string()
-    }
-
-    fn build_game_engine() -> GameEngine {
-        let args = create_test_args();
-        GameEngine::from(&args).unwrap()
     }
 
     fn one_player_game_engine() -> (u16, GameEngine) {
         let player_id = 20;
         let team_name = test_team_name();
-        let mut game = build_game_engine();
+        let mut game = default_game_engine();
         game.add_player(player_id, team_name).unwrap();
         (player_id, game)
     }
 
-    fn create_test_args() -> ServerArgs {
-        ServerArgs {
-            port: 8080,
-            width: GAME_WIDTH,
-            height: GAME_HEIGHT,
-            clients: MAX_CLIENTS,
-            tud: 100,
-            names: test_team_names(),
-        }
+    fn default_args() -> ServerArgsBuilder {
+        ServerArgsBuilder::default()
+            .port(8080u16)
+            .clients(MAX_CLIENTS)
+            .tud(100u16)
+            .names(vec![test_team_name()])
+            .width(GAME_WIDTH)
+            .height(GAME_HEIGHT)
+            .to_owned()
+    }
+
+    fn default_game_engine() -> GameEngine {
+        GameEngine::from(&default_args().build().unwrap()).unwrap()
     }
 
     mod creation {
@@ -473,24 +468,59 @@ mod game_engine_tests {
         #[test]
         fn successfully_creates_new_game() {
             // Given
-            let args = create_test_args();
+            let args = default_args().build().unwrap();
 
             // When
             let game = GameEngine::from(&args).unwrap();
 
             // Then
+            // Eggs
+            assert!(game.eggs.is_empty(), "New game should have no eggs");
+            let (map_unhatched_count, map_hatched_count) =
+                game.map.field.iter().flatten().fold((0, 0), |acc, cell| {
+                    let (unhatched, hatched) = cell
+                        .eggs
+                        .get(&test_team_name())
+                        .map_or((0, 0), |(u, h)| (*u, *h));
+                    (acc.0 + unhatched, acc.1 + hatched)
+                });
+            assert_eq!(
+                map_hatched_count,
+                MAX_CLIENTS as usize * game.teams.len(),
+                "The unhatched eggs count is max clients per team"
+            );
+            assert_eq!(
+                map_unhatched_count, 0,
+                "There is no unhatched eggs on the map"
+            );
+
+            // Players
             assert!(game.players.is_empty(), "New game should have no players");
             assert_eq!(
+                game.map
+                    .field
+                    .iter()
+                    .flatten()
+                    .map(|v| v.players.len())
+                    .sum::<usize>(),
+                0,
+                "There is not players on the game field"
+            );
+
+            // Teams
+            assert_eq!(
                 game.teams.keys().cloned().collect::<Vec<_>>(),
-                test_team_names(),
+                vec![test_team_name()],
                 "Game should have exactly one team named 'axel'"
             );
-            assert!(game.eggs.is_empty(), "New game should have no eggs");
+
+            // Incantation
             assert!(
                 game.incantation.is_empty(),
                 "New game should have no active incantations"
             );
-            assert_eq!(game.frame, 0, "Game should start at frame 0");
+
+            // Game grid
             assert_eq!(
                 game.map_width(),
                 GAME_WIDTH,
@@ -506,28 +536,23 @@ mod game_engine_tests {
                 GAME_HEIGHT * GAME_WIDTH,
                 "Game map should contain exactly width * height cells"
             );
-            let (map_unhatched_count, map_hatched_count) =
-                game.map.field.iter().flatten().fold((0, 0), |acc, cell| {
-                    let (unhatched, hatched) = cell
-                        .eggs
-                        .get(&test_team_name())
-                        .map_or((0, 0), |(u, h)| (*u, *h));
-                    (acc.0 + unhatched, acc.1 + hatched)
-                });
-            assert_eq!(MAX_CLIENTS as usize, map_hatched_count);
-            assert_eq!(map_unhatched_count, 0)
+            assert!(game.map.field.iter().all(|v| v.len() == GAME_WIDTH));
+
+            // Other
+            assert_eq!(game.frame, 0, "Game should start at frame 0");
         }
     }
 
     mod player_management {
         use super::*;
+        use rstest::rstest;
 
         #[test]
         fn fails_to_add_player_with_invalid_team() {
             // Given
             let player_id = 20;
             let not_existing_team = "Doesn't exist".to_string();
-            let mut game = build_game_engine();
+            let mut game = default_game_engine();
             let initial_game_state = game.clone();
 
             // When
@@ -552,7 +577,7 @@ mod game_engine_tests {
             let player_in_team_id = 20;
             let player_to_join_id = 21;
             let team_name = test_team_name();
-            let mut game = build_game_engine();
+            let mut game = default_game_engine();
             game.add_player(player_in_team_id, team_name.clone())
                 .unwrap();
             let initial_game_state = game.clone();
@@ -574,41 +599,87 @@ mod game_engine_tests {
             );
         }
 
-        #[test]
-        fn successfully_adds_player_to_valid_team() {
+        #[rstest]
+        #[case(HashMap::from([("Axel".to_string(), 2), ("Anton".to_string(), 5)]))]
+        #[case(HashMap::from([("Anton".to_string(), 1), ("Victor".to_string(), 1), ("Axel".to_string(), 1)]
+        ))]
+        #[case(HashMap::from([("Anton".to_string(), 7), ("Victor".to_string(), 10), ("Axel".to_string(), 25)]
+        ))]
+        #[case(HashMap::from([("Anton".to_string(), 1)]))]
+        fn successfully_adds_player_to_valid_team(#[case] players_to_add: HashMap<String, usize>) {
             // Given
-            let player_id = 20;
-            let team_name = test_team_name();
-            let mut game = build_game_engine();
+            let mut current_id = 0;
+            let max_player_nbr = *players_to_add.values().max().unwrap() as u16;
+            let all_players_nbr = players_to_add.values().sum::<usize>();
+            let args = default_args()
+                .clients(max_player_nbr)
+                .names(players_to_add.keys().cloned().collect::<Vec<_>>())
+                .build()
+                .unwrap();
+            let mut game = GameEngine::from(&args).unwrap();
+            let mut result: HashMap<String, Vec<(u16, u16)>> = HashMap::new();
 
             // When
-            let result = game.add_player(player_id, team_name);
+            for (team, player_count) in players_to_add {
+                for _ in 0..player_count {
+                    let add_player_res = game.add_player(current_id, team.clone()).unwrap();
+                    result
+                        .entry(team.clone())
+                        .and_modify(|v| v.push((current_id, add_player_res)))
+                        .or_insert(vec![(current_id, add_player_res)]);
+                    current_id += 1;
+                }
+            }
 
             // Then
-            let player = game.players.get(&player_id).unwrap();
-            assert_eq!(
-                result.unwrap(),
-                MAX_CLIENTS - 1,
-                "Should return maximum number of players - 1"
-            );
             assert_eq!(
                 game.players.len(),
-                1,
+                all_players_nbr,
                 "Should add a new player to the players list"
             );
-            assert!(
-                game.map.field[player.position().y][player.position().x]
-                    .players
-                    .contains(player.id()),
-                "Should add a new player to the map"
-            );
-            assert!(
-                game.teams
-                    .get_mut(player.team())
-                    .unwrap()
-                    .has_member(&player_id),
-                "Should add a new player to the team"
-            );
+            for (team, players_ids) in &result {
+                let expected_response = max_player_nbr;
+                for (i, (id, response)) in players_ids.iter().enumerate() {
+                    let player = game.players.get(&id).unwrap();
+
+                    assert_eq!(
+                        *response,
+                        expected_response - (i + 1) as u16,
+                        "Should return maximum number of players - 1"
+                    );
+                    assert!(
+                        game.map.field[player.position().y][player.position().x]
+                            .players
+                            .contains(player.id()),
+                        "Should add a new player to the map"
+                    );
+                    assert_eq!(
+                        game.map
+                            .field
+                            .iter()
+                            .flatten()
+                            .map(|v| v.players.len())
+                            .sum::<usize>(),
+                        all_players_nbr,
+                        "Should be all players on the game field"
+                    );
+                    assert!(
+                        !player.is_performing_incantation(),
+                        "Should not perform incantation"
+                    );
+                    assert_eq!(
+                        player.inventory().iter().sum::<usize>(),
+                        0,
+                        "Should have empty inventory"
+                    );
+                    assert_eq!(*player.level(), 1, "Should appear with level 1");
+                    assert_eq!(player.commands().len(), 0, "Should have no commands");
+                    assert!(
+                        game.teams.get_mut(team).unwrap().has_member(&id),
+                        "Should add a new player to the team"
+                    );
+                }
+            }
         }
     }
 
@@ -665,7 +736,7 @@ mod game_engine_tests {
         fn one_player_game_engine_with_player_init_pos(position: Position) -> (u16, GameEngine) {
             let player_id = 20;
             let team_name = test_team_name();
-            let mut game = build_game_engine();
+            let mut game = default_game_engine();
             game.teams = HashMap::from([(
                 test_team_name(),
                 Team::new(test_team_name(), VecDeque::from([position])),
@@ -678,29 +749,109 @@ mod game_engine_tests {
 
         #[rstest]
         // Movement tests - North/South
-        #[case(Position { x: 0, y: 0, dir: North }, Position { x: 0, y: 2, dir: North }, PlayerCmd::Move)]
-        #[case(Position { x: 1, y: 0, dir: North }, Position { x: 1, y: 2, dir: North }, PlayerCmd::Move)]
-        #[case(Position { x: 2, y: 0, dir: North }, Position { x: 2, y: 2, dir: North }, PlayerCmd::Move)]
-        #[case(Position { x: 0, y: 2, dir: South }, Position { x: 0, y: 0, dir: South }, PlayerCmd::Move)]
-        #[case(Position { x: 1, y: 2, dir: South }, Position { x: 1, y: 0, dir: South }, PlayerCmd::Move)]
-        #[case(Position { x: 2, y: 2, dir: South }, Position { x: 2, y: 0, dir: South }, PlayerCmd::Move)]
+        #[case(
+            Position{ x: 0, y: 0, dir: North },
+            Position{ x: 0, y: 2, dir: North },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 1, y: 0, dir: North },
+            Position{ x: 1, y: 2, dir: North },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 2, y: 0, dir: North },
+            Position{ x: 2, y: 2, dir: North },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 0, y: 2, dir: South },
+            Position{ x: 0, y: 0, dir: South },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 1, y: 2, dir: South },
+            Position{ x: 1, y: 0, dir: South },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 2, y: 2, dir: South },
+            Position{ x: 2, y: 0, dir: South },
+            PlayerCmd::Move
+        )]
         // Movement tests - East/West
-        #[case(Position { x: 0, y: 0, dir: West }, Position { x: 2, y: 0, dir: West }, PlayerCmd::Move)]
-        #[case(Position { x: 0, y: 1, dir: West }, Position { x: 2, y: 1, dir: West }, PlayerCmd::Move)]
-        #[case(Position { x: 0, y: 2, dir: West }, Position { x: 2, y: 2, dir: West }, PlayerCmd::Move)]
-        #[case(Position { x: 2, y: 0, dir: East }, Position { x: 0, y: 0, dir: East }, PlayerCmd::Move)]
-        #[case(Position { x: 2, y: 1, dir: East }, Position { x: 0, y: 1, dir: East }, PlayerCmd::Move)]
-        #[case(Position { x: 2, y: 2, dir: East }, Position { x: 0, y: 2, dir: East }, PlayerCmd::Move)]
+        #[case(
+            Position{ x: 0, y: 0, dir: West },
+            Position{ x: 2, y: 0, dir: West },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 0, y: 1, dir: West },
+            Position{ x: 2, y: 1, dir: West },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 0, y: 2, dir: West },
+            Position{ x: 2, y: 2, dir: West },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 2, y: 0, dir: East },
+            Position{ x: 0, y: 0, dir: East },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 2, y: 1, dir: East },
+            Position{ x: 0, y: 1, dir: East },
+            PlayerCmd::Move
+        )]
+        #[case(
+            Position{ x: 2, y: 2, dir: East },
+            Position{ x: 0, y: 2, dir: East },
+            PlayerCmd::Move
+        )]
         // Rotation tests - Left
-        #[case(Position { x: 1, y: 1, dir: North }, Position { x: 1, y: 1, dir: West }, PlayerCmd::Left)]
-        #[case(Position { x: 1, y: 1, dir: West }, Position { x: 1, y: 1, dir: South }, PlayerCmd::Left)]
-        #[case(Position { x: 1, y: 1, dir: South }, Position { x: 1, y: 1, dir: East }, PlayerCmd::Left)]
-        #[case(Position { x: 1, y: 1, dir: East }, Position { x: 1, y: 1, dir: North }, PlayerCmd::Left)]
+        #[case(
+            Position{ x: 1, y: 1, dir: North },
+            Position{ x: 1, y: 1, dir: West },
+            PlayerCmd::Left
+        )]
+        #[case(
+            Position{ x: 1, y: 1, dir: West },
+            Position{ x: 1, y: 1, dir: South },
+            PlayerCmd::Left
+        )]
+        #[case(
+            Position{ x: 1, y: 1, dir: South },
+            Position{ x: 1, y: 1, dir: East },
+            PlayerCmd::Left
+        )]
+        #[case(
+            Position{ x: 1, y: 1, dir: East },
+            Position{ x: 1, y: 1, dir: North },
+            PlayerCmd::Left
+        )]
         // Rotation tests - Right
-        #[case(Position { x: 1, y: 1, dir: North }, Position { x: 1, y: 1, dir: East }, PlayerCmd::Right)]
-        #[case(Position { x: 1, y: 1, dir: East }, Position { x: 1, y: 1, dir: South }, PlayerCmd::Right)]
-        #[case(Position { x: 1, y: 1, dir: South }, Position { x: 1, y: 1, dir: West }, PlayerCmd::Right)]
-        #[case(Position { x: 1, y: 1, dir: West }, Position { x: 1, y: 1, dir: North }, PlayerCmd::Right)]
+        #[case(
+            Position{ x: 1, y: 1, dir: North },
+            Position{ x: 1, y: 1, dir: East },
+            PlayerCmd::Right
+        )]
+        #[case(
+            Position{ x: 1, y: 1, dir: East },
+            Position{ x: 1, y: 1, dir: South },
+            PlayerCmd::Right
+        )]
+        #[case(
+            Position{ x: 1, y: 1, dir: South },
+            Position{ x: 1, y: 1, dir: West },
+            PlayerCmd::Right
+        )]
+        #[case(
+            Position{ x: 1, y: 1, dir: West },
+            Position{ x: 1, y: 1, dir: North },
+            PlayerCmd::Right
+        )]
         fn test_player_movement_and_rotation(
             #[case] start: Position,
             #[case] expected: Position,
