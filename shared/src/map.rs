@@ -69,18 +69,21 @@ impl Cell {
 }
 
 impl Map {
-    // TODO: better procedural generation
-    pub fn new(width: usize, height: usize) -> Self {
-        let mut map = vec![vec![Cell::new(); width]; height];
-        for y in 0..height {
-            for x in 0..width {
-                map[y][x].add_resource(Resource::random());
-            }
-        }
+    pub fn empty(width: usize, height: usize) -> Self {
+        let field = vec![vec![Cell::new(); width]; height];
         Self {
-            field: map,
+            field,
             width,
             height,
+        }
+    }
+
+    // TODO: better procedural generation
+    pub fn generate_resources(&mut self) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                self.field[y][x].add_resource(Resource::random());
+            }
         }
     }
 
@@ -184,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_broadcast_source_center() {
-        let map = Map::new(5, 5);
+        let map = Map::empty(5, 5);
         let receiver = Position {
             x: 2,
             y: 2,
@@ -209,7 +212,7 @@ mod tests {
 
     #[test]
     fn test_broadcast_source_asymetric() {
-        let map = Map::new(5, 5);
+        let map = Map::empty(5, 5);
         let receiver = Position {
             x: 0,
             y: 1,

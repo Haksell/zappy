@@ -30,7 +30,8 @@ pub struct GameEngine {
 
 impl GameEngine {
     pub fn from(args: &ServerArgs) -> Result<Self, Box<dyn Error>> {
-        let mut map = Map::new(args.width, args.height);
+        let mut map = Map::empty(args.width, args.height);
+        map.generate_resources();
         let teams = args
             .names
             .iter()
@@ -366,6 +367,8 @@ impl GameEngine {
                 }
             }
         }
+        //TODO: implement and uncomment
+        //self.map.generate_resources();
     }
 
     pub fn add_player(&mut self, player_id: u16, team_name: String) -> Result<u16, ZappyError> {
@@ -456,6 +459,13 @@ mod game_engine_tests {
             .width(GAME_WIDTH)
             .height(GAME_HEIGHT)
             .to_owned()
+    }
+
+    fn player_lvl_up(player: &mut Player, level: u8) {
+        for _ in 1..level {
+            player.start_incantation();
+            player.stop_incantation().unwrap();
+        }
     }
 
     fn default_game_engine() -> GameEngine {
@@ -601,10 +611,8 @@ mod game_engine_tests {
 
         #[rstest]
         #[case(HashMap::from([("Axel".to_string(), 2), ("Anton".to_string(), 5)]))]
-        #[case(HashMap::from([("Anton".to_string(), 1), ("Victor".to_string(), 1), ("Axel".to_string(), 1)]
-        ))]
-        #[case(HashMap::from([("Anton".to_string(), 7), ("Victor".to_string(), 10), ("Axel".to_string(), 25)]
-        ))]
+        #[case(HashMap::from([("Anton".to_string(), 1), ("Victor".to_string(), 1), ("Axel".to_string(), 1)]))]
+        #[case(HashMap::from([("Anton".to_string(), 7), ("Victor".to_string(), 10), ("Axel".to_string(), 25)]))]
         #[case(HashMap::from([("Anton".to_string(), 1)]))]
         fn successfully_adds_player_to_valid_team(#[case] players_to_add: HashMap<String, usize>) {
             // Given
@@ -728,144 +736,69 @@ mod game_engine_tests {
         use super::*;
         use rstest::rstest;
         use std::collections::BTreeMap;
-        use Direction::East;
-        use Direction::North;
-        use Direction::South;
-        use Direction::West;
+        use Direction::*;
+        use shared::resource::Stone::*;
+        use Resource::*;
 
-        fn one_player_game_engine_with_player_init_pos(position: Position) -> (u16, GameEngine) {
-            let player_id = 20;
+        fn game_engine_with(
+            positions: &Vec<Position>,
+            resources: Option<&Vec<((usize, usize), Resource)>>,
+        ) -> (Vec<u16>, GameEngine) {
             let team_name = test_team_name();
             let mut game = default_game_engine();
+            let mut res = Vec::new();
             game.teams = HashMap::from([(
                 test_team_name(),
-                Team::new(test_team_name(), VecDeque::from([position])),
+                Team::new(test_team_name(), VecDeque::from(positions.clone())),
             )]);
-            game.map.field[position.y][position.x].eggs =
-                BTreeMap::from([(team_name.clone(), (0, 1))]);
-            game.add_player(player_id, team_name).unwrap();
-            (player_id, game)
+            if let Some(resources) = resources {
+                game.map = Map::empty(GAME_WIDTH, GAME_HEIGHT);
+                for ((x, y), res) in resources {
+                    game.map.field[*y][*x].add_resource(*res)
+                }
+            }
+            for (i, pos) in positions.iter().enumerate() {
+                game.map.field[pos.y][pos.x].eggs = BTreeMap::from([(team_name.clone(), (0, 1))]);
+                game.add_player(i as u16, team_name.clone()).unwrap();
+                res.push(i as u16);
+            }
+            (res, game)
         }
 
         #[rstest]
         // Movement tests - North/South
-        #[case(
-            Position{ x: 0, y: 0, dir: North },
-            Position{ x: 0, y: 2, dir: North },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 1, y: 0, dir: North },
-            Position{ x: 1, y: 2, dir: North },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 2, y: 0, dir: North },
-            Position{ x: 2, y: 2, dir: North },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 0, y: 2, dir: South },
-            Position{ x: 0, y: 0, dir: South },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 1, y: 2, dir: South },
-            Position{ x: 1, y: 0, dir: South },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 2, y: 2, dir: South },
-            Position{ x: 2, y: 0, dir: South },
-            PlayerCmd::Move
-        )]
+        #[case(Position{ x: 0, y: 0, dir: North }, Position{ x: 0, y: 2, dir: North }, PlayerCmd::Move)]
+        #[case(Position{ x: 1, y: 0, dir: North }, Position{ x: 1, y: 2, dir: North }, PlayerCmd::Move)]
+        #[case(Position{ x: 2, y: 0, dir: North }, Position{ x: 2, y: 2, dir: North }, PlayerCmd::Move)]
+        #[case(Position{ x: 0, y: 2, dir: South }, Position{ x: 0, y: 0, dir: South }, PlayerCmd::Move)]
+        #[case(Position{ x: 1, y: 2, dir: South }, Position{ x: 1, y: 0, dir: South }, PlayerCmd::Move)]
+        #[case(Position{ x: 2, y: 2, dir: South }, Position{ x: 2, y: 0, dir: South }, PlayerCmd::Move)]
         // Movement tests - East/West
-        #[case(
-            Position{ x: 0, y: 0, dir: West },
-            Position{ x: 2, y: 0, dir: West },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 0, y: 1, dir: West },
-            Position{ x: 2, y: 1, dir: West },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 0, y: 2, dir: West },
-            Position{ x: 2, y: 2, dir: West },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 2, y: 0, dir: East },
-            Position{ x: 0, y: 0, dir: East },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 2, y: 1, dir: East },
-            Position{ x: 0, y: 1, dir: East },
-            PlayerCmd::Move
-        )]
-        #[case(
-            Position{ x: 2, y: 2, dir: East },
-            Position{ x: 0, y: 2, dir: East },
-            PlayerCmd::Move
-        )]
+        #[case(Position{ x: 0, y: 0, dir: West }, Position{ x: 2, y: 0, dir: West }, PlayerCmd::Move)]
+        #[case(Position{ x: 0, y: 1, dir: West }, Position{ x: 2, y: 1, dir: West }, PlayerCmd::Move)]
+        #[case(Position{ x: 0, y: 2, dir: West }, Position{ x: 2, y: 2, dir: West }, PlayerCmd::Move)]
+        #[case(Position{ x: 2, y: 0, dir: East }, Position{ x: 0, y: 0, dir: East }, PlayerCmd::Move)]
+        #[case(Position{ x: 2, y: 1, dir: East }, Position{ x: 0, y: 1, dir: East }, PlayerCmd::Move)]
+        #[case(Position{ x: 2, y: 2, dir: East }, Position{ x: 0, y: 2, dir: East }, PlayerCmd::Move)]
         // Rotation tests - Left
-        #[case(
-            Position{ x: 1, y: 1, dir: North },
-            Position{ x: 1, y: 1, dir: West },
-            PlayerCmd::Left
-        )]
-        #[case(
-            Position{ x: 1, y: 1, dir: West },
-            Position{ x: 1, y: 1, dir: South },
-            PlayerCmd::Left
-        )]
-        #[case(
-            Position{ x: 1, y: 1, dir: South },
-            Position{ x: 1, y: 1, dir: East },
-            PlayerCmd::Left
-        )]
-        #[case(
-            Position{ x: 1, y: 1, dir: East },
-            Position{ x: 1, y: 1, dir: North },
-            PlayerCmd::Left
-        )]
+        #[case(Position{ x: 1, y: 1, dir: North }, Position{ x: 1, y: 1, dir: West }, PlayerCmd::Left)]
+        #[case(Position{ x: 1, y: 1, dir: West }, Position{ x: 1, y: 1, dir: South }, PlayerCmd::Left)]
+        #[case(Position{ x: 1, y: 1, dir: South }, Position{ x: 1, y: 1, dir: East }, PlayerCmd::Left)]
+        #[case(Position{ x: 1, y: 1, dir: East }, Position{ x: 1, y: 1, dir: North }, PlayerCmd::Left)]
         // Rotation tests - Right
-        #[case(
-            Position{ x: 1, y: 1, dir: North },
-            Position{ x: 1, y: 1, dir: East },
-            PlayerCmd::Right
-        )]
-        #[case(
-            Position{ x: 1, y: 1, dir: East },
-            Position{ x: 1, y: 1, dir: South },
-            PlayerCmd::Right
-        )]
-        #[case(
-            Position{ x: 1, y: 1, dir: South },
-            Position{ x: 1, y: 1, dir: West },
-            PlayerCmd::Right
-        )]
-        #[case(
-            Position{ x: 1, y: 1, dir: West },
-            Position{ x: 1, y: 1, dir: North },
-            PlayerCmd::Right
-        )]
-        fn test_player_movement_and_rotation(
+        #[case(Position{ x: 1, y: 1, dir: North }, Position{ x: 1, y: 1, dir: East }, PlayerCmd::Right)]
+        #[case(Position{ x: 1, y: 1, dir: East }, Position{ x: 1, y: 1, dir: South }, PlayerCmd::Right)]
+        #[case(Position{ x: 1, y: 1, dir: South }, Position{ x: 1, y: 1, dir: West }, PlayerCmd::Right)]
+        #[case(Position{ x: 1, y: 1, dir: West }, Position{ x: 1, y: 1, dir: North }, PlayerCmd::Right)]
+        fn successfully_applies_movement_and_rotation_commands(
             #[case] start: Position,
             #[case] expected: Position,
             #[case] command: PlayerCmd,
         ) {
             // Given
-            let (player_id, mut game) = one_player_game_engine_with_player_init_pos(start);
+            let (player_ids, mut game) = game_engine_with(&vec![start], None);
+            let player_id = player_ids[0];
             let mut execution_results_buffer = Vec::new();
-
-            // Set initial position
-            game.players
-                .get_mut(&player_id)
-                .unwrap()
-                .set_position(start);
 
             // When
             game.take_command(&player_id, command.clone()).unwrap();
@@ -887,15 +820,16 @@ mod game_engine_tests {
                 "Player should be present at new position"
             );
 
-            // Verify player is not at old position (only for movement)
-            if (start.x, start.y) != (expected.x, expected.y) {
-                assert!(
-                    !game.map.field[start.y][start.x]
-                        .players
-                        .contains(&player_id),
-                    "Player should not be present at old position"
-                );
-            }
+            assert_eq!(
+                game.map
+                    .field
+                    .iter()
+                    .flatten()
+                    .map(|v| v.players.len())
+                    .sum::<usize>(),
+                1,
+                "There is only one player on the map"
+            );
 
             // Verify game state
             assert_eq!(
@@ -914,6 +848,135 @@ mod game_engine_tests {
                 vec![(player_id, ServerResponse::Ok)],
                 "Should receive OK response"
             );
+        }
+
+        #[rstest]
+        // Doesn't see himself on the cell but resource
+        // Player under test
+        #[case((1, Position {x: 1,y: 2,dir: North,}),
+            // Other players
+            vec![],
+            // Resources
+            vec![((1, 2), Resource::Nourriture)],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["nourriture", "", "", ""]
+        )]
+        // See other player on the cell
+        #[case((1, Position {x: 1,y: 2,dir: North,}),
+            // Other players
+            vec![Position {x:1,y:2,dir:North}],
+            // Resources
+            vec![],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["player", "", "", ""]
+        )]
+        // Multiple same resources on the same cell
+        #[case((1, Position {x: 1,y: 2,dir: North,}),
+            // Other players
+            vec![],
+            // Resources
+            vec![((1, 2), Nourriture), ((1, 2),Nourriture),
+                ((0, 1), Stone(Deraumere)),((0, 1), Stone(Deraumere)),  
+                ((1, 1), Stone(Linemate)), ((1, 1), Stone(Linemate)), 
+                ((2, 1), Stone(Mendiane)), ((2, 1), Stone(Mendiane)), 
+            ],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["nourriture nourriture", "deraumere deraumere", "linemate linemate", "mendiane mendiane"]
+        )]
+        // Stone, player and nourriture on the same cell
+        #[case((1, Position {x: 1,y: 2,dir: North,}),
+            // Other players
+            vec![Position {x:1,y:1,dir:North}],
+            // Resources
+            vec![((1, 1), Nourriture), ((1, 1),Stone(Linemate))],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["", "", "player nourriture linemate", ""]
+        )]
+        fn successfully_applies_see_command(
+            #[case] player_under_test: (u8, Position),
+            #[case] players: Vec<Position>,
+            #[case] resource: Vec<((usize, usize), Resource)>,
+            #[case] result: Vec<&str>,
+        ) {
+            // Given
+            let result = result.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+            let all_players = vec![player_under_test.1]
+                .iter()
+                .chain(players.iter())
+                .cloned()
+                .collect::<Vec<_>>();
+
+            let (mut players_ids, mut game) = game_engine_with(&all_players, Some(&resource));
+            let player_under_test_id = players_ids[0];
+            players_ids = players_ids[1..].to_vec();
+            let mut execution_results_buffer = Vec::new();
+            player_lvl_up(
+                game.players.get_mut(&player_under_test_id).unwrap(),
+                player_under_test.0,
+            );
+            let command = PlayerCmd::See;
+
+            // When
+            game.take_command(&player_under_test_id, command.clone())
+                .unwrap();
+
+            //TODO: +2 lol
+            // Execute command
+            for _ in 0..command.delay() + 2 {
+                game.tick(&mut execution_results_buffer)
+            }
+
+            println!("{:?}", execution_results_buffer);
+
+            assert_eq!(execution_results_buffer.len(), 1);
+            assert_eq!(
+                execution_results_buffer[0],
+                (
+                    player_under_test_id,
+                    ServerResponse::See(result.iter().map(|s| s.to_string()).collect())
+                )
+            );
+
+            // Then
+            /*
+
+            // Verify player is at new position
+            assert!(
+                game.map.field[new_position.y][new_position.x]
+                    .players
+                    .contains(&players_ids),
+                "Player should be present at new position"
+            );
+
+            assert_eq!(
+                game.map
+                    .field
+                    .iter()
+                    .flatten()
+                    .map(|v| v.players.len())
+                    .sum::<usize>(),
+                1,
+                "There is only one player on the map"
+            );
+
+            // Verify game state
+            assert_eq!(
+                game.frame,
+                command.delay(),
+                "Game frame should match command delay"
+            );
+            assert_eq!(
+                *new_position, expected,
+                "Player position should match expected"
+            );
+
+            // Verify response
+            assert_eq!(
+                execution_results_buffer,
+                vec![(players_ids, ServerResponse::Ok)],
+                "Should receive OK response"
+            );
+             */
         }
     }
 }

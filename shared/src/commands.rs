@@ -23,7 +23,7 @@ impl TryFrom<&str> for AdminCommand {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlayerCmd {
     Move,
     Right,

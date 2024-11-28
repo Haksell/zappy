@@ -20,7 +20,7 @@ impl StoneSetOperations for StoneSet {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 #[repr(u8)]
 pub enum Stone {
     Deraumere,
