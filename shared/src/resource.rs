@@ -1,6 +1,6 @@
 use rand::{seq::SliceRandom as _, thread_rng};
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 
 pub type StoneSet = [usize; Stone::SIZE];
 
@@ -59,6 +59,17 @@ impl Stone {
     pub fn index(self) -> usize {
         self as usize
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Stone::Deraumere => "deraumere",
+            Stone::Linemate => "linemate",
+            Stone::Mendiane => "mendiane",
+            Stone::Phiras => "phiras",
+            Stone::Sibur => "sibur",
+            Stone::Thystame => "thystame",
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
@@ -86,20 +97,12 @@ impl Resource {
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Resource::Stone(stone) => match stone {
-                Stone::Deraumere => "deraumere",
-                Stone::Linemate => "linemate",
-                Stone::Mendiane => "mendiane",
-                Stone::Phiras => "phiras",
-                Stone::Sibur => "sibur",
-                Stone::Thystame => "thystame",
-            },
+            Resource::Stone(stone) => stone.as_str(),
             Resource::Nourriture => "nourriture",
         }
     }
 
     pub fn random() -> Self {
-        //TODO: nouriture is deleted
         static RESOURCES: [Resource; Resource::SIZE] = [
             Resource::Stone(Stone::Deraumere),
             Resource::Stone(Stone::Linemate),
@@ -116,7 +119,13 @@ impl Resource {
 }
 
 impl Display for Resource {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl Display for Stone {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }

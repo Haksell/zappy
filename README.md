@@ -115,7 +115,7 @@ Ko
 | pose        | put            | ✅      |
 | expulse     | expel, exp     | ✅      |
 | broadcast   | bc             | ✅      |
-| incantation | inc            | ❌      |
+| incantation | inc            | ✅      |
 | fork        |                | ✅      |
 | connect_nbr | cn             | ✅      |
 
@@ -162,6 +162,13 @@ Todo client:
 
 - serialize Command enum using serde_json from workspace cargo.toml
 - when read responses serialize ServerResponse enum from workspace cargo.toml
+
+## See command explanation
+
+As we use torus as our map, all sides are connected (North with South, East and West).\
+On the map the red cell is the player's cell that looks in North direction.
+
+![See command](see_explained.png)
 
 ## misc
 
@@ -227,3 +234,29 @@ The slots managemeng is correct (-c flag and fork)?
 - [ ] admin SSL
 - [ ] music
 - [ ] ???
+
+## Unit tests
+
+### Game Engine
+
+| unit name     | Status |
+|---------------|--------|
+| from          | ✅      |
+| add player    | ✅      |
+| remove player | ✅      |
+| tick          | ❌      |
+
+| command     | Status |
+|-------------|--------|
+| move        | ✅      |
+| left        | ✅      |
+| right       | ✅      |
+| see         | ✅      |
+| inventory   | ❌      |
+| take        | ✅      |
+| put         | ✅      |
+| expel       | ❌      |
+| broadcast   | ❌      |
+| incantation | ❌      |
+| fork        | ❌      |
+| connect_nbr | ❌      |

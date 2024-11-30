@@ -1,7 +1,7 @@
 use crate::commands::PlayerCmd;
 use crate::position::{Position, Side};
 use crate::resource::{Stone, StoneSet};
-use crate::{resource::Resource, GameError, MAX_COMMANDS, MAX_PLAYER_LVL};
+use crate::{resource::Resource, GameError, DECREASED_HP_PER_FRAME, MAX_COMMANDS, MAX_PLAYER_LVL};
 use crate::{LIFE_TICKS, LIVES_START};
 use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
@@ -115,8 +115,8 @@ impl Player {
         }
     }
 
-    pub fn decrement_life(&mut self) {
-        self.remaining_life -= 1;
+    pub fn decrease_life(&mut self) {
+        self.remaining_life -= DECREASED_HP_PER_FRAME;
     }
 
     pub fn start_incantation(&mut self) {

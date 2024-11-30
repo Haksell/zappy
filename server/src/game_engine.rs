@@ -99,7 +99,7 @@ impl GameEngine {
                 self.handle_move(player_id, &player_direction);
                 vec![(player_id, ServerResponse::Ok)]
             }
-            PlayerCmd::Take { resource_name } => {
+            PlayerCmd::Take(resource_name) => {
                 let response = Resource::try_from(resource_name.as_str())
                     .map(|resource| {
                         let player = self.players.get_mut(&player_id).unwrap();
@@ -114,7 +114,7 @@ impl GameEngine {
                     .unwrap_or(ServerResponse::Ko);
                 vec![(player_id, response)]
             }
-            PlayerCmd::Put { resource_name } => {
+            PlayerCmd::Put(resource_name) => {
                 let response = Resource::try_from(resource_name.as_str())
                     .map(|resource| {
                         let player = self.players.get_mut(&player_id).unwrap();
@@ -198,7 +198,7 @@ impl GameEngine {
                 result.push((player_id, ServerResponse::Ok));
                 result
             }
-            PlayerCmd::Broadcast { text } => {
+            PlayerCmd::Broadcast(text) => {
                 let sender_pos = self.players.get(&player_id).unwrap().position();
                 self.players
                     .keys()
@@ -310,7 +310,7 @@ impl GameEngine {
                 continue;
             }
 
-            player.decrement_life();
+            player.decrease_life();
 
             if !player.commands().is_empty() && current_frame >= *player.next_frame() {
                 let command = player.pop_command_from_queue().unwrap();
@@ -468,8 +468,27 @@ mod game_engine_tests {
         }
     }
 
+    fn player_set_hp(player: &mut Player, value: u64) {
+        while *player.remaining_life() < value {
+            player.add_to_inventory(Resource::Nourriture)
+        }
+        while *player.remaining_life() > value {
+            player.decrease_life()
+        }
+    }
+
     fn default_game_engine() -> GameEngine {
         GameEngine::from(&default_args().build().unwrap()).unwrap()
+    }
+
+    fn resources_sum_on_other_cell(player_id: &u16, game: &GameEngine) -> usize {
+        game.map
+            .field
+            .iter()
+            .flatten()
+            .filter(|v| !v.players.contains(&player_id))
+            .map(|c| c.stones.iter().sum::<usize>() + c.nourriture)
+            .sum::<usize>()
     }
 
     mod creation {
@@ -735,9 +754,11 @@ mod game_engine_tests {
     mod commands_execution {
         use super::*;
         use rstest::rstest;
+        use shared::resource::Stone::*;
+        use shared::resource::StoneSet;
+        use shared::LIFE_TICKS;
         use std::collections::BTreeMap;
         use Direction::*;
-        use shared::resource::Stone::*;
         use Resource::*;
 
         fn game_engine_with(
@@ -746,13 +767,13 @@ mod game_engine_tests {
         ) -> (Vec<u16>, GameEngine) {
             let team_name = test_team_name();
             let mut game = default_game_engine();
+            game.map = Map::empty(GAME_WIDTH, GAME_HEIGHT);
             let mut res = Vec::new();
             game.teams = HashMap::from([(
                 test_team_name(),
                 Team::new(test_team_name(), VecDeque::from(positions.clone())),
             )]);
             if let Some(resources) = resources {
-                game.map = Map::empty(GAME_WIDTH, GAME_HEIGHT);
                 for ((x, y), res) in resources {
                     game.map.field[*y][*x].add_resource(*res)
                 }
@@ -799,11 +820,9 @@ mod game_engine_tests {
             let (player_ids, mut game) = game_engine_with(&vec![start], None);
             let player_id = player_ids[0];
             let mut execution_results_buffer = Vec::new();
-
-            // When
             game.take_command(&player_id, command.clone()).unwrap();
 
-            // Execute command
+            // When
             for _ in 0..command.delay() {
                 game.tick(&mut execution_results_buffer)
             }
@@ -812,7 +831,6 @@ mod game_engine_tests {
             let player = game.players.get(&player_id).unwrap();
             let new_position = player.position();
 
-            // Verify player is at new position
             assert!(
                 game.map.field[new_position.y][new_position.x]
                     .players
@@ -851,13 +869,13 @@ mod game_engine_tests {
         }
 
         #[rstest]
+        // See command tests
         // Doesn't see himself on the cell but resource
-        // Player under test
         #[case((1, Position {x: 1,y: 2,dir: North,}),
             // Other players
             vec![],
             // Resources
-            vec![((1, 2), Resource::Nourriture)],
+            vec![((1, 2), Nourriture)],
             // Expected answer in order (cell1, cell2, cell3 ..)
             vec!["nourriture", "", "", ""]
         )]
@@ -876,12 +894,76 @@ mod game_engine_tests {
             vec![],
             // Resources
             vec![((1, 2), Nourriture), ((1, 2),Nourriture),
-                ((0, 1), Stone(Deraumere)),((0, 1), Stone(Deraumere)),  
-                ((1, 1), Stone(Linemate)), ((1, 1), Stone(Linemate)), 
-                ((2, 1), Stone(Mendiane)), ((2, 1), Stone(Mendiane)), 
+                ((0, 1), Stone(Deraumere)),((0, 1), Stone(Deraumere)),
+                ((1, 1), Stone(Linemate)), ((1, 1), Stone(Linemate)),
+                ((2, 1), Stone(Mendiane)), ((2, 1), Stone(Mendiane))
             ],
             // Expected answer in order (cell1, cell2, cell3 ..)
             vec!["nourriture nourriture", "deraumere deraumere", "linemate linemate", "mendiane mendiane"]
+        )]
+        // Can see via west border
+        #[case((1, Position {x: 0,y: 1,dir: West,}),
+            // Other players
+            vec![Position {x: 2,y: 0,dir: West,}, Position {x: 2,y: 1,dir: West,}, Position {x: 2,y: 2,dir: West,}],
+            // Resources
+            vec![((0, 1), Nourriture), ((0, 1),Nourriture),
+                ((2, 2), Stone(Mendiane)), ((2, 2), Stone(Thystame)),
+                ((2, 1), Stone(Sibur)), ((2, 1), Nourriture),
+                ((2, 0), Nourriture),((2, 0), Stone(Phiras)),
+            ],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["nourriture nourriture",
+                "player mendiane thystame",
+                "player nourriture sibur",
+                "player nourriture phiras"]
+        )]
+        // Can see via east border
+        #[case((1, Position {x: 2,y: 1,dir: East,}),
+            // Other players
+            vec![Position {x: 0,y: 0,dir: West,}, Position {x: 0,y: 1,dir: West,}, Position {x: 0,y: 2,dir: West,}],
+            // Resources
+            vec![((2, 1), Stone(Mendiane)), ((2, 1),Stone(Deraumere)),
+                ((0, 0), Stone(Mendiane)), ((0, 0), Stone(Thystame)),
+                ((0, 1), Nourriture), ((0, 1), Nourriture), ((0, 1), Nourriture),
+                ((0, 2), Nourriture),((0, 2), Stone(Sibur)), ((0, 2), Stone(Sibur)), ((0, 2), Stone(Sibur)),
+            ],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["deraumere mendiane",
+                "player mendiane thystame",
+                "player nourriture nourriture nourriture",
+                "player nourriture sibur sibur sibur"]
+        )]
+        // Can see via north border
+        #[case((1, Position {x: 1,y: 0,dir: North,}),
+            // Other players
+            vec![Position {x: 0,y: 2,dir: West,}, Position {x: 1,y: 2,dir: West,}, Position {x: 2,y: 2,dir: West,}],
+            // Resources
+            vec![((1, 0), Stone(Mendiane)), ((1, 0),Stone(Deraumere)),
+                ((0, 2), Stone(Mendiane)), ((0, 2), Stone(Thystame)),
+                ((1, 2), Nourriture), ((1, 2), Nourriture), ((1, 2), Nourriture),
+                ((2, 2), Nourriture),((2, 2), Stone(Sibur)), ((2, 2), Stone(Sibur)), ((2, 2), Stone(Sibur)),
+            ],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["deraumere mendiane",
+                "player mendiane thystame",
+                "player nourriture nourriture nourriture",
+                "player nourriture sibur sibur sibur"]
+        )]
+        // Can see via south border (not the american one)
+        #[case((1, Position {x: 1,y: 2,dir: South,}),
+            // Other players
+            vec![Position {x: 0,y: 0,dir: West,}, Position {x: 1,y: 0,dir: West,}, Position {x: 2,y: 0,dir: West,}],
+            // Resources
+            vec![((1, 2), Stone(Mendiane)), ((1, 2),Stone(Deraumere)),
+                ((2, 0), Nourriture),((2, 0), Stone(Sibur)), ((2, 0), Stone(Sibur)), ((2, 0), Stone(Sibur)),
+                ((1, 0), Nourriture), ((1, 0), Nourriture), ((1, 0), Nourriture),
+                ((0, 0), Stone(Mendiane)), ((0, 0), Stone(Thystame)),
+            ],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["deraumere mendiane",
+                "player nourriture sibur sibur sibur",
+                "player nourriture nourriture nourriture",
+                "player mendiane thystame",]
         )]
         // Stone, player and nourriture on the same cell
         #[case((1, Position {x: 1,y: 2,dir: North,}),
@@ -891,6 +973,54 @@ mod game_engine_tests {
             vec![((1, 1), Nourriture), ((1, 1),Stone(Linemate))],
             // Expected answer in order (cell1, cell2, cell3 ..)
             vec!["", "", "player nourriture linemate", ""]
+        )]
+        // Can see recursively (level2)
+        #[case((2, Position {x: 1,y: 0,dir: North,}),
+            // Other players
+            vec![Position {x: 0,y: 2,dir: West,}, Position {x: 1,y: 2,dir: West,}, Position {x: 2,y: 2,dir: West,}],
+            // Resources
+            vec![((1, 0), Stone(Mendiane)),
+                ((0, 2), Stone(Sibur)),
+                ((1, 2), Nourriture),
+                ((2, 2), Stone(Thystame)),
+            ],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["mendiane", "player sibur", "player nourriture", "player thystame", // level 1
+                "", "", "", "", ""] //level 2
+        )]
+        // Can see recursively (level3)
+        #[case((3, Position {x: 1,y: 0,dir: North,}),
+            // Other players
+            vec![Position {x: 0,y: 2,dir: West,}, Position {x: 1,y: 2,dir: West,}, Position {x: 2,y: 2,dir: West,}],
+            // Resources
+            vec![((1, 0), Stone(Mendiane)),
+                ((0, 2), Stone(Sibur)),
+                ((1, 2), Nourriture),
+                ((2, 2), Stone(Thystame)),
+            ],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["mendiane", "player sibur", "player nourriture", "player thystame", //level 1
+                "", "", "", "", "", //level 2
+                "mendiane", "", "", "mendiane", "", "", "mendiane"] //level 3
+        )]
+        // Can see recursively (level4)
+        #[case((4, Position {x: 1,y: 0,dir: North,}),
+            // Other players
+            vec![Position {x: 0,y: 2,dir: West,}, Position {x: 1,y: 2,dir: West,}, Position {x: 2,y: 2,dir: West,}],
+            // Resources
+            vec![((1, 0), Stone(Mendiane)),
+                ((0, 2), Stone(Sibur)),
+                ((1, 2), Nourriture),
+                ((2, 2), Stone(Thystame)),
+            ],
+            // Expected answer in order (cell1, cell2, cell3 ..)
+            vec!["mendiane", "player sibur", "player nourriture", "player thystame", // level 1
+                "", "", "", "", "", // level 2
+                "mendiane", "", "", "mendiane", "", "", "mendiane", // level 3
+                // level 4
+                "player sibur", "player nourriture", "player thystame",
+                "player sibur", "player nourriture", "player thystame",
+                "player sibur", "player nourriture", "player thystame",]
         )]
         fn successfully_applies_see_command(
             #[case] player_under_test: (u8, Position),
@@ -906,77 +1036,332 @@ mod game_engine_tests {
                 .cloned()
                 .collect::<Vec<_>>();
 
-            let (mut players_ids, mut game) = game_engine_with(&all_players, Some(&resource));
+            let (players_ids, mut game) = game_engine_with(&all_players, Some(&resource));
             let player_under_test_id = players_ids[0];
-            players_ids = players_ids[1..].to_vec();
             let mut execution_results_buffer = Vec::new();
             player_lvl_up(
                 game.players.get_mut(&player_under_test_id).unwrap(),
                 player_under_test.0,
             );
             let command = PlayerCmd::See;
-
-            // When
             game.take_command(&player_under_test_id, command.clone())
                 .unwrap();
 
-            //TODO: +2 lol
-            // Execute command
-            for _ in 0..command.delay() + 2 {
+            // When
+            for _ in 0..command.delay() {
                 game.tick(&mut execution_results_buffer)
             }
 
-            println!("{:?}", execution_results_buffer);
-
+            // Then
             assert_eq!(execution_results_buffer.len(), 1);
             assert_eq!(
                 execution_results_buffer[0],
-                (
-                    player_under_test_id,
-                    ServerResponse::See(result.iter().map(|s| s.to_string()).collect())
-                )
+                (player_under_test_id, ServerResponse::See(result))
             );
+        }
 
-            // Then
-            /*
+        #[rstest]
+        // Take test for stones
+        // Successfully takes a stone from sell
+        #[case(
+            vec![Stone(Linemate)], // Cell initial content
+            vec![PlayerCmd::Take(Linemate.to_string())], // Command in order to execute
+            vec![ServerResponse::Ok], // expected response
+           //D  L  M  P  S  T | Player final inventory
+            [0, 1, 0, 0, 0, 0],
+           //D  L  M  P  S  T | Final cell content
+            [0, 0, 0, 0, 0, 0],
+        )]
+        // Can't take a stone if it is not on the cell
+        #[case(
+            vec![],  // Cell initial content
+            vec![PlayerCmd::Take(Thystame.to_string())], // Command in order to execute
+            vec![ServerResponse::Ko], // expected response
+           //D  L  M  P  S  T | Player final inventory
+            [0, 0, 0, 0, 0, 0],
+           //D  L  M  P  S  T | Final cell content
+            [0, 0, 0, 0, 0, 0],
+        )]
+        // Can't take a nonexistent stone
+        #[case(
+            vec![Stone(Sibur)], // Cell initial content
+            vec![PlayerCmd::Take("💎SAPPHIRE💎".to_string())], // Command in order to execute
+            vec![ServerResponse::Ko], // expected response
+           //D  L  M  P  S  T | Player final inventory
+            [0, 0, 0, 0, 0, 0],
+           //D  L  M  P  S  T | Final cell content
+            [0, 0, 0, 0, 1, 0],
+        )]
+        // Can have multiple stones
+        #[case(
+            vec![Stone(Sibur), Stone(Sibur)], // Cell initial content
+            vec![PlayerCmd::Take(Sibur.to_string()), PlayerCmd::Take(Sibur.to_string())], // Command in order to execute
+            vec![ServerResponse::Ok, ServerResponse::Ok], // expected response
+           //D  L  M  P  S  T | Player final inventory
+            [0, 0, 0, 0, 2, 0],
+           //D  L  M  P  S  T | Final cell content
+            [0, 0, 0, 0, 0, 0],
+        )]
+        // Tries to take each stone, when it is on the sell and not
+        #[case(vec![
+            // Cell initial content
+            Stone(Thystame),
+            Stone(Sibur),
+            Stone(Deraumere),
+            Stone(Linemate),
+            Stone(Mendiane),
+            Stone(Phiras),
+        ], vec![
+            // Command in order to execute
+            PlayerCmd::Take(Thystame.to_string()), PlayerCmd::Take(Thystame.to_string()),
+            PlayerCmd::Take(Deraumere.to_string()), PlayerCmd::Take(Deraumere.to_string()),
+            PlayerCmd::Take(Mendiane.to_string()), PlayerCmd::Take(Mendiane.to_string()),
+            PlayerCmd::Take(Phiras.to_string()), PlayerCmd::Take(Phiras.to_string()),
+            PlayerCmd::Take(Sibur.to_string()), PlayerCmd::Take(Sibur.to_string()),
+            PlayerCmd::Take(Linemate.to_string()), PlayerCmd::Take(Linemate.to_string()),
+        ], vec![
+            // expected response
+            ServerResponse::Ok, ServerResponse::Ko,
+            ServerResponse::Ok, ServerResponse::Ko,
+            ServerResponse::Ok, ServerResponse::Ko,
+            ServerResponse::Ok, ServerResponse::Ko,
+            ServerResponse::Ok, ServerResponse::Ko,
+            ServerResponse::Ok, ServerResponse::Ko,
+        ],
+           //D  L  M  P  S  T | Player final inventory
+            [1, 1, 1, 1, 1, 1],
+           //D  L  M  P  S  T | Final cell content
+            [0, 0, 0, 0, 0, 0],
+        )]
+        // Put tests for stones
 
-            // Verify player is at new position
-            assert!(
-                game.map.field[new_position.y][new_position.x]
-                    .players
-                    .contains(&players_ids),
-                "Player should be present at new position"
+        // Can't put a stone if it is not in the inventory
+        #[case(
+            vec![], // Cell initial content
+            vec![PlayerCmd::Put(Linemate.to_string())], // Command in order to execute
+            vec![ServerResponse::Ko], // expected response
+           //D  L  M  P  S  T | Player final inventory
+            [0, 0, 0, 0, 0, 0],
+           //D  L  M  P  S  T | Final cell content
+            [0, 0, 0, 0, 0, 0],
+        )]
+        // Successfully puts the thystame from inventory on cell but can't put linemate
+        // because it is not in the inventory
+        #[case(
+            vec![Stone(Thystame)], // Cell initial content
+            vec![PlayerCmd::Take(Thystame.to_string()), PlayerCmd::Put(Linemate.to_string())], // Command in order to execute
+            vec![ServerResponse::Ok, ServerResponse::Ko], // expected response
+           //D  L  M  P  S  T | Player final inventory
+            [0, 0, 0, 0, 0, 1],
+           //D  L  M  P  S  T | Final cell content
+            [0, 0, 0, 0, 0, 0],
+        )]
+        // Successfully takes a stone from a cell and then successfully puts it back
+        #[case(
+            vec![Stone(Thystame)], // Cell initial content
+            vec![PlayerCmd::Take(Thystame.to_string()), PlayerCmd::Put(Thystame.to_string())], // Command in order to execute
+            vec![ServerResponse::Ok, ServerResponse::Ok], // expected response
+           //D  L  M  P  S  T | Player final inventory
+            [0, 0, 0, 0, 0, 0],
+           //D  L  M  P  S  T | Final cell content
+            [0, 0, 0, 0, 0, 1],
+        )]
+        // Successfully takes a stone, and then tries to put a nonexistent stone on the cell
+        #[case(
+            vec![Stone(Thystame)], // Cell initial content
+            vec![PlayerCmd::Take(Thystame.to_string()), PlayerCmd::Put("💎SAPPHIRE💎".to_string())], // Command in order to execute
+            vec![ServerResponse::Ok, ServerResponse::Ko], // expected response
+           //D  L  M  P  S  T | Player final inventory
+            [0, 0, 0, 0, 0, 1],
+           //D  L  M  P  S  T | Final cell content
+            [0, 0, 0, 0, 0, 0],
+        )]
+        // Successfully takes and then successfully puts every existent type of stone
+        #[case(vec![
+            // Cell initial content
+            Stone(Thystame),
+            Stone(Sibur),
+            Stone(Deraumere),
+            Stone(Linemate),
+            Stone(Mendiane),
+            Stone(Phiras),
+        ], vec![
+            // Command in order to execute
+        PlayerCmd::Take(Thystame.to_string()), PlayerCmd::Put(Thystame.to_string()),
+            PlayerCmd::Take(Deraumere.to_string()), PlayerCmd::Put(Deraumere.to_string()),
+            PlayerCmd::Take(Mendiane.to_string()), PlayerCmd::Put(Mendiane.to_string()),
+            PlayerCmd::Take(Phiras.to_string()), PlayerCmd::Put(Phiras.to_string()),
+            PlayerCmd::Take(Sibur.to_string()), PlayerCmd::Put(Sibur.to_string()),
+            PlayerCmd::Take(Linemate.to_string()), PlayerCmd::Put(Linemate.to_string()),
+        ], vec![
+            // expected response
+            ServerResponse::Ok, ServerResponse::Ok,
+            ServerResponse::Ok, ServerResponse::Ok,
+            ServerResponse::Ok, ServerResponse::Ok,
+            ServerResponse::Ok, ServerResponse::Ok,
+            ServerResponse::Ok, ServerResponse::Ok,
+            ServerResponse::Ok, ServerResponse::Ok,
+        ],
+           //D  L  M  P  S  T | Player final inventory
+            [0, 0, 0, 0, 0, 0],
+           //D  L  M  P  S  T | Final cell content
+            [1, 1, 1, 1, 1, 1],
+        )]
+        /* Tries to put on the cell every type of stone, but the inventory is empty and
+           there already some stones on the cell. It ensures we don't modify the cell
+           during with a failed put
+        */
+        #[case(vec![
+            // Cell initial content
+            Stone(Thystame),
+            Stone(Sibur),
+            Stone(Deraumere),
+            Stone(Linemate),
+            Stone(Mendiane),
+            Stone(Phiras),
+        ], vec![
+            // Command in order to execute
+            PlayerCmd::Put(Thystame.to_string()),
+            PlayerCmd::Put(Deraumere.to_string()),
+            PlayerCmd::Put(Mendiane.to_string()),
+            PlayerCmd::Put(Phiras.to_string()),
+            PlayerCmd::Put(Sibur.to_string()),
+            PlayerCmd::Put(Linemate.to_string()),
+        ], vec![
+            // expected response
+            ServerResponse::Ko,
+            ServerResponse::Ko,
+            ServerResponse::Ko,
+            ServerResponse::Ko,
+            ServerResponse::Ko,
+            ServerResponse::Ko,
+        ],
+           //D  L  M  P  S  T | Player final inventory
+            [0, 0, 0, 0, 0, 0],
+           //D  L  M  P  S  T | Final cell content
+            [1, 1, 1, 1, 1, 1],
+        )]
+        fn applies_take_and_put_commands_for_stones(
+            #[case] resource: Vec<Resource>,
+            #[case] commands: Vec<PlayerCmd>,
+            #[case] result: Vec<ServerResponse>,
+            #[case] final_inventory: StoneSet,
+            #[case] final_cell_content: StoneSet,
+        ) {
+            // Given
+            let position = Position {
+                x: 1,
+                y: 1,
+                dir: West,
+            };
+            let (players_ids, mut game) = game_engine_with(
+                &vec![position],
+                Some(
+                    &resource
+                        .iter()
+                        .map(|v| ((position.x, position.y), v.clone()))
+                        .collect::<Vec<_>>(),
+                ),
             );
+            let player_under_test_id = players_ids[0];
+            let result = result
+                .iter()
+                .map(|response| (player_under_test_id, response))
+                .collect::<Vec<_>>();
+            let mut execution_results_buffer = Vec::new();
 
+            //When
+            for command in &commands {
+                game.take_command(&player_under_test_id, command.clone())
+                    .unwrap();
+                for _ in 0..command.delay() {
+                    game.tick(&mut execution_results_buffer);
+                }
+            }
+
+            //Then
+            let player_under_test = game.players.get(&players_ids[0]).unwrap();
+            assert!(execution_results_buffer
+                .iter()
+                .zip(result)
+                .all(|(a, b)| a.0 == b.0 && a.1 == *b.1));
             assert_eq!(
-                game.map
-                    .field
+                game.map.field[position.y][position.x].stones,
+                final_cell_content
+            );
+            assert_eq!(game.map.field[position.y][position.x].nourriture, 0);
+            assert_eq!(player_under_test.inventory(), &final_inventory);
+            assert_eq!(resources_sum_on_other_cell(&player_under_test_id, &game), 0);
+        }
+
+        #[rstest]
+        #[case(vec![], vec![PlayerCmd::Put(Nourriture.to_string())], 1, 1, 0, vec![ServerResponse::Ko])]
+        #[case(vec![], vec![PlayerCmd::Put(Nourriture.to_string())], LIFE_TICKS + 1, 1, 1, vec![ServerResponse::Ok])]
+        #[case(vec![], vec![PlayerCmd::Take(Nourriture.to_string())], 1, 1, 0, vec![ServerResponse::Ko])]
+        #[case(vec![Nourriture], vec![PlayerCmd::Take(Nourriture.to_string())], 1, 1 + LIFE_TICKS, 0, vec![ServerResponse::Ok])]
+        fn applies_take_and_put_commands_for_nourriture(
+            #[case] resource: Vec<Resource>,
+            #[case] commands: Vec<PlayerCmd>,
+            #[case] initial_hp: u64,
+            #[case] final_hp: u64,
+            #[case] final_cell_nourriture_count: usize,
+            #[case] responses: Vec<ServerResponse>,
+        ) {
+            // Given
+            let position = Position {
+                x: 1,
+                y: 1,
+                dir: West,
+            };
+            let (players_ids, mut game) = game_engine_with(
+                &vec![position],
+                Some(
+                    &resource
+                        .iter()
+                        .map(|v| ((position.x, position.y), v.clone()))
+                        .collect::<Vec<_>>(),
+                ),
+            );
+            let player_under_test_id = players_ids[0];
+            let responses = responses
+                .into_iter()
+                .map(|v| (player_under_test_id, v))
+                .collect::<Vec<_>>();
+            let mut execution_results_buffer = Vec::new();
+            let all_cmd_delay = commands.iter().map(|command| command.delay()).sum::<u64>();
+            let initial_hp = initial_hp + all_cmd_delay;
+            player_set_hp(
+                game.players.get_mut(&player_under_test_id).unwrap(),
+                initial_hp,
+            );
+
+            //When
+            for command in &commands {
+                game.take_command(&player_under_test_id, command.clone())
+                    .unwrap();
+                for _ in 0..command.delay() {
+                    game.tick(&mut execution_results_buffer);
+                }
+            }
+
+            //Then
+            let player_under_test = game.players.get(&player_under_test_id).unwrap();
+            assert_eq!(
+                game.map.field[position.y][position.x].nourriture,
+                final_cell_nourriture_count
+            );
+            assert_eq!(
+                game.map.field[position.y][position.x]
+                    .stones
                     .iter()
-                    .flatten()
-                    .map(|v| v.players.len())
-                    .sum::<usize>(),
-                1,
-                "There is only one player on the map"
+                    .map(|v| *v as u64)
+                    .sum::<u64>(),
+                0
             );
-
-            // Verify game state
-            assert_eq!(
-                game.frame,
-                command.delay(),
-                "Game frame should match command delay"
-            );
-            assert_eq!(
-                *new_position, expected,
-                "Player position should match expected"
-            );
-
-            // Verify response
-            assert_eq!(
-                execution_results_buffer,
-                vec![(players_ids, ServerResponse::Ok)],
-                "Should receive OK response"
-            );
-             */
+            assert_eq!(resources_sum_on_other_cell(&player_under_test_id, &game), 0);
+            assert_eq!(*player_under_test.remaining_life(), final_hp);
+            assert_eq!(execution_results_buffer.len(), 1);
+            assert_eq!(execution_results_buffer, responses);
         }
     }
 }
