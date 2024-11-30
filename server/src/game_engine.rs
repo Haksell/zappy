@@ -1363,5 +1363,53 @@ mod game_engine_tests {
             assert_eq!(execution_results_buffer.len(), 1);
             assert_eq!(execution_results_buffer, responses);
         }
+
+        #[rstest]
+        // (player inventory, player hp)
+        #[case([0, 0, 0, 0, 5, 0], 1)]
+        #[case([1, 0, 0, 4, 0, 0], 255)]
+        #[case([0, 1, 1, 0, 8, 0], 8123)]
+        #[case([9, 2, 4, 0, 0, 0], 34)]
+        #[case([0, 0, 0, 0, 0, 0], 8841241)]
+        #[case([42, 42, 42, 42, 22, 42], 29)]
+        #[case([2, 0, 4912, 0, 8, 0], 42)]
+        #[case([1, 1, 5, 5, 5, 5], 342)]
+        fn applies_inventory_command(#[case] player_inventory: StoneSet, #[case] player_hp: u64) {
+            // Given
+            let (player_id, mut game) = one_player_game_engine();
+            let command = PlayerCmd::Inventory;
+            let mut execution_results_buffer = Vec::new();
+            game.take_command(&player_id, command.clone()).unwrap();
+            let player = game.players.get_mut(&player_id).unwrap();
+
+            player_set_hp(player, player_hp + command.delay());
+            for (i, count) in player_inventory.iter().enumerate() {
+                for _ in 0..*count {
+                    player.add_to_inventory(Resource::try_from(i).unwrap());
+                }
+            }
+
+            let expected_result = vec![
+                format!("nourriture {}", player_hp),
+                format!("deraumere {}", player_inventory[0]),
+                format!("linemate {}", player_inventory[1]),
+                format!("mendiane {}", player_inventory[2]),
+                format!("phiras {}", player_inventory[3]),
+                format!("sibur {}", player_inventory[4]),
+                format!("thystame {}", player_inventory[5]),
+            ];
+
+            //When
+            for _ in 0..command.delay() {
+                game.tick(&mut execution_results_buffer);
+            }
+
+            // Then
+            assert_eq!(execution_results_buffer.len(), 1);
+            assert_eq!(
+                execution_results_buffer[0],
+                (player_id, ServerResponse::Inventory(expected_result))
+            );
+        }
     }
 }

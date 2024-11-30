@@ -252,7 +252,7 @@ The slots managemeng is correct (-c flag and fork)?
 | left        | ✅      |
 | right       | ✅      |
 | see         | ✅      |
-| inventory   | ❌      |
+| inventory   | ✅      |
 | take        | ✅      |
 | put         | ✅      |
 | expel       | ❌      |
