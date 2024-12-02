@@ -9,11 +9,37 @@ struct Args {
     #[arg(short, long, help = "Port number")]
     port: u16,
 
-    #[arg(short, long, default_value = "localhost")]
+    #[arg(long, default_value = "localhost")]
     host: String,
 }
 
-fn main() {
+use rustyline::error::ReadlineError;
+use rustyline::{DefaultEditor, Result};
+
+fn main() -> Result<()> {
     let args = Args::parse();
     println!("{:?}", args);
+    let mut rl = DefaultEditor::new()?;
+    loop {
+        let readline = rl.readline(">> ");
+        match readline {
+            Ok(line) => {
+                rl.add_history_entry(line.as_str());
+                println!("Line: {}", line);
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C");
+                break;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D");
+                break;
+            }
+            Err(err) => {
+                println!("Error: {:?}", err);
+                break;
+            }
+        }
+    }
+    Ok(())
 }
