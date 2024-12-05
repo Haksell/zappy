@@ -1,7 +1,7 @@
 use super::{server_link::ServerLink, Torus, TEXTURE_SIZE};
 use crate::engines::ServerData;
 use bevy::prelude::*;
-use shared::{color::RGB, map::Cell};
+use shared::{color::RGB, map::Cell, resource::NOURRITURE_COLOR};
 use std::sync::atomic::Ordering;
 
 type Interval2D = ((usize, usize), (usize, usize));
@@ -24,7 +24,17 @@ fn fill_background(
     }
 }
 
-fn fill_cell(data: &mut [u8], cell: &Cell, ((start_x, end_x), (start_y, end_y)): Interval2D) {}
+fn fill_cell(data: &mut [u8], cell: &Cell, ((start_x, end_x), (start_y, end_y)): Interval2D) {
+    if cell.nourriture > 0 {
+        for y in start_y..end_y {
+            for x in start_x..end_x {
+                if y & 1 == x & 1 {
+                    write_pixel(data, x, y, NOURRITURE_COLOR.rgb());
+                }
+            }
+        }
+    }
+}
 
 fn fill_texture(data: &mut [u8], game_state: &ServerData) {
     let w = *game_state.map.width();

@@ -36,7 +36,7 @@ impl ZappyColor {
         ZappyColor::LightCyan,
     ];
 
-    pub fn _to_rgb(&self) -> (u8, u8, u8) {
+    pub fn rgb(&self) -> (u8, u8, u8) {
         match self {
             ZappyColor::Red => (255, 0, 0),
             ZappyColor::Green => (0, 255, 0),

@@ -16,7 +16,7 @@ use shared::{
     color::ZappyColor,
     player::Player,
     position::Direction,
-    resource::{Resource, Stone},
+    resource::{Resource, Stone, NOURRITURE_COLOR},
 };
 use std::{collections::BTreeMap, time::Duration};
 use tokio::sync::mpsc::Receiver;
@@ -58,7 +58,7 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
     let mut spans = Vec::new();
 
     // Add nourriture spans
-    let nourriture_color = ZappyColor::idx(Stone::SIZE + 1);
+    let nourriture_color = NOURRITURE_COLOR;
     let nourriture_style = Style::default()
         .fg(zappy_to_ratatui_color(nourriture_color))
         .bold();

@@ -2,6 +2,8 @@ use rand::{seq::SliceRandom as _, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
+use crate::color::ZappyColor;
+
 pub type StoneSet = [usize; Stone::SIZE];
 
 pub trait StoneSetOperations {
@@ -70,7 +72,13 @@ impl Stone {
             Stone::Thystame => "thystame",
         }
     }
+
+    pub fn color(&self) -> ZappyColor {
+        ZappyColor::idx(*self as usize)
+    }
 }
+
+pub const NOURRITURE_COLOR: ZappyColor = ZappyColor::LightMagenta;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
 pub enum Resource {
