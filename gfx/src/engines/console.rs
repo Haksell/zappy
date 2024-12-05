@@ -7,11 +7,13 @@ use ratatui::{
     crossterm::event::KeyCode,
     layout::{Constraint, Layout},
     prelude::{Alignment, Color, Line, Rect, Span, Style, Stylize},
+    style::Color as RatatuiColor,
     widgets::Block,
     widgets::{BorderType, Borders, Paragraph, Wrap},
     Frame,
 };
 use shared::{
+    color::ZappyColor,
     player::Player,
     position::Direction,
     resource::{Resource, Stone},
@@ -23,6 +25,25 @@ pub const NORTH_EMOJI: &'static str = "^";
 pub const EAST_EMOJI: &'static str = ">";
 pub const SOUTH_EMOJI: &'static str = "v";
 pub const WEST_EMOJI: &'static str = "<";
+
+fn zappy_to_ratatui_color(color: ZappyColor) -> RatatuiColor {
+    match color {
+        ZappyColor::Red => RatatuiColor::Red,
+        ZappyColor::Green => RatatuiColor::Green,
+        ZappyColor::Yellow => RatatuiColor::Yellow,
+        ZappyColor::Blue => RatatuiColor::Blue,
+        ZappyColor::Magenta => RatatuiColor::Magenta,
+        ZappyColor::Cyan => RatatuiColor::Cyan,
+        ZappyColor::Gray => RatatuiColor::Gray,
+        ZappyColor::DarkGray => RatatuiColor::DarkGray,
+        ZappyColor::LightRed => RatatuiColor::LightRed,
+        ZappyColor::LightGreen => RatatuiColor::LightGreen,
+        ZappyColor::LightYellow => RatatuiColor::LightYellow,
+        ZappyColor::LightBlue => RatatuiColor::LightBlue,
+        ZappyColor::LightMagenta => RatatuiColor::LightMagenta,
+        ZappyColor::LightCyan => RatatuiColor::LightCyan,
+    }
+}
 
 fn direction_to_emoji(direction: &Direction) -> &'static str {
     match direction {
@@ -39,7 +60,7 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
     // Add nourriture spans
     let nourriture_color = ServerData::color(Stone::SIZE + 1);
     let nourriture_style = Style::default()
-        .fg(nourriture_color.to_ratatui_value())
+        .fg(zappy_to_ratatui_color(nourriture_color))
         .bold();
     spans.extend(vec![Span::styled("N", nourriture_style); nourriture]);
 
@@ -50,7 +71,7 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
         }
 
         let color = ServerData::color(i);
-        let style = Style::default().fg(color.to_ratatui_value()).bold();
+        let style = Style::default().fg(zappy_to_ratatui_color(color)).bold();
         let char = Resource::try_from(i).unwrap().alias();
         let resource_str = char.to_string().repeat(count);
         spans.push(Span::styled(resource_str, style));
@@ -70,7 +91,7 @@ fn map_stones_to_vec_span(resources: &[usize; Stone::SIZE]) -> Vec<Span> {
                 Span::styled(
                     resource_str,
                     Style::default()
-                        .fg(ServerData::color(i).to_ratatui_value())
+                        .fg(zappy_to_ratatui_color(ServerData::color(i)))
                         .bold(),
                 )
             } else {
@@ -134,7 +155,7 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
                 .iter()
                 .map(|(team_name, &eggs)| {
                     let color = data.teams.get(team_name).unwrap().0;
-                    eggs_to_span(eggs, color.to_ratatui_value())
+                    eggs_to_span(eggs, zappy_to_ratatui_color(color))
                 })
                 .collect::<Vec<_>>();
             let mapped_player = cell
@@ -144,7 +165,7 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
                 .map(|p| {
                     let player = data.players.get(p).unwrap();
                     map_player_to_span(
-                        data.teams.get(player.team()).unwrap().0.to_ratatui_value(),
+                        zappy_to_ratatui_color(data.teams.get(player.team()).unwrap().0),
                         player,
                     )
                 })
@@ -183,7 +204,7 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
         .keys()
         .map(|team_name| {
             //TODO: make function that return color to avoid unwrap and .0 every time
-            let team_color = data.teams.get(team_name).unwrap().0.to_ratatui_value();
+            let team_color = zappy_to_ratatui_color(data.teams.get(team_name).unwrap().0);
             (
                 team_name.clone(),
                 vec![vec![Span::styled(
@@ -197,8 +218,9 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
     for player in data.players.values() {
         if let Some(details) = teams_data.get_mut(player.team()) {
             let mut current_player_details: Vec<Span> = Vec::new();
-            let style =
-                Style::default().fg(data.teams.get(player.team()).unwrap().0.to_ratatui_value());
+            let style = Style::default().fg(zappy_to_ratatui_color(
+                data.teams.get(player.team()).unwrap().0,
+            ));
             current_player_details.push(Span::styled(format!("🧬 {}", player.id()), style));
             current_player_details.push(Span::raw(" | "));
             current_player_details.push(Span::styled(

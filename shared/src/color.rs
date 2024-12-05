@@ -1,3 +1,5 @@
+pub type RGB = (u8, u8, u8);
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ZappyColor {
     Red,
@@ -17,25 +19,6 @@ pub enum ZappyColor {
 }
 
 impl ZappyColor {
-    pub fn to_ratatui_value(&self) -> RatatuiColor {
-        match self {
-            ZappyColor::Red => RatatuiColor::Red,
-            ZappyColor::Green => RatatuiColor::Green,
-            ZappyColor::Yellow => RatatuiColor::Yellow,
-            ZappyColor::Blue => RatatuiColor::Blue,
-            ZappyColor::Magenta => RatatuiColor::Magenta,
-            ZappyColor::Cyan => RatatuiColor::Cyan,
-            ZappyColor::Gray => RatatuiColor::Gray,
-            ZappyColor::DarkGray => RatatuiColor::DarkGray,
-            ZappyColor::LightRed => RatatuiColor::LightRed,
-            ZappyColor::LightGreen => RatatuiColor::LightGreen,
-            ZappyColor::LightYellow => RatatuiColor::LightYellow,
-            ZappyColor::LightBlue => RatatuiColor::LightBlue,
-            ZappyColor::LightMagenta => RatatuiColor::LightMagenta,
-            ZappyColor::LightCyan => RatatuiColor::LightCyan,
-        }
-    }
-
     pub fn _to_rgb(&self) -> (u8, u8, u8) {
         match self {
             ZappyColor::Red => (255, 0, 0),

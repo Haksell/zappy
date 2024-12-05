@@ -1,11 +1,10 @@
 use super::{server_link::ServerLink, Torus, TEXTURE_SIZE};
 use crate::engines::ServerData;
 use bevy::prelude::*;
-use shared::map::Cell;
+use shared::{color::RGB, map::Cell};
 use std::sync::atomic::Ordering;
 
 type Interval2D = ((usize, usize), (usize, usize));
-type RGB = (u8, u8, u8);
 
 fn write_pixel(data: &mut [u8], x: usize, y: usize, (r, g, b): RGB) {
     data[(y * TEXTURE_SIZE + x) * 4] = r;
