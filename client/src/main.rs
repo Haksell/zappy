@@ -24,7 +24,7 @@ fn main() -> Result<()> {
         let readline = rl.readline(">> ");
         match readline {
             Ok(line) => {
-                rl.add_history_entry(line.as_str());
+                let _ = rl.add_history_entry(line.as_str()); // TODO: handle?
                 println!("Line: {}", line);
             }
             Err(ReadlineError::Interrupted) => {
