@@ -31,7 +31,7 @@ use tokio::sync::mpsc::Receiver;
 
 const SUBDIVISIONS: &[u16] = &[8, 13, 21, 34, 55, 89, 144, 233];
 
-const TEXTURE_SIZE: usize = 128; // TODO: in texture.rs
+const TEXTURE_SIZE: usize = 1280; // TODO: in texture.rs
 
 #[derive(Resource, Debug)]
 struct TorusTransform {

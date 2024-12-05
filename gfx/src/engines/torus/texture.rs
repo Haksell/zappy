@@ -25,6 +25,7 @@ fn fill_background(
 }
 
 fn fill_cell(data: &mut [u8], cell: &Cell, ((start_x, end_x), (start_y, end_y)): Interval2D) {
+    // TODO: for each nourriture and resource, take a random x and y in the interval and draw circle of appropriate color
     if cell.nourriture > 0 {
         for y in start_y..end_y {
             for x in start_x..end_x {
