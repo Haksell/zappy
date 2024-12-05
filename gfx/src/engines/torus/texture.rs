@@ -5,9 +5,9 @@ use shared::map::Cell;
 use std::sync::atomic::Ordering;
 
 type Interval2D = ((usize, usize), (usize, usize));
-type RawColor = (u8, u8, u8);
+type RGB = (u8, u8, u8);
 
-fn write_pixel(data: &mut [u8], x: usize, y: usize, (r, g, b): RawColor) {
+fn write_pixel(data: &mut [u8], x: usize, y: usize, (r, g, b): RGB) {
     data[(y * TEXTURE_SIZE + x) * 4] = r;
     data[(y * TEXTURE_SIZE + x) * 4 + 1] = g;
     data[(y * TEXTURE_SIZE + x) * 4 + 2] = b;
@@ -16,7 +16,7 @@ fn write_pixel(data: &mut [u8], x: usize, y: usize, (r, g, b): RawColor) {
 fn fill_background(
     data: &mut [u8],
     ((start_x, end_x), (start_y, end_y)): Interval2D,
-    bg_color: RawColor,
+    bg_color: RGB,
 ) {
     for y in start_y..end_y {
         for x in start_x..end_x {
