@@ -58,7 +58,7 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
     let mut spans = Vec::new();
 
     // Add nourriture spans
-    let nourriture_color = ServerData::color(Stone::SIZE + 1);
+    let nourriture_color = ZappyColor::idx(Stone::SIZE + 1);
     let nourriture_style = Style::default()
         .fg(zappy_to_ratatui_color(nourriture_color))
         .bold();
@@ -70,7 +70,7 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
             continue;
         }
 
-        let color = ServerData::color(i);
+        let color = ZappyColor::idx(i);
         let style = Style::default().fg(zappy_to_ratatui_color(color)).bold();
         let char = Resource::try_from(i).unwrap().alias();
         let resource_str = char.to_string().repeat(count);
@@ -91,7 +91,7 @@ fn map_stones_to_vec_span(resources: &[usize; Stone::SIZE]) -> Vec<Span> {
                 Span::styled(
                     resource_str,
                     Style::default()
-                        .fg(zappy_to_ratatui_color(ServerData::color(i)))
+                        .fg(zappy_to_ratatui_color(ZappyColor::idx(i)))
                         .bold(),
                 )
             } else {

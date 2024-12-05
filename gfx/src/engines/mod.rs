@@ -15,40 +15,17 @@ pub struct ServerData {
 }
 
 impl ServerData {
-    const COLORS: [ZappyColor; 14] = [
-        ZappyColor::Red,
-        ZappyColor::Green,
-        ZappyColor::Yellow,
-        ZappyColor::Blue,
-        ZappyColor::Magenta,
-        ZappyColor::Cyan,
-        ZappyColor::Gray,
-        ZappyColor::DarkGray,
-        ZappyColor::LightRed,
-        ZappyColor::LightGreen,
-        ZappyColor::LightYellow,
-        ZappyColor::LightBlue,
-        ZappyColor::LightMagenta,
-        ZappyColor::LightCyan,
-    ];
-
     pub fn new(map: Map, players: BTreeMap<u16, Player>, teams: BTreeMap<String, usize>) -> Self {
         let teams = teams
             .iter()
             .enumerate()
-            .map(|(i, (name, &members_count))| {
-                (name.clone(), (ServerData::color(i), members_count))
-            })
+            .map(|(i, (name, &members_count))| (name.clone(), (ZappyColor::idx(i), members_count)))
             .collect::<BTreeMap<String, (ZappyColor, usize)>>();
         Self {
             map,
             players,
             teams,
         }
-    }
-
-    pub fn color(color_idx: usize) -> ZappyColor {
-        Self::COLORS[color_idx % Self::COLORS.len()]
     }
 }
 

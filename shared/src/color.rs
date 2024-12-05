@@ -19,6 +19,23 @@ pub enum ZappyColor {
 }
 
 impl ZappyColor {
+    const COLORS: [ZappyColor; 14] = [
+        ZappyColor::Red,
+        ZappyColor::Green,
+        ZappyColor::Yellow,
+        ZappyColor::Blue,
+        ZappyColor::Magenta,
+        ZappyColor::Cyan,
+        ZappyColor::Gray,
+        ZappyColor::DarkGray,
+        ZappyColor::LightRed,
+        ZappyColor::LightGreen,
+        ZappyColor::LightYellow,
+        ZappyColor::LightBlue,
+        ZappyColor::LightMagenta,
+        ZappyColor::LightCyan,
+    ];
+
     pub fn _to_rgb(&self) -> (u8, u8, u8) {
         match self {
             ZappyColor::Red => (255, 0, 0),
@@ -36,5 +53,9 @@ impl ZappyColor {
             ZappyColor::LightMagenta => (255, 128, 255),
             ZappyColor::LightCyan => (128, 255, 255),
         }
+    }
+
+    pub fn idx(color_idx: usize) -> Self {
+        Self::COLORS[color_idx % Self::COLORS.len()]
     }
 }
