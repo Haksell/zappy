@@ -24,12 +24,10 @@ use events::{handle_keyboard, handle_mouse_wheel};
 use mesh::{fill_torus_mesh, update_torus_mesh};
 use server_link::{network_setup, ServerLink};
 use shared::PROJECT_NAME;
-use texture::update_texture;
+use texture::{update_texture, TORUS_TEXTURE_SIZE};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 const SUBDIVISIONS: &[u16] = &[8, 13, 21, 34, 55, 89, 144, 233];
-
-const TEXTURE_SIZE: usize = 1280; // TODO: in texture.rs
 
 #[derive(Resource, Debug)]
 struct TorusTransform {
@@ -121,12 +119,12 @@ fn setup(
 
     let mut texture = Image::new(
         Extent3d {
-            width: TEXTURE_SIZE as u32,
-            height: TEXTURE_SIZE as u32,
+            width: TORUS_TEXTURE_SIZE as u32,
+            height: TORUS_TEXTURE_SIZE as u32,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
-        vec![0; 4 * TEXTURE_SIZE * TEXTURE_SIZE],
+        vec![0; 4 * TORUS_TEXTURE_SIZE * TORUS_TEXTURE_SIZE],
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::default(),
     );

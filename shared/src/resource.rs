@@ -22,7 +22,7 @@ impl StoneSetOperations for StoneSet {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Hash)]
 #[repr(u8)]
 pub enum Stone {
     Deraumere,
@@ -80,7 +80,7 @@ impl Stone {
 
 pub const NOURRITURE_COLOR: ZappyColor = ZappyColor::LightMagenta;
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Hash)]
 pub enum Resource {
     Stone(Stone),
     Nourriture,
@@ -150,6 +150,23 @@ impl TryFrom<&str> for Resource {
             "sibur" | "s" => Ok(Resource::Stone(Stone::Sibur)),
             "thystame" | "t" => Ok(Resource::Stone(Stone::Thystame)),
             "nourriture" | "n" => Ok(Resource::Nourriture),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<char> for Resource {
+    type Error = ();
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value.to_ascii_uppercase() {
+            'D' => Ok(Resource::Stone(Stone::Deraumere)),
+            'L' => Ok(Resource::Stone(Stone::Linemate)),
+            'M' => Ok(Resource::Stone(Stone::Mendiane)),
+            'P' => Ok(Resource::Stone(Stone::Phiras)),
+            'S' => Ok(Resource::Stone(Stone::Sibur)),
+            'T' => Ok(Resource::Stone(Stone::Thystame)),
+            'N' => Ok(Resource::Nourriture),
             _ => Err(()),
         }
     }
