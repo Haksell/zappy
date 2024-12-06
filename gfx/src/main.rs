@@ -1,11 +1,10 @@
-use crate::engines::ServerData;
 use clap::Parser;
 use crossterm::event::{self, Event, KeyEvent};
 use engines::Engine;
 use serde_json::{from_str, Value};
 use shared::map::Map;
 use shared::player::Player;
-use shared::GFX_PORT;
+use shared::{ServerData, GFX_PORT};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -98,10 +97,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(e) => {
                     let _ = data_tx.send(Message::Disconnect);
                     eprintln!("Failed to connect: {}, retrying in 1 second...", e);
+                    tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             }
-            println!("??????");
-            tokio::time::sleep(Duration::from_secs(1)).await;
         }
     });
 

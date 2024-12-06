@@ -1,6 +1,6 @@
 // TODO: if enough lines, one line for each team
 
-use crate::{engines::ServerData, Message};
+use crate::Message;
 use itertools::Itertools as _;
 use ratatui::{
     crossterm::event::KeyCode,
@@ -16,6 +16,7 @@ use shared::{
     player::Player,
     position::Direction,
     resource::{Resource, Stone, NOURRITURE_COLOR},
+    ServerData,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -39,13 +40,12 @@ fn zappy_to_ratatui_color(color: ZappyColor) -> RatatuiColor {
     }
 }
 
-// TODO: char
-fn direction_to_emoji(direction: &Direction) -> &'static str {
+fn direction_to_emoji(direction: &Direction) -> char {
     match direction {
-        Direction::North => "^",
-        Direction::East => ">",
-        Direction::South => "v",
-        Direction::West => "<",
+        Direction::North => '^',
+        Direction::East => '>',
+        Direction::South => 'v',
+        Direction::West => '<',
     }
 }
 

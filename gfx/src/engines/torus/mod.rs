@@ -1,9 +1,7 @@
-// TODO: better lights
 // TODO: share most of the code with 2D bevy Renderer
 // TODO: button to swap main axis (probably a bad idea)
 // TODO: button to switch from 2D to torus and vice-versa?
 // TODO: ESPAAAAAAAAAACE
-// TODO: fix reconnection server
 
 mod events;
 mod mesh;
@@ -11,8 +9,6 @@ mod server_link;
 mod texture;
 
 use crate::Message;
-
-use super::ServerData;
 use bevy::{
     app::App,
     prelude::*,

@@ -1,7 +1,6 @@
 use super::{server_link::ServerLink, Torus, TEXTURE_SIZE};
-use crate::engines::ServerData;
 use bevy::prelude::*;
-use shared::{color::RGB, map::Cell, resource::NOURRITURE_COLOR};
+use shared::{color::RGB, map::Cell, resource::NOURRITURE_COLOR, ServerData};
 use std::sync::atomic::Ordering;
 
 type Interval2D = ((usize, usize), (usize, usize));

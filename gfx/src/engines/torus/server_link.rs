@@ -1,7 +1,6 @@
 use crate::Message;
-
-use super::ServerData;
 use bevy::prelude::*;
+use shared::ServerData;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -44,7 +43,7 @@ pub fn network_setup(server_link: ResMut<ServerLink>) {
                     let message = match data_rx.recv().await {
                         Some(message) => message,
                         None => {
-                            eprintln!("None in recv ????");
+                            *game_state.lock().unwrap() = None;
                             continue;
                         }
                     };

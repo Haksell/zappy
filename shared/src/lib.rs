@@ -7,11 +7,39 @@ pub mod resource;
 pub mod team;
 pub mod utils;
 
+use color::ZappyColor;
+use map::Map;
+use player::Player;
 use position::{Direction, Position};
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter};
+use std::{
+    collections::BTreeMap,
+    fmt::{Display, Formatter},
+};
 
 pub const PROJECT_NAME: &'static str = "zappy";
+
+#[derive(Debug, Default)]
+pub struct ServerData {
+    pub map: Map,
+    pub players: BTreeMap<u16, Player>,
+    pub teams: BTreeMap<String, (ZappyColor, usize)>,
+}
+
+impl ServerData {
+    pub fn new(map: Map, players: BTreeMap<u16, Player>, teams: BTreeMap<String, usize>) -> Self {
+        let teams = teams
+            .iter()
+            .enumerate()
+            .map(|(i, (name, &members_count))| (name.clone(), (ZappyColor::idx(i), members_count)))
+            .collect::<BTreeMap<String, (ZappyColor, usize)>>();
+        Self {
+            map,
+            players,
+            teams,
+        }
+    }
+}
 
 //TODO: move from lib to server
 #[derive(Debug, PartialEq)]
