@@ -26,7 +26,7 @@ pub fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
 
             positions.push([tx, ty, tz]);
             normals.push([cos_theta * cos_phi, cos_theta * sin_phi, sin_theta]);
-            uvs.push([u_ratio, v_ratio]);
+            uvs.push([v_ratio, u_ratio]);
         }
     }
 
