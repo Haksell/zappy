@@ -1,5 +1,5 @@
 use crate::game_engine::GameEngine;
-use shared::ServerData;
+use shared::GameState;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::sync::Arc;
@@ -30,14 +30,14 @@ async fn handle_streaming_client(
     server: Arc<Mutex<GameEngine>>,
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
-    let mut last_state = ServerData::default();
+    let mut last_state = GameState::default();
 
     loop {
         sleep(Duration::from_millis(20)).await;
 
         let current_state = {
             let server_lock = server.lock().await;
-            ServerData::new(
+            GameState::new(
                 server_lock.map().clone(),
                 server_lock.players().clone(),
                 server_lock

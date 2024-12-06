@@ -1,6 +1,6 @@
 use crate::Message;
 use bevy::prelude::*;
-use shared::ServerData;
+use shared::GameState;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -14,7 +14,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 #[derive(Resource)]
 pub struct ServerLink {
     pub data_rx: Arc<Mutex<UnboundedReceiver<Message>>>,
-    pub game_state: Arc<Mutex<Option<ServerData>>>,
+    pub game_state: Arc<Mutex<Option<GameState>>>,
     pub update: Arc<AtomicBool>,
 }
 
@@ -52,8 +52,8 @@ pub fn network_setup(server_link: ResMut<ServerLink>) {
                             *game_state.lock().unwrap() = None;
                             update.store(true, Ordering::Relaxed);
                         }
-                        Message::Data(new_data) => {
-                            *game_state.lock().unwrap() = Some(new_data);
+                        Message::State(new_state) => {
+                            *game_state.lock().unwrap() = Some(new_state);
                             update.store(true, Ordering::Relaxed);
                         }
                         _ => {}

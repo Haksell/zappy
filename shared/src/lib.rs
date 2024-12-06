@@ -20,13 +20,13 @@ use std::{
 pub const PROJECT_NAME: &'static str = "zappy";
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct ServerData {
+pub struct GameState {
     pub map: Map,
     pub players: BTreeMap<u16, Player>,
     pub teams: BTreeMap<String, (ZappyColor, usize)>,
 }
 
-impl ServerData {
+impl GameState {
     pub fn new(map: Map, players: BTreeMap<u16, Player>, teams: BTreeMap<String, usize>) -> Self {
         let teams = teams
             .iter()

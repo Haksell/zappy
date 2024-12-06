@@ -1,6 +1,6 @@
 use super::{server_link::ServerLink, Torus, TEXTURE_SIZE};
 use bevy::prelude::*;
-use shared::{color::RGB, map::Cell, resource::NOURRITURE_COLOR, ServerData};
+use shared::{color::RGB, map::Cell, resource::NOURRITURE_COLOR, GameState};
 use std::sync::atomic::Ordering;
 
 type Interval2D = ((usize, usize), (usize, usize));
@@ -36,7 +36,7 @@ fn fill_cell(data: &mut [u8], cell: &Cell, ((start_x, end_x), (start_y, end_y)):
     }
 }
 
-fn fill_texture(data: &mut [u8], game_state: &Option<ServerData>) {
+fn fill_texture(data: &mut [u8], game_state: &Option<GameState>) {
     match &game_state {
         None => data.fill(0),
         Some(game_state) => {

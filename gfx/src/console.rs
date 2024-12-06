@@ -16,7 +16,7 @@ use shared::{
     player::Player,
     position::Direction,
     resource::{Resource, Stone, NOURRITURE_COLOR},
-    ServerData,
+    GameState,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -124,7 +124,7 @@ fn eggs_to_span(eggs: (usize, usize), color: Color) -> Span<'static> {
     Span::styled(s, Style::default().fg(color))
 }
 
-fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
+fn draw_field(data: &GameState, frame: &mut Frame, area: Rect) {
     let rows = Layout::vertical(vec![
         Constraint::Ratio(1, *data.map.height() as u32);
         *data.map.height()
@@ -184,7 +184,7 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
     }
 }
 
-fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
+fn draw_players_bar(data: &GameState, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .title("Players Stats")
         .borders(Borders::ALL);
@@ -282,15 +282,15 @@ pub async fn render(
                     break;
                 }
             }
-            Message::Data(new_data) => {
+            Message::State(new_state) => {
                 terminal.clear()?; // TODO Test on connect ?
                 terminal.draw(|frame| {
                     let layout =
                         Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
                             .split(frame.area());
 
-                    draw_field(&new_data, frame, layout[0]);
-                    draw_players_bar(&new_data, frame, layout[1]);
+                    draw_field(&new_state, frame, layout[0]);
+                    draw_players_bar(&new_state, frame, layout[1]);
                 })?;
             }
         }
