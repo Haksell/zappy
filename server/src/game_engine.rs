@@ -1,5 +1,6 @@
 use derive_getters::Getters;
 use shared::{
+    color::ZappyColor,
     commands::PlayerCmd,
     map::Map,
     player::Player,
@@ -8,8 +9,8 @@ use shared::{
     team::Team,
     Egg,
     NetworkError::IsNotConnectedToServer,
-    PlayerError, ServerResponse, ZappyError,
-    ZappyError::Network,
+    PlayerError, ServerResponse,
+    ZappyError::{self, Network},
     MAX_COMMANDS,
 };
 use std::collections::{BTreeMap, HashSet, VecDeque};
@@ -34,7 +35,8 @@ impl GameEngine {
             .names
             .clone()
             .iter()
-            .map(|team_name| {
+            .enumerate()
+            .map(|(i, team_name)| {
                 let spawn_positions: VecDeque<Position> =
                     (0..args.clients).map(|_| map.random_position()).collect();
                 for pos in &spawn_positions {
@@ -44,9 +46,10 @@ impl GameEngine {
                         .or_insert((0, 0))
                         .1 += 1;
                 }
+                let color = ZappyColor::idx(i);
                 (
                     team_name.clone(),
-                    Team::new(team_name.clone(), spawn_positions),
+                    Team::new(team_name.clone(), color, spawn_positions),
                 )
             })
             .collect();
@@ -429,7 +432,7 @@ impl GameEngine {
 #[cfg(test)]
 mod game_engine_tests {
     use super::*;
-    use crate::args::{ServerArgs, ServerArgsBuilder};
+    use crate::args::ServerArgsBuilder;
 
     // Common test constants
     const GAME_WIDTH: usize = 3;
@@ -753,6 +756,7 @@ mod game_engine_tests {
     mod commands_execution {
         use super::*;
         use rstest::rstest;
+        use shared::color::ZappyColor;
         use shared::resource::Stone::*;
         use shared::resource::StoneSet;
         use shared::LIFE_TICKS;
@@ -770,7 +774,11 @@ mod game_engine_tests {
             let mut res = Vec::new();
             game.teams = BTreeMap::from([(
                 test_team_name(),
-                Team::new(test_team_name(), VecDeque::from(positions.clone())),
+                Team::new(
+                    test_team_name(),
+                    ZappyColor::Magenta,
+                    VecDeque::from(positions.clone()),
+                ),
             )]);
             if let Some(resources) = resources {
                 for ((x, y), res) in resources {

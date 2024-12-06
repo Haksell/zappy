@@ -273,7 +273,7 @@ pub async fn render(
             }
         };
         match message {
-            Message::Disconnect => todo!(),
+            Message::Disconnect => {} // TODO: terminal.clear()?;
             Message::KeyEvent(key) => {
                 if key.code == KeyCode::Esc
                     || key.code == KeyCode::Char('q')

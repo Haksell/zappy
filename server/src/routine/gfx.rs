@@ -1,5 +1,4 @@
 use crate::game_engine::GameEngine;
-use shared::color::ZappyColor;
 use shared::GameState;
 use std::error::Error;
 use std::sync::Arc;
@@ -42,9 +41,7 @@ async fn handle_streaming_client(
                 server_lock
                     .teams()
                     .iter()
-                    .enumerate()
-                    // TODO: ZappyColor in teams
-                    .map(|(i, (k, v))| (k.clone(), (ZappyColor::idx(i), v.members_count())))
+                    .map(|(k, v)| (k.clone(), (v.color(), v.members_count())))
                     .collect(),
             )
         };
