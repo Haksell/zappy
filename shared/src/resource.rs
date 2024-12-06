@@ -155,23 +155,6 @@ impl TryFrom<&str> for Resource {
     }
 }
 
-impl TryFrom<char> for Resource {
-    type Error = ();
-
-    fn try_from(value: char) -> Result<Self, Self::Error> {
-        match value.to_ascii_uppercase() {
-            'D' => Ok(Resource::Stone(Stone::Deraumere)),
-            'L' => Ok(Resource::Stone(Stone::Linemate)),
-            'M' => Ok(Resource::Stone(Stone::Mendiane)),
-            'P' => Ok(Resource::Stone(Stone::Phiras)),
-            'S' => Ok(Resource::Stone(Stone::Sibur)),
-            'T' => Ok(Resource::Stone(Stone::Thystame)),
-            'N' => Ok(Resource::Nourriture),
-            _ => Err(()),
-        }
-    }
-}
-
 impl TryFrom<usize> for Resource {
     type Error = &'static str;
 

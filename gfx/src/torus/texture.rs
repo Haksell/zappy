@@ -2,7 +2,7 @@ use super::{server_link::ServerLink, Torus};
 use bevy::prelude::*;
 use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::{Options, Tree};
-use shared::resource::Resource;
+use shared::resource::{Resource, Stone};
 use shared::{color::RGB, map::Cell, resource::NOURRITURE_COLOR, GameState};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
@@ -11,6 +11,8 @@ use std::sync::LazyLock;
 pub const TORUS_TEXTURE_SIZE: usize = 1280;
 
 static SVGS: LazyLock<HashMap<Resource, Pixmap>> = LazyLock::new(|| {
+    use Stone::*;
+
     fn load_svg(path: &str) -> Pixmap {
         let svg_data = std::fs::read(path).expect(&format!("Failed to read {path:?}"));
         let options = Options::default();
@@ -27,13 +29,18 @@ static SVGS: LazyLock<HashMap<Resource, Pixmap>> = LazyLock::new(|| {
         pixmap
     }
 
-    ['D', 'L', 'M', 'P', 'S', 'T', 'N']
-        .iter()
-        .map(|&c| {
-            let path = format!("gfx/assets/{c}.svg");
-            (Resource::try_from(c).unwrap(), load_svg(&path))
-        })
-        .collect()
+    [
+        Resource::Stone(Deraumere),
+        Resource::Stone(Linemate),
+        Resource::Stone(Mendiane),
+        Resource::Stone(Phiras),
+        Resource::Stone(Sibur),
+        Resource::Stone(Thystame),
+        Resource::Nourriture,
+    ]
+    .iter()
+    .map(|&r| (r, load_svg(&format!("gfx/assets/{}.svg", r.alias()))))
+    .collect()
 });
 
 type Interval2D = ((usize, usize), (usize, usize));
