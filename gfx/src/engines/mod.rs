@@ -5,7 +5,7 @@ use clap::ValueEnum;
 use crossterm::event::KeyEvent;
 use shared::{color::ZappyColor, map::Map, player::Player};
 use std::{collections::BTreeMap, fmt::Debug};
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
 
 #[derive(Debug, Default)]
 pub struct ServerData {
@@ -39,11 +39,10 @@ impl Engine {
     pub async fn render(
         &self,
         event_rx: Receiver<KeyEvent>,
-        data_rx: Receiver<ServerData>,
-        conn_rx: Receiver<bool>,
+        data_rx: UnboundedReceiver<ServerData>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         match self {
-            Engine::Console => console::render(event_rx, data_rx, conn_rx).await,
+            Engine::Console => console::render(event_rx, data_rx).await,
             Engine::Torus => torus::render(data_rx).await,
         }
     }

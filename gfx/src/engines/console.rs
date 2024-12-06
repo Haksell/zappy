@@ -19,7 +19,7 @@ use shared::{
     resource::{Resource, Stone, NOURRITURE_COLOR},
 };
 use std::{collections::BTreeMap, time::Duration};
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
 
 pub const NORTH_EMOJI: &'static str = "^";
 pub const EAST_EMOJI: &'static str = ">";
@@ -266,36 +266,26 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
 
 pub async fn render(
     mut event_rx: Receiver<KeyEvent>,
-    mut data_rx: Receiver<ServerData>,
-    mut conn_rx: Receiver<bool>,
+    mut data_rx: UnboundedReceiver<ServerData>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = ratatui::init();
-    let mut data: Option<ServerData> = None;
 
     loop {
-        terminal.draw(|frame| {
-            let layout = Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
-                .split(frame.area());
-
-            if let Some(data) = &data {
-                draw_field(data, frame, layout[0]);
-                draw_players_bar(data, frame, layout[1]);
-            }
-        })?;
-
         tokio::select! {
-            Some(key) = event_rx.recv() => {
+            Some(key) = event_rx.recv() => { // event::read()? https://ratatui.rs/tutorials/json-editor/closing-thoughts/
                 if key.code == KeyCode::Esc || key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q') {
                     break;
                 }
             }
             Some(new_data) = data_rx.recv() => {
-                data = Some(new_data);
-            }
-            Some(is_connected) = conn_rx.recv() => {
-                if is_connected {
-                    terminal.clear()?;
-                }
+                terminal.clear()?;
+                terminal.draw(|frame| {
+                    let layout = Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
+                        .split(frame.area());
+
+                        draw_field(&new_data, frame, layout[0]);
+                        draw_players_bar(&new_data, frame, layout[1]);
+                })?;
             }
             _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep
         }

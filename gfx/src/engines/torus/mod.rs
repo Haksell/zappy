@@ -27,7 +27,7 @@ use mesh::{fill_torus_mesh, update_torus_mesh};
 use server_link::{network_setup, ServerLink};
 use shared::PROJECT_NAME;
 use texture::update_texture;
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 const SUBDIVISIONS: &[u16] = &[8, 13, 21, 34, 55, 89, 144, 233];
 
@@ -60,7 +60,9 @@ impl Default for TorusTransform {
 #[derive(Component, Debug)]
 struct Torus;
 
-pub async fn render(data_rx: Receiver<ServerData>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn render(
+    data_rx: UnboundedReceiver<ServerData>,
+) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {

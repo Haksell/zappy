@@ -8,18 +8,18 @@ use std::{
     thread,
     time::Duration,
 };
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 // TODO: don't clone and lock all this
 #[derive(Resource)]
 pub struct ServerLink {
-    pub data_rx: Arc<Mutex<Receiver<ServerData>>>,
+    pub data_rx: Arc<Mutex<UnboundedReceiver<ServerData>>>,
     pub game_state: Arc<Mutex<ServerData>>,
     pub update: Arc<AtomicBool>,
 }
 
 impl ServerLink {
-    pub fn new(data_rx: Receiver<ServerData>) -> Self {
+    pub fn new(data_rx: UnboundedReceiver<ServerData>) -> Self {
         Self {
             data_rx: Arc::new(Mutex::new(data_rx)),
             game_state: Default::default(),

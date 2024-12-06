@@ -31,9 +31,8 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    let (event_tx, event_rx) = mpsc::channel(100);
-    let (data_tx, data_rx) = mpsc::channel(100);
-    let (conn_tx, conn_rx) = mpsc::channel(10);
+    let (event_tx, event_rx) = mpsc::channel(100); // TODO see console.rs 275
+    let (data_tx, data_rx) = mpsc::unbounded_channel();
 
     tokio::spawn(async move {
         loop {
@@ -58,7 +57,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match TcpStream::connect(format!("{}:{}", args.address, args.port)).await {
                 Ok(stream) => {
                     eprintln!("Connected to server");
-                    let _ = conn_tx.send(true).await; // Notify connection
                     let reader = BufReader::new(stream);
                     let mut lines = reader.lines();
 
@@ -72,11 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 let teams: Result<BTreeMap<String, usize>, _> =
                                     serde_json::from_value(json_data["teams"].clone());
                                 if let (Ok(map), Ok(players), Ok(teams)) = (map, players, teams) {
-                                    if data_tx
-                                        .send(ServerData::new(map, players, teams))
-                                        .await
-                                        .is_err()
-                                    {
+                                    if data_tx.send(ServerData::new(map, players, teams)).is_err() {
                                         break;
                                     }
                                 } else {
@@ -90,12 +84,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 Err(e) => {
                     eprintln!("Failed to connect: {}, retrying in 1 second...", e);
-                    let _ = conn_tx.send(false).await;
                 }
             }
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
     });
 
-    args.engine.render(event_rx, data_rx, conn_rx).await
+    args.engine.render(event_rx, data_rx).await
 }
