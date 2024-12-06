@@ -3,12 +3,13 @@ use bevy::prelude::*;
 use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::{Options, Tree};
 use shared::resource::{Resource, Stone};
-use shared::{color::RGB, map::Cell, resource::NOURRITURE_COLOR, GameState};
+use shared::{color::RGB, map::Cell, GameState};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::LazyLock;
 
-pub const TORUS_TEXTURE_SIZE: usize = 1280;
+pub const TORUS_TEXTURE_SIZE: usize = 1024;
+pub const SVG_SIZE: usize = 64;
 
 static SVGS: LazyLock<HashMap<Resource, Pixmap>> = LazyLock::new(|| {
     use Stone::*;
@@ -19,11 +20,13 @@ static SVGS: LazyLock<HashMap<Resource, Pixmap>> = LazyLock::new(|| {
         let tree = Tree::from_data(&svg_data, &options)
             .expect(&format!("Failed to parse {path:?} as a SVG"));
 
-        let mut pixmap = Pixmap::new(TORUS_TEXTURE_SIZE as u32, TORUS_TEXTURE_SIZE as u32).unwrap();
+        let mut pixmap = Pixmap::new(SVG_SIZE as u32, SVG_SIZE as u32).unwrap();
 
-        let translate_x = (TORUS_TEXTURE_SIZE - tree.size().width() as usize) / 2;
-        let translate_y = (TORUS_TEXTURE_SIZE - tree.size().height() as usize) / 2;
-        let transform = Transform::from_translate(translate_x as f32, translate_y as f32);
+        let scale_x = SVG_SIZE as f32 / tree.size().width();
+        let scale_y = SVG_SIZE as f32 / tree.size().height();
+        let scale = scale_x.min(scale_y);
+
+        let transform = Transform::from_scale(scale, scale);
 
         resvg::render(&tree, transform, &mut pixmap.as_mut());
         pixmap
@@ -51,6 +54,38 @@ fn write_pixel(data: &mut [u8], x: usize, y: usize, (r, g, b): RGB) {
     data[(y * TORUS_TEXTURE_SIZE + x) * 4 + 2] = b;
 }
 
+fn blend_pixmap_with_texture(
+    data: &mut [u8],
+    pixmap: &Pixmap,
+    ((start_x, end_x), (start_y, end_y)): Interval2D,
+) {
+    let pixmap_data = pixmap.data();
+
+    for y in 0..SVG_SIZE {
+        for x in 0..SVG_SIZE {
+            let tex_index = ((y + start_y) * TORUS_TEXTURE_SIZE + x + start_x) * 4;
+            let pixmap_index = (x * pixmap.height() as usize + y) * 4;
+
+            if pixmap_index < pixmap_data.len() && tex_index < data.len() {
+                let (r, g, b, a) = (
+                    pixmap_data[pixmap_index],
+                    pixmap_data[pixmap_index + 1],
+                    pixmap_data[pixmap_index + 2],
+                    pixmap_data[pixmap_index + 3],
+                );
+
+                let alpha = a as f32 / 255.0;
+                data[tex_index] = (data[tex_index] as f32 * (1.0 - alpha) + r as f32 * alpha) as u8;
+                data[tex_index + 1] =
+                    (data[tex_index + 1] as f32 * (1.0 - alpha) + g as f32 * alpha) as u8;
+                data[tex_index + 2] =
+                    (data[tex_index + 2] as f32 * (1.0 - alpha) + b as f32 * alpha) as u8;
+                data[tex_index + 3] = 255;
+            }
+        }
+    }
+}
+
 fn fill_background(
     data: &mut [u8],
     ((start_x, end_x), (start_y, end_y)): Interval2D,
@@ -63,15 +98,15 @@ fn fill_background(
     }
 }
 
-fn fill_cell(data: &mut [u8], cell: &Cell, ((start_x, end_x), (start_y, end_y)): Interval2D) {
+fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
     // TODO: for each nourriture and resource, take a random x and y in the interval and draw circle of appropriate color
     if cell.nourriture > 0 {
-        for y in start_y..end_y {
-            for x in start_x..end_x {
-                if y & 1 == x & 1 {
-                    write_pixel(data, x, y, NOURRITURE_COLOR.rgb());
-                }
-            }
+        blend_pixmap_with_texture(data, &SVGS[&Resource::Nourriture], interval);
+    }
+    for (i, &cnt) in cell.stones.iter().enumerate() {
+        if cnt > 0 {
+            let resource = Resource::try_from(i).unwrap();
+            blend_pixmap_with_texture(data, &SVGS[&resource], interval);
         }
     }
 }
@@ -100,35 +135,6 @@ fn fill_texture(data: &mut [u8], game_state: &Option<GameState>) {
     }
 }
 
-fn blend_pixmap_with_texture(texture_data: &mut Vec<u8>, pixmap: &Pixmap) {
-    let pixmap_data = pixmap.data();
-
-    for y in 0..TORUS_TEXTURE_SIZE {
-        for x in 0..TORUS_TEXTURE_SIZE {
-            let tex_index = (y * TORUS_TEXTURE_SIZE + x) * 4;
-            let pixmap_index = (y * pixmap.width() as usize + x) * 4;
-
-            if pixmap_index < pixmap_data.len() && tex_index < texture_data.len() {
-                let (r, g, b, a) = (
-                    pixmap_data[pixmap_index],
-                    pixmap_data[pixmap_index + 1],
-                    pixmap_data[pixmap_index + 2],
-                    pixmap_data[pixmap_index + 3],
-                );
-
-                let alpha = a as f32 / 255.0;
-                texture_data[tex_index] =
-                    (texture_data[tex_index] as f32 * (1.0 - alpha) + r as f32 * alpha) as u8;
-                texture_data[tex_index + 1] =
-                    (texture_data[tex_index + 1] as f32 * (1.0 - alpha) + g as f32 * alpha) as u8;
-                texture_data[tex_index + 2] =
-                    (texture_data[tex_index + 2] as f32 * (1.0 - alpha) + b as f32 * alpha) as u8;
-                texture_data[tex_index + 3] = 255;
-            }
-        }
-    }
-}
-
 pub fn update_texture(
     mut materials: ResMut<Assets<StandardMaterial>>,
     query: Query<&Handle<StandardMaterial>, With<Torus>>,
@@ -141,10 +147,6 @@ pub fn update_texture(
         let image_handle = material.base_color_texture.as_mut().unwrap();
         let image = images.get_mut(image_handle).unwrap();
         fill_texture(&mut image.data, &server_link.game_state.lock().unwrap());
-
-        let pixmap = &SVGS[&Resource::Nourriture];
-        blend_pixmap_with_texture(&mut image.data, &pixmap);
-
         server_link.update.store(false, Ordering::Relaxed);
     }
 }
