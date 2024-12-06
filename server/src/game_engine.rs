@@ -1,29 +1,29 @@
 use crate::args::ServerArgs;
 use derive_getters::Getters;
-use shared::resource::StoneSetOperations;
-use shared::ZappyError::Network;
 use shared::{
     commands::PlayerCmd,
     map::Map,
     player::Player,
     position::{Direction, Position, Side},
-    resource::Resource,
+    resource::{Resource, StoneSetOperations},
     team::Team,
     Egg,
     NetworkError::IsNotConnectedToServer,
-    PlayerError, ServerResponse, ZappyError, MAX_COMMANDS,
+    PlayerError, ServerResponse, ZappyError,
+    ZappyError::Network,
+    MAX_COMMANDS,
 };
 use std::{
-    collections::{HashMap, HashSet, VecDeque},
+    collections::{BTreeMap, HashSet, VecDeque},
     error::Error,
 };
 
 #[derive(Debug, Getters, Clone, PartialEq)]
 pub struct GameEngine {
-    teams: HashMap<String, Team>,
-    players: HashMap<u16, Player>,
-    eggs: HashMap<u64, Vec<Egg>>,
-    incantation: HashMap<u64, Vec<u16>>,
+    teams: BTreeMap<String, Team>,
+    players: BTreeMap<u16, Player>,
+    eggs: BTreeMap<u64, Vec<Egg>>,
+    incantation: BTreeMap<u64, Vec<u16>>,
     map: Map,
     frame: u64,
 }
@@ -52,10 +52,10 @@ impl GameEngine {
             })
             .collect();
         Ok(Self {
-            incantation: HashMap::new(),
+            incantation: BTreeMap::new(),
             teams,
-            players: HashMap::new(),
-            eggs: HashMap::new(),
+            players: BTreeMap::new(),
+            eggs: BTreeMap::new(),
             map,
             frame: 0,
         })
@@ -629,11 +629,11 @@ mod game_engine_tests {
         }
 
         #[rstest]
-        #[case(HashMap::from([("Axel".to_string(), 2), ("Anton".to_string(), 5)]))]
-        #[case(HashMap::from([("Anton".to_string(), 1), ("Victor".to_string(), 1), ("Axel".to_string(), 1)]))]
-        #[case(HashMap::from([("Anton".to_string(), 7), ("Victor".to_string(), 10), ("Axel".to_string(), 25)]))]
-        #[case(HashMap::from([("Anton".to_string(), 1)]))]
-        fn successfully_adds_player_to_valid_team(#[case] players_to_add: HashMap<String, usize>) {
+        #[case(BTreeMap::from([("Axel".to_string(), 2), ("Anton".to_string(), 5)]))]
+        #[case(BTreeMap::from([("Anton".to_string(), 1), ("Victor".to_string(), 1), ("Axel".to_string(), 1)]))]
+        #[case(BTreeMap::from([("Anton".to_string(), 7), ("Victor".to_string(), 10), ("Axel".to_string(), 25)]))]
+        #[case(BTreeMap::from([("Anton".to_string(), 1)]))]
+        fn successfully_adds_player_to_valid_team(#[case] players_to_add: BTreeMap<String, usize>) {
             // Given
             let mut current_id = 0;
             let max_player_nbr = *players_to_add.values().max().unwrap() as u16;
@@ -644,7 +644,7 @@ mod game_engine_tests {
                 .build()
                 .unwrap();
             let mut game = GameEngine::from(&args).unwrap();
-            let mut result: HashMap<String, Vec<(u16, u16)>> = HashMap::new();
+            let mut result: BTreeMap<String, Vec<(u16, u16)>> = BTreeMap::new();
 
             // When
             for (team, player_count) in players_to_add {
@@ -769,7 +769,7 @@ mod game_engine_tests {
             let mut game = default_game_engine();
             game.map = Map::empty(GAME_WIDTH, GAME_HEIGHT);
             let mut res = Vec::new();
-            game.teams = HashMap::from([(
+            game.teams = BTreeMap::from([(
                 test_team_name(),
                 Team::new(test_team_name(), VecDeque::from(positions.clone())),
             )]);

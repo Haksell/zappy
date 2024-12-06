@@ -4,11 +4,8 @@ mod torus;
 use clap::Parser;
 use clap::ValueEnum;
 use crossterm::event::{self, Event, KeyEvent};
-use serde_json::{from_str, Value};
-use shared::map::Map;
-use shared::player::Player;
+use serde_json::from_str;
 use shared::{ServerData, GFX_PORT};
-use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -91,23 +88,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut lines = reader.lines();
 
                     while let Ok(Some(line)) = lines.next_line().await {
-                        match from_str::<Value>(&line) {
-                            Ok(json_data) => {
-                                let map: Result<Map, _> =
-                                    serde_json::from_value(json_data["map"].clone());
-                                let players: Result<BTreeMap<u16, Player>, _> =
-                                    serde_json::from_value(json_data["players"].clone());
-                                let teams: Result<BTreeMap<String, usize>, _> =
-                                    serde_json::from_value(json_data["teams"].clone());
-                                if let (Ok(map), Ok(players), Ok(teams)) = (map, players, teams) {
-                                    if data_tx
-                                        .send(Message::Data(ServerData::new(map, players, teams)))
-                                        .is_err()
-                                    {
-                                        break;
-                                    }
-                                } else {
-                                    eprintln!("Failed to deserialize JSON");
+                        match from_str::<ServerData>(&line) {
+                            Ok(new_data) => {
+                                if data_tx.send(Message::Data(new_data)).is_err() {
+                                    break;
                                 }
                             }
                             Err(e) => eprintln!("Failed to deserialize JSON: {}", e),

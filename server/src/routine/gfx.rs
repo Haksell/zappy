@@ -1,8 +1,7 @@
 use crate::game_engine::GameEngine;
-use serde_json::json;
-use std::collections::HashMap;
+use shared::ServerData;
+use std::collections::BTreeMap;
 use std::error::Error;
-use std::io::IoSlice;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
@@ -31,30 +30,44 @@ async fn handle_streaming_client(
     server: Arc<Mutex<GameEngine>>,
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
-    let mut last_state = json!({});
+    let mut last_state = ServerData::default();
 
     loop {
         sleep(Duration::from_millis(20)).await;
 
         let current_state = {
             let server_lock = server.lock().await;
-            // TODO: grpc???
-            json!({
-                "teams": server_lock.teams().iter()
+            ServerData::new(
+                server_lock.map().clone(),
+                server_lock.players().clone(),
+                server_lock
+                    .teams()
+                    .iter()
                     .map(|(k, v)| (k.clone(), v.members_count()))
-                    .collect::<HashMap<String, usize>>(),
-                "map": server_lock.map(),
-                "players": server_lock.players()
-            })
+                    .collect::<BTreeMap<String, usize>>(),
+            )
         };
 
         if current_state != last_state {
-            socket
-                .write_vectored(&[
-                    IoSlice::new(current_state.to_string().as_bytes()),
-                    IoSlice::new(b"\n"),
-                ])
-                .await?;
+            println!("{}", serde_json::to_string(&current_state).unwrap());
+            let serialized_state = match serde_json::to_string(&current_state) {
+                Ok(json) => json,
+                Err(err) => {
+                    eprintln!("Failed to serialize current state: {:?}", err);
+                    continue;
+                }
+            };
+
+            if let Err(err) = socket.write_all(serialized_state.as_bytes()).await {
+                eprintln!("Failed to write to socket: {:?}", err);
+                return Err(err);
+            }
+
+            if let Err(err) = socket.write_all(b"\n").await {
+                eprintln!("Failed to write delimiter to socket: {:?}", err);
+                return Err(err);
+            }
+
             last_state = current_state;
         }
     }

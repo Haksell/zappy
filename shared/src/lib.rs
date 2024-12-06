@@ -19,7 +19,7 @@ use std::{
 
 pub const PROJECT_NAME: &'static str = "zappy";
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct ServerData {
     pub map: Map,
     pub players: BTreeMap<u16, Player>,
