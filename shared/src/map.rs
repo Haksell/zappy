@@ -80,7 +80,7 @@ impl Map {
 
     // TODO: better procedural generation
     pub fn generate_resources(&mut self) {
-        let total_resources = self.height * self.width * 9 / 5;
+        let total_resources = self.height * self.width * 13 / 5;
         for _ in 0..total_resources {
             let Position { x, y, .. } = self.random_position();
             self.field[y][x].add_resource(Resource::random());

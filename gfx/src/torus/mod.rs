@@ -24,7 +24,7 @@ use events::{handle_keyboard, handle_mouse_wheel};
 use mesh::{fill_torus_mesh, update_torus_mesh};
 use server_link::{network_setup, ServerLink};
 use shared::PROJECT_NAME;
-use texture::{update_texture, TORUS_TEXTURE_SIZE};
+use texture::{fill_disconnected, update_texture, TORUS_TEXTURE_SIZE};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 const SUBDIVISIONS: &[u16] = &[8, 13, 21, 34, 55, 89, 144, 233];
@@ -127,6 +127,8 @@ fn setup(
         TextureFormat::Rgba8UnormSrgb,
         RenderAssetUsages::default(),
     );
+    fill_disconnected(&mut texture.data);
+
     texture.sampler = ImageSampler::nearest();
     let texture_handle = images.add(texture);
 

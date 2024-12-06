@@ -1,3 +1,4 @@
+use crate::args::ServerArgs;
 use derive_getters::Getters;
 use shared::{
     color::ZAPPY_COLORS,
@@ -14,8 +15,6 @@ use shared::{
     MAX_COMMANDS,
 };
 use std::collections::{BTreeMap, HashSet, VecDeque};
-
-use crate::args::ServerArgs;
 
 #[derive(Debug, Getters, Clone, PartialEq)]
 pub struct GameEngine {

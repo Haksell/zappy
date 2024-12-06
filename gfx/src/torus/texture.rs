@@ -9,7 +9,6 @@ use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::LazyLock;
 
-const BLACKISH: u8 = 17;
 pub const TORUS_TEXTURE_SIZE: usize = 1024;
 pub const SVG_SIZE: usize = 1024;
 
@@ -101,22 +100,49 @@ fn fill_background(
     }
 }
 
+fn calc_interval(
+    ((start_x, end_x), (start_y, end_y)): Interval2D,
+    resource: Resource,
+) -> Interval2D {
+    const RESOURCE_PROPORTION: f32 = 0.12;
+    let (cell_x, cell_y) = resource.cell_position();
+    let (start_x, end_x) = (
+        lerp(start_x as f32, end_x as f32, cell_x - RESOURCE_PROPORTION) as usize,
+        lerp(start_x as f32, end_x as f32, cell_x + RESOURCE_PROPORTION) as usize,
+    );
+    let (start_y, end_y) = (
+        lerp(start_y as f32, end_y as f32, cell_y - RESOURCE_PROPORTION) as usize,
+        lerp(start_y as f32, end_y as f32, cell_y + RESOURCE_PROPORTION) as usize,
+    );
+    ((start_x, end_x), (start_y, end_y))
+}
+
 fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
     // TODO: for each nourriture and resource, take a random x and y in the interval and draw circle of appropriate color
     if cell.nourriture > 0 {
-        blend_pixmap_with_texture(data, &SVGS[&Resource::Nourriture], interval);
+        let nourriture_interval = calc_interval(interval, Resource::Nourriture);
+        blend_pixmap_with_texture(data, &SVGS[&Resource::Nourriture], nourriture_interval);
     }
     for (i, &cnt) in cell.stones.iter().enumerate() {
         if cnt > 0 {
             let resource = Resource::try_from(i).unwrap();
-            blend_pixmap_with_texture(data, &SVGS[&resource], interval);
+            let resource_interval = calc_interval(interval, resource);
+            blend_pixmap_with_texture(data, &SVGS[&resource], resource_interval);
         }
     }
+}
+pub fn fill_disconnected(data: &mut [u8]) {
+    const DISCONNECTED_COLOR: RGB = (220, 20, 60);
+    fill_background(
+        data,
+        ((0, TORUS_TEXTURE_SIZE), (0, TORUS_TEXTURE_SIZE)),
+        DISCONNECTED_COLOR,
+    );
 }
 
 fn fill_texture(data: &mut [u8], game_state: &Option<GameState>) {
     match &game_state {
-        None => data.fill(0),
+        None => fill_disconnected(data),
         Some(game_state) => {
             let w = *game_state.map.width();
             let h = *game_state.map.height();
@@ -129,11 +155,11 @@ fn fill_texture(data: &mut [u8], game_state: &Option<GameState>) {
                     let end_x = (map_x + 1) * TORUS_TEXTURE_SIZE / w;
                     let cell_range = ((start_x, end_x), (start_y, end_y));
                     let bgcolor = if map_y & 1 == map_x & 1 {
-                        255
+                        (255, 255, 255)
                     } else {
-                        BLACKISH
+                        (100, 90, 110)
                     };
-                    fill_background(data, cell_range, (bgcolor, bgcolor, bgcolor));
+                    fill_background(data, cell_range, bgcolor);
                     let cell = &game_state.map.field[map_y][map_x];
                     fill_cell(data, cell, cell_range);
                 }
