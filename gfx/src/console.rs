@@ -1,35 +1,51 @@
 // TODO: if enough lines, one line for each team
 
-use crate::engines::ServerData;
-use crossterm::event::KeyEvent;
+use crate::Message;
 use itertools::Itertools as _;
 use ratatui::{
     crossterm::event::KeyCode,
     layout::{Constraint, Layout},
     prelude::{Alignment, Color, Line, Rect, Span, Style, Stylize},
+    style::Color as RatatuiColor,
     widgets::Block,
     widgets::{BorderType, Borders, Paragraph, Wrap},
     Frame,
 };
 use shared::{
+    color::ZappyColor,
     player::Player,
     position::Direction,
-    resource::{Resource, Stone},
+    resource::{Resource, Stone, NOURRITURE_COLOR},
+    GameState,
 };
-use std::{collections::BTreeMap, time::Duration};
-use tokio::sync::mpsc::Receiver;
+use std::collections::BTreeMap;
+use tokio::sync::mpsc::UnboundedReceiver;
 
-pub const NORTH_EMOJI: &'static str = "^";
-pub const EAST_EMOJI: &'static str = ">";
-pub const SOUTH_EMOJI: &'static str = "v";
-pub const WEST_EMOJI: &'static str = "<";
+fn zappy_to_ratatui_color(color: ZappyColor) -> RatatuiColor {
+    match color {
+        ZappyColor::Red => RatatuiColor::Red,
+        ZappyColor::Green => RatatuiColor::Green,
+        ZappyColor::Yellow => RatatuiColor::Yellow,
+        ZappyColor::Blue => RatatuiColor::Blue,
+        ZappyColor::Magenta => RatatuiColor::Magenta,
+        ZappyColor::Cyan => RatatuiColor::Cyan,
+        ZappyColor::Gray => RatatuiColor::Gray,
+        ZappyColor::DarkGray => RatatuiColor::DarkGray,
+        ZappyColor::LightRed => RatatuiColor::LightRed,
+        ZappyColor::LightGreen => RatatuiColor::LightGreen,
+        ZappyColor::LightYellow => RatatuiColor::LightYellow,
+        ZappyColor::LightBlue => RatatuiColor::LightBlue,
+        ZappyColor::LightMagenta => RatatuiColor::LightMagenta,
+        ZappyColor::LightCyan => RatatuiColor::LightCyan,
+    }
+}
 
-fn direction_to_emoji(direction: &Direction) -> &'static str {
+fn direction_to_emoji(direction: &Direction) -> char {
     match direction {
-        Direction::North => NORTH_EMOJI,
-        Direction::East => EAST_EMOJI,
-        Direction::South => SOUTH_EMOJI,
-        Direction::West => WEST_EMOJI,
+        Direction::North => '^',
+        Direction::East => '>',
+        Direction::South => 'v',
+        Direction::West => '<',
     }
 }
 
@@ -37,9 +53,9 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
     let mut spans = Vec::new();
 
     // Add nourriture spans
-    let nourriture_color = ServerData::color(Stone::SIZE + 1);
+    let nourriture_color = NOURRITURE_COLOR;
     let nourriture_style = Style::default()
-        .fg(nourriture_color.to_ratatui_value())
+        .fg(zappy_to_ratatui_color(nourriture_color))
         .bold();
     spans.extend(vec![Span::styled("N", nourriture_style); nourriture]);
 
@@ -49,8 +65,8 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
             continue;
         }
 
-        let color = ServerData::color(i);
-        let style = Style::default().fg(color.to_ratatui_value()).bold();
+        let color = ZappyColor::idx(i);
+        let style = Style::default().fg(zappy_to_ratatui_color(color)).bold();
         let char = Resource::try_from(i).unwrap().alias();
         let resource_str = char.to_string().repeat(count);
         spans.push(Span::styled(resource_str, style));
@@ -70,7 +86,7 @@ fn map_stones_to_vec_span(resources: &[usize; Stone::SIZE]) -> Vec<Span> {
                 Span::styled(
                     resource_str,
                     Style::default()
-                        .fg(ServerData::color(i).to_ratatui_value())
+                        .fg(zappy_to_ratatui_color(ZappyColor::idx(i)))
                         .bold(),
                 )
             } else {
@@ -108,7 +124,7 @@ fn eggs_to_span(eggs: (usize, usize), color: Color) -> Span<'static> {
     Span::styled(s, Style::default().fg(color))
 }
 
-fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
+fn draw_field(data: &GameState, frame: &mut Frame, area: Rect) {
     let rows = Layout::vertical(vec![
         Constraint::Ratio(1, *data.map.height() as u32);
         *data.map.height()
@@ -134,7 +150,7 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
                 .iter()
                 .map(|(team_name, &eggs)| {
                     let color = data.teams.get(team_name).unwrap().0;
-                    eggs_to_span(eggs, color.to_ratatui_value())
+                    eggs_to_span(eggs, zappy_to_ratatui_color(color))
                 })
                 .collect::<Vec<_>>();
             let mapped_player = cell
@@ -144,7 +160,7 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
                 .map(|p| {
                     let player = data.players.get(p).unwrap();
                     map_player_to_span(
-                        data.teams.get(player.team()).unwrap().0.to_ratatui_value(),
+                        zappy_to_ratatui_color(data.teams.get(player.team()).unwrap().0),
                         player,
                     )
                 })
@@ -168,7 +184,7 @@ fn draw_field(data: &ServerData, frame: &mut Frame, area: Rect) {
     }
 }
 
-fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
+fn draw_players_bar(data: &GameState, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .title("Players Stats")
         .borders(Borders::ALL);
@@ -183,7 +199,7 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
         .keys()
         .map(|team_name| {
             //TODO: make function that return color to avoid unwrap and .0 every time
-            let team_color = data.teams.get(team_name).unwrap().0.to_ratatui_value();
+            let team_color = zappy_to_ratatui_color(data.teams.get(team_name).unwrap().0);
             (
                 team_name.clone(),
                 vec![vec![Span::styled(
@@ -197,8 +213,9 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
     for player in data.players.values() {
         if let Some(details) = teams_data.get_mut(player.team()) {
             let mut current_player_details: Vec<Span> = Vec::new();
-            let style =
-                Style::default().fg(data.teams.get(player.team()).unwrap().0.to_ratatui_value());
+            let style = Style::default().fg(zappy_to_ratatui_color(
+                data.teams.get(player.team()).unwrap().0,
+            ));
             current_player_details.push(Span::styled(format!("🧬 {}", player.id()), style));
             current_player_details.push(Span::raw(" | "));
             current_player_details.push(Span::styled(
@@ -243,39 +260,39 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
 }
 
 pub async fn render(
-    mut event_rx: Receiver<KeyEvent>,
-    mut data_rx: Receiver<ServerData>,
-    mut conn_rx: Receiver<bool>,
+    mut data_rx: UnboundedReceiver<Message>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = ratatui::init();
-    let mut data: Option<ServerData> = None;
 
     loop {
-        terminal.draw(|frame| {
-            let layout = Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
-                .split(frame.area());
-
-            if let Some(data) = &data {
-                draw_field(data, frame, layout[0]);
-                draw_players_bar(data, frame, layout[1]);
+        let message = match data_rx.recv().await {
+            Some(message) => message,
+            None => {
+                eprintln!("None in recv ????");
+                continue;
             }
-        })?;
-
-        tokio::select! {
-            Some(key) = event_rx.recv() => {
-                if key.code == KeyCode::Esc || key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q') {
+        };
+        match message {
+            Message::Disconnect => {} // TODO: terminal.clear()?;
+            Message::KeyEvent(key) => {
+                if key.code == KeyCode::Esc
+                    || key.code == KeyCode::Char('q')
+                    || key.code == KeyCode::Char('Q')
+                {
                     break;
                 }
             }
-            Some(new_data) = data_rx.recv() => {
-                data = Some(new_data);
+            Message::State(new_state) => {
+                terminal.clear()?; // TODO Test on connect ?
+                terminal.draw(|frame| {
+                    let layout =
+                        Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
+                            .split(frame.area());
+
+                    draw_field(&new_state, frame, layout[0]);
+                    draw_players_bar(&new_state, frame, layout[1]);
+                })?;
             }
-            Some(is_connected) = conn_rx.recv() => {
-                if is_connected {
-                    terminal.clear()?;
-                }
-            }
-            _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep
         }
     }
     ratatui::restore();

@@ -1,20 +1,22 @@
-use crate::position::Position;
 use crate::PlayerError::NoPlaceAvailable;
 use crate::ZappyError;
+use crate::{color::ZappyColor, position::Position};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashSet, VecDeque};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Team {
     name: String,
+    color: ZappyColor,
     members: HashSet<u16>,
     spawn_positions: VecDeque<Position>,
 }
 
 impl Team {
-    pub fn new(name: String, spawn_positions: VecDeque<Position>) -> Self {
+    pub fn new(name: String, color: ZappyColor, spawn_positions: VecDeque<Position>) -> Self {
         Self {
             name,
+            color,
             members: HashSet::with_capacity(spawn_positions.len()),
             spawn_positions,
         }
@@ -48,5 +50,9 @@ impl Team {
     pub fn add_next_spawn_position(&mut self, position: Position) {
         // TODO: max span_positions.len()?
         self.spawn_positions.push_back(position);
+    }
+
+    pub fn color(&self) -> ZappyColor {
+        self.color
     }
 }

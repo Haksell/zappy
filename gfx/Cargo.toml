@@ -16,3 +16,4 @@ shared = { path = "../shared" }
 itertools = "0.13.0"
 clap.workspace = true
 rand.workspace = true
+resvg = "0.44.0"

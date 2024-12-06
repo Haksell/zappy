@@ -2,6 +2,8 @@ use rand::{seq::SliceRandom as _, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
+use crate::color::ZappyColor;
+
 pub type StoneSet = [usize; Stone::SIZE];
 
 pub trait StoneSetOperations {
@@ -20,7 +22,7 @@ impl StoneSetOperations for StoneSet {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Hash)]
 #[repr(u8)]
 pub enum Stone {
     Deraumere,
@@ -70,9 +72,15 @@ impl Stone {
             Stone::Thystame => "thystame",
         }
     }
+
+    pub fn color(&self) -> ZappyColor {
+        ZappyColor::idx(*self as usize)
+    }
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy)]
+pub const NOURRITURE_COLOR: ZappyColor = ZappyColor::LightMagenta;
+
+#[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Hash)]
 pub enum Resource {
     Stone(Stone),
     Nourriture,
@@ -103,7 +111,7 @@ impl Resource {
     }
 
     pub fn random() -> Self {
-        static RESOURCES: [Resource; Resource::SIZE] = [
+        static RESOURCES_WEIGHTS: &[Resource] = &[
             Resource::Stone(Stone::Deraumere),
             Resource::Stone(Stone::Linemate),
             Resource::Stone(Stone::Mendiane),
@@ -111,10 +119,11 @@ impl Resource {
             Resource::Stone(Stone::Sibur),
             Resource::Stone(Stone::Thystame),
             Resource::Nourriture,
+            Resource::Nourriture,
         ];
 
         let mut rng = thread_rng();
-        *RESOURCES.choose(&mut rng).unwrap()
+        *RESOURCES_WEIGHTS.choose(&mut rng).unwrap()
     }
 }
 
