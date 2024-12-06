@@ -1,4 +1,3 @@
-use crate::args::ServerArgs;
 use derive_getters::Getters;
 use shared::{
     commands::PlayerCmd,
@@ -13,10 +12,7 @@ use shared::{
     ZappyError::Network,
     MAX_COMMANDS,
 };
-use std::{
-    collections::{BTreeMap, HashSet, VecDeque},
-    error::Error,
-};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 
 #[derive(Debug, Getters, Clone, PartialEq)]
 pub struct GameEngine {
@@ -29,15 +25,14 @@ pub struct GameEngine {
 }
 
 impl GameEngine {
-    pub fn from(args: &ServerArgs) -> Result<Self, Box<dyn Error>> {
-        let mut map = Map::empty(args.width, args.height);
+    pub fn new(width: usize, height: usize, names: &[String], clients: u16) -> Self {
+        let mut map = Map::empty(width, height);
         map.generate_resources();
-        let teams = args
-            .names
+        let teams = names
             .iter()
             .map(|team_name| {
                 let spawn_positions: VecDeque<Position> =
-                    (0..args.clients).map(|_| map.random_position()).collect();
+                    (0..clients).map(|_| map.random_position()).collect();
                 for pos in &spawn_positions {
                     map.field[pos.y][pos.x]
                         .eggs
@@ -51,14 +46,14 @@ impl GameEngine {
                 )
             })
             .collect();
-        Ok(Self {
+        Self {
             incantation: BTreeMap::new(),
             teams,
             players: BTreeMap::new(),
             eggs: BTreeMap::new(),
             map,
             frame: 0,
-        })
+        }
     }
 
     fn handle_move(&mut self, player_id: u16, direction: &Direction) {
@@ -430,7 +425,7 @@ impl GameEngine {
 #[cfg(test)]
 mod game_engine_tests {
     use super::*;
-    use crate::args::ServerArgsBuilder;
+    use crate::args::{ServerArgs, ServerArgsBuilder};
 
     // Common test constants
     const GAME_WIDTH: usize = 3;
@@ -461,6 +456,10 @@ mod game_engine_tests {
             .to_owned()
     }
 
+    fn game_engine_from_args(args: &ServerArgs) -> GameEngine {
+        GameEngine::new(args.width, args.height, &args.names, args.clients)
+    }
+
     fn player_lvl_up(player: &mut Player, level: u8) {
         for _ in 1..level {
             player.start_incantation();
@@ -478,7 +477,7 @@ mod game_engine_tests {
     }
 
     fn default_game_engine() -> GameEngine {
-        GameEngine::from(&default_args().build().unwrap()).unwrap()
+        game_engine_from_args(&default_args().build().unwrap())
     }
 
     fn resources_sum_on_other_cell(player_id: &u16, game: &GameEngine) -> usize {
@@ -500,7 +499,7 @@ mod game_engine_tests {
             let args = default_args().build().unwrap();
 
             // When
-            let game = GameEngine::from(&args).unwrap();
+            let game = game_engine_from_args(&args);
 
             // Then
             // Eggs
@@ -643,7 +642,7 @@ mod game_engine_tests {
                 .names(players_to_add.keys().cloned().collect::<Vec<_>>())
                 .build()
                 .unwrap();
-            let mut game = GameEngine::from(&args).unwrap();
+            let mut game = game_engine_from_args(&args);
             let mut result: BTreeMap<String, Vec<(u16, u16)>> = BTreeMap::new();
 
             // When

@@ -28,7 +28,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     init_logger();
 
     let args = ServerArgs::parse();
-    let server = GameEngine::from(&args)?;
+    let server = GameEngine::new(args.width, args.height, &args.names, args.clients);
     let client_listener = TcpListener::bind(format!("127.0.0.1:{}", args.port)).await?;
     let admin_listener = TcpListener::bind(format!("127.0.0.1:{}", ADMIN_PORT)).await?;
     let gfx_listener = TcpListener::bind(format!("127.0.0.1:{}", GFX_PORT)).await?;
