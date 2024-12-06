@@ -64,7 +64,7 @@ fn blend_pixmap_with_texture(
     for y in 0..SVG_SIZE {
         for x in 0..SVG_SIZE {
             let tex_index = ((y + start_y) * TORUS_TEXTURE_SIZE + x + start_x) * 4;
-            let pixmap_index = (x * pixmap.height() as usize + y) * 4;
+            let pixmap_index = (y * pixmap.width() as usize + x) * 4;
 
             if pixmap_index < pixmap_data.len() && tex_index < data.len() {
                 let (r, g, b, a) = (
