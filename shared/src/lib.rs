@@ -27,12 +27,11 @@ pub struct GameState {
 }
 
 impl GameState {
-    pub fn new(map: Map, players: BTreeMap<u16, Player>, teams: BTreeMap<String, usize>) -> Self {
-        let teams = teams
-            .iter()
-            .enumerate()
-            .map(|(i, (name, &members_count))| (name.clone(), (ZappyColor::idx(i), members_count)))
-            .collect::<BTreeMap<String, (ZappyColor, usize)>>();
+    pub fn new(
+        map: Map,
+        players: BTreeMap<u16, Player>,
+        teams: BTreeMap<String, (ZappyColor, usize)>,
+    ) -> Self {
         Self {
             map,
             players,

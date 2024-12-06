@@ -1,13 +1,12 @@
 use crate::game_engine::GameEngine;
+use shared::color::ZappyColor;
 use shared::GameState;
-use std::collections::BTreeMap;
 use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Mutex;
-use tokio::time::sleep;
 
 pub async fn gfx_routine(
     server: Arc<Mutex<GameEngine>>,
@@ -33,7 +32,7 @@ async fn handle_streaming_client(
     let mut last_state = GameState::default();
 
     loop {
-        sleep(Duration::from_millis(20)).await;
+        tokio::time::sleep(Duration::from_millis(20)).await;
 
         let current_state = {
             let server_lock = server.lock().await;
@@ -43,8 +42,10 @@ async fn handle_streaming_client(
                 server_lock
                     .teams()
                     .iter()
-                    .map(|(k, v)| (k.clone(), v.members_count()))
-                    .collect::<BTreeMap<String, usize>>(),
+                    .enumerate()
+                    // TODO: ZappyColor in teams
+                    .map(|(i, (k, v))| (k.clone(), (ZappyColor::idx(i), v.members_count())))
+                    .collect(),
             )
         };
 

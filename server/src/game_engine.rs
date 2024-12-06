@@ -14,6 +14,8 @@ use shared::{
 };
 use std::collections::{BTreeMap, HashSet, VecDeque};
 
+use crate::args::ServerArgs;
+
 #[derive(Debug, Getters, Clone, PartialEq)]
 pub struct GameEngine {
     teams: BTreeMap<String, Team>,
@@ -25,14 +27,16 @@ pub struct GameEngine {
 }
 
 impl GameEngine {
-    pub fn new(width: usize, height: usize, names: &[String], clients: u16) -> Self {
-        let mut map = Map::empty(width, height);
+    pub fn new(args: &ServerArgs) -> Self {
+        let mut map = Map::empty(args.width, args.height);
         map.generate_resources();
-        let teams = names
+        let teams = args
+            .names
+            .clone()
             .iter()
             .map(|team_name| {
                 let spawn_positions: VecDeque<Position> =
-                    (0..clients).map(|_| map.random_position()).collect();
+                    (0..args.clients).map(|_| map.random_position()).collect();
                 for pos in &spawn_positions {
                     map.field[pos.y][pos.x]
                         .eggs
@@ -456,10 +460,6 @@ mod game_engine_tests {
             .to_owned()
     }
 
-    fn game_engine_from_args(args: &ServerArgs) -> GameEngine {
-        GameEngine::new(args.width, args.height, &args.names, args.clients)
-    }
-
     fn player_lvl_up(player: &mut Player, level: u8) {
         for _ in 1..level {
             player.start_incantation();
@@ -477,7 +477,7 @@ mod game_engine_tests {
     }
 
     fn default_game_engine() -> GameEngine {
-        game_engine_from_args(&default_args().build().unwrap())
+        GameEngine::new(&default_args().build().unwrap())
     }
 
     fn resources_sum_on_other_cell(player_id: &u16, game: &GameEngine) -> usize {
@@ -499,7 +499,7 @@ mod game_engine_tests {
             let args = default_args().build().unwrap();
 
             // When
-            let game = game_engine_from_args(&args);
+            let game = GameEngine::new(&args);
 
             // Then
             // Eggs
@@ -642,7 +642,7 @@ mod game_engine_tests {
                 .names(players_to_add.keys().cloned().collect::<Vec<_>>())
                 .build()
                 .unwrap();
-            let mut game = game_engine_from_args(&args);
+            let mut game = GameEngine::new(&args);
             let mut result: BTreeMap<String, Vec<(u16, u16)>> = BTreeMap::new();
 
             // When
