@@ -1,18 +1,21 @@
+mod console;
+mod torus;
+
 use clap::Parser;
+use clap::ValueEnum;
 use crossterm::event::{self, Event, KeyEvent};
-use engines::Engine;
 use serde_json::{from_str, Value};
 use shared::map::Map;
 use shared::player::Player;
 use shared::{ServerData, GFX_PORT};
 use std::collections::BTreeMap;
+use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
+use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::time::Duration;
-
-mod engines;
 
 enum Message {
     Disconnect,
@@ -33,6 +36,24 @@ struct Args {
     engine: Engine,
 }
 
+#[derive(ValueEnum, Clone, Debug, PartialEq, Eq)]
+enum Engine {
+    Console,
+    Torus,
+}
+
+impl Engine {
+    pub async fn render(
+        &self,
+        data_rx: UnboundedReceiver<Message>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        match self {
+            Engine::Console => console::render(data_rx).await,
+            Engine::Torus => torus::render(data_rx).await,
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
@@ -44,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let key_tx = Arc::clone(&data_tx);
         tokio::spawn(async move {
             loop {
-                let poll = tokio::task::spawn_blocking(|| event::poll(Duration::from_millis(500)))
+                let poll = tokio::task::spawn_blocking(|| event::poll(Duration::from_millis(50)))
                     .await
                     .unwrap();
 
@@ -56,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                 }
-                tokio::time::sleep(Duration::from_millis(500)).await;
+                tokio::time::sleep(Duration::from_millis(50)).await;
             }
         });
     }

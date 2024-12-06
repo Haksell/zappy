@@ -1,5 +1,4 @@
-use super::{camera_distance, TorusTransform};
-use crate::engines::torus::SUBDIVISIONS;
+use super::{camera_distance, TorusTransform, SUBDIVISIONS};
 use bevy::{
     input::mouse::{MouseScrollUnit, MouseWheel},
     prelude::*,
