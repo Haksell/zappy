@@ -69,4 +69,19 @@ pub fn handle_keyboard(
     update_value(&mut tt.shift_minor, &keys, ArrowDown, ArrowUp, dt, 1.);
     update_value(&mut tt.rotate_x, &keys, KeyW, KeyS, dt, TAU);
     update_value(&mut tt.rotate_y, &keys, KeyA, KeyD, dt, TAU);
+
+    fn update_color(
+        val: &mut u8,
+        keys: &Res<ButtonInput<KeyCode>>,
+        key_add: KeyCode,
+        key_sub: KeyCode,
+    ) {
+        let change = (keys.pressed(key_add) as i16 - keys.pressed(key_sub) as i16) * 5;
+        *val = (*val as i16 + change).clamp(0, 255) as u8;
+    }
+
+    update_color(&mut tt.blackish.0, &keys, KeyT, KeyR);
+    update_color(&mut tt.blackish.1, &keys, KeyG, KeyF);
+    update_color(&mut tt.blackish.2, &keys, KeyB, KeyV);
+    println!("{:?}", tt.blackish);
 }

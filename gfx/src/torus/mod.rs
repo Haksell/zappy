@@ -23,7 +23,7 @@ use bevy::{
 use events::{handle_keyboard, handle_mouse_wheel};
 use mesh::{fill_torus_mesh, update_torus_mesh};
 use server_link::{network_setup, ServerLink};
-use shared::PROJECT_NAME;
+use shared::{color::RGB, PROJECT_NAME};
 use texture::{fill_disconnected, update_texture, TORUS_TEXTURE_SIZE};
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -37,6 +37,7 @@ struct TorusTransform {
     subdiv_idx: usize,
     rotate_x: f32,
     rotate_y: f32,
+    blackish: RGB,
 }
 
 impl Default for TorusTransform {
@@ -48,6 +49,7 @@ impl Default for TorusTransform {
             subdiv_idx: 4,
             rotate_x: 0.,
             rotate_y: 0.,
+            blackish: (110, 110, 115),
         }
     }
 }

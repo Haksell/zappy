@@ -1,3 +1,4 @@
+use super::TorusTransform;
 use super::{server_link::ServerLink, Torus};
 use bevy::prelude::*;
 use resvg::tiny_skia::{Pixmap, Transform};
@@ -140,7 +141,7 @@ pub fn fill_disconnected(data: &mut [u8]) {
     );
 }
 
-fn fill_texture(data: &mut [u8], game_state: &Option<GameState>) {
+fn fill_texture(data: &mut [u8], game_state: &Option<GameState>, blackish: RGB) {
     match &game_state {
         None => fill_disconnected(data),
         Some(game_state) => {
@@ -157,7 +158,7 @@ fn fill_texture(data: &mut [u8], game_state: &Option<GameState>) {
                     let bgcolor = if map_y & 1 == map_x & 1 {
                         (255, 255, 255)
                     } else {
-                        (100, 90, 110)
+                        blackish
                     };
                     fill_background(data, cell_range, bgcolor);
                     let cell = &game_state.map.field[map_y][map_x];
@@ -169,17 +170,24 @@ fn fill_texture(data: &mut [u8], game_state: &Option<GameState>) {
 }
 
 pub fn update_texture(
+    torus_transform: Res<TorusTransform>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     query: Query<&Handle<StandardMaterial>, With<Torus>>,
     mut images: ResMut<Assets<Image>>,
     server_link: ResMut<ServerLink>,
 ) {
-    if server_link.update.load(Ordering::Relaxed) {
+    // TODO: remove torus_transform.is_changed()
+    // used now for blackish rgb
+    if server_link.update.load(Ordering::Relaxed) || torus_transform.is_changed() {
         let handle = query.get_single().unwrap();
         let material = materials.get_mut(handle).unwrap();
         let image_handle = material.base_color_texture.as_mut().unwrap();
         let image = images.get_mut(image_handle).unwrap();
-        fill_texture(&mut image.data, &server_link.game_state.lock().unwrap());
+        fill_texture(
+            &mut image.data,
+            &server_link.game_state.lock().unwrap(),
+            torus_transform.blackish,
+        );
         server_link.update.store(false, Ordering::Relaxed);
     }
 }
