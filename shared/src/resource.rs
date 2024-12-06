@@ -91,14 +91,12 @@ impl Resource {
 
     pub fn alias(&self) -> char {
         match self {
-            Resource::Stone(stone) => match stone {
-                Stone::Deraumere => 'D',
-                Stone::Linemate => 'L',
-                Stone::Mendiane => 'M',
-                Stone::Phiras => 'P',
-                Stone::Sibur => 'S',
-                Stone::Thystame => 'T',
-            },
+            Resource::Stone(Stone::Deraumere) => 'D',
+            Resource::Stone(Stone::Linemate) => 'L',
+            Resource::Stone(Stone::Mendiane) => 'M',
+            Resource::Stone(Stone::Phiras) => 'P',
+            Resource::Stone(Stone::Sibur) => 'S',
+            Resource::Stone(Stone::Thystame) => 'T',
             Resource::Nourriture => 'N',
         }
     }
@@ -124,6 +122,18 @@ impl Resource {
 
         let mut rng = thread_rng();
         *RESOURCES_WEIGHTS.choose(&mut rng).unwrap()
+    }
+
+    pub fn cell_position(&self) -> (f32, f32) {
+        match self {
+            Resource::Stone(Stone::Deraumere) => (0.15, 0.15),
+            Resource::Stone(Stone::Linemate) => (0.5, 0.15),
+            Resource::Stone(Stone::Mendiane) => (0.85, 0.15),
+            Resource::Stone(Stone::Phiras) => (0.15, 0.85),
+            Resource::Stone(Stone::Sibur) => (0.5, 0.85),
+            Resource::Stone(Stone::Thystame) => (0.85, 0.85),
+            Resource::Nourriture => (0.5, 0.5),
+        }
     }
 }
 
