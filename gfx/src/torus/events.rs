@@ -83,5 +83,4 @@ pub fn handle_keyboard(
     update_color(&mut tt.blackish.0, &keys, KeyT, KeyR);
     update_color(&mut tt.blackish.1, &keys, KeyG, KeyF);
     update_color(&mut tt.blackish.2, &keys, KeyB, KeyV);
-    println!("{:?}", tt.blackish);
 }

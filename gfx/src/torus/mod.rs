@@ -49,7 +49,7 @@ impl Default for TorusTransform {
             subdiv_idx: 4,
             rotate_x: 0.,
             rotate_y: 0.,
-            blackish: (110, 110, 115),
+            blackish: (100, 100, 100),
         }
     }
 }
