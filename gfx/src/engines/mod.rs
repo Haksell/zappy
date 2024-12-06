@@ -1,11 +1,11 @@
 mod console;
 mod torus;
 
+use super::Message;
 use clap::ValueEnum;
-use crossterm::event::KeyEvent;
 use shared::{color::ZappyColor, map::Map, player::Player};
 use std::{collections::BTreeMap, fmt::Debug};
-use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
+use tokio::sync::mpsc::UnboundedReceiver;
 
 #[derive(Debug, Default)]
 pub struct ServerData {
@@ -29,7 +29,7 @@ impl ServerData {
     }
 }
 
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug, PartialEq, Eq)]
 pub enum Engine {
     Console,
     Torus,
@@ -38,11 +38,10 @@ pub enum Engine {
 impl Engine {
     pub async fn render(
         &self,
-        event_rx: Receiver<KeyEvent>,
-        data_rx: UnboundedReceiver<ServerData>,
+        data_rx: UnboundedReceiver<Message>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         match self {
-            Engine::Console => console::render(event_rx, data_rx).await,
+            Engine::Console => console::render(data_rx).await,
             Engine::Torus => torus::render(data_rx).await,
         }
     }

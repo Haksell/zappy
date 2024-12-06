@@ -1,3 +1,5 @@
+use crate::Message;
+
 use super::ServerData;
 use bevy::prelude::*;
 use std::{
@@ -6,20 +8,19 @@ use std::{
         Arc, Mutex,
     },
     thread,
-    time::Duration,
 };
 use tokio::sync::mpsc::UnboundedReceiver;
 
 // TODO: don't clone and lock all this
 #[derive(Resource)]
 pub struct ServerLink {
-    pub data_rx: Arc<Mutex<UnboundedReceiver<ServerData>>>,
-    pub game_state: Arc<Mutex<ServerData>>,
+    pub data_rx: Arc<Mutex<UnboundedReceiver<Message>>>,
+    pub game_state: Arc<Mutex<Option<ServerData>>>,
     pub update: Arc<AtomicBool>,
 }
 
 impl ServerLink {
-    pub fn new(data_rx: UnboundedReceiver<ServerData>) -> Self {
+    pub fn new(data_rx: UnboundedReceiver<Message>) -> Self {
         Self {
             data_rx: Arc::new(Mutex::new(data_rx)),
             game_state: Default::default(),
@@ -40,13 +41,23 @@ pub fn network_setup(server_link: ResMut<ServerLink>) {
             .unwrap()
             .block_on(async move {
                 loop {
-                    tokio::select! {
-                        Some(new_data) = data_rx.recv() => {
-                            *game_state.lock().unwrap() = new_data;
+                    let message = match data_rx.recv().await {
+                        Some(message) => message,
+                        None => {
+                            eprintln!("None in recv ????");
+                            continue;
+                        }
+                    };
+                    match message {
+                        Message::Disconnect => {
+                            *game_state.lock().unwrap() = None;
                             update.store(true, Ordering::Relaxed);
                         }
-                        // Helps not crashing when closing bevy. TODO: find a better way?
-                        _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep
+                        Message::Data(new_data) => {
+                            *game_state.lock().unwrap() = Some(new_data);
+                            update.store(true, Ordering::Relaxed);
+                        }
+                        _ => {}
                     }
                 }
             });

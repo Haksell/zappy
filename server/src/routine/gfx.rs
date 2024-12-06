@@ -38,6 +38,7 @@ async fn handle_streaming_client(
 
         let current_state = {
             let server_lock = server.lock().await;
+            // TODO: grpc???
             json!({
                 "teams": server_lock.teams().iter()
                     .map(|(k, v)| (k.clone(), v.members_count()))

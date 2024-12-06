@@ -1,7 +1,6 @@
 // TODO: if enough lines, one line for each team
 
-use crate::engines::ServerData;
-use crossterm::event::KeyEvent;
+use crate::{engines::ServerData, Message};
 use itertools::Itertools as _;
 use ratatui::{
     crossterm::event::KeyCode,
@@ -18,13 +17,8 @@ use shared::{
     position::Direction,
     resource::{Resource, Stone, NOURRITURE_COLOR},
 };
-use std::{collections::BTreeMap, time::Duration};
-use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
-
-pub const NORTH_EMOJI: &'static str = "^";
-pub const EAST_EMOJI: &'static str = ">";
-pub const SOUTH_EMOJI: &'static str = "v";
-pub const WEST_EMOJI: &'static str = "<";
+use std::collections::BTreeMap;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 fn zappy_to_ratatui_color(color: ZappyColor) -> RatatuiColor {
     match color {
@@ -45,12 +39,13 @@ fn zappy_to_ratatui_color(color: ZappyColor) -> RatatuiColor {
     }
 }
 
+// TODO: char
 fn direction_to_emoji(direction: &Direction) -> &'static str {
     match direction {
-        Direction::North => NORTH_EMOJI,
-        Direction::East => EAST_EMOJI,
-        Direction::South => SOUTH_EMOJI,
-        Direction::West => WEST_EMOJI,
+        Direction::North => "^",
+        Direction::East => ">",
+        Direction::South => "v",
+        Direction::West => "<",
     }
 }
 
@@ -265,29 +260,39 @@ fn draw_players_bar(data: &ServerData, frame: &mut Frame, area: Rect) {
 }
 
 pub async fn render(
-    mut event_rx: Receiver<KeyEvent>,
-    mut data_rx: UnboundedReceiver<ServerData>,
+    mut data_rx: UnboundedReceiver<Message>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = ratatui::init();
 
     loop {
-        tokio::select! {
-            Some(key) = event_rx.recv() => { // event::read()? https://ratatui.rs/tutorials/json-editor/closing-thoughts/
-                if key.code == KeyCode::Esc || key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q') {
+        let message = match data_rx.recv().await {
+            Some(message) => message,
+            None => {
+                eprintln!("None in recv ????");
+                continue;
+            }
+        };
+        match message {
+            Message::Disconnect => todo!(),
+            Message::KeyEvent(key) => {
+                if key.code == KeyCode::Esc
+                    || key.code == KeyCode::Char('q')
+                    || key.code == KeyCode::Char('Q')
+                {
                     break;
                 }
             }
-            Some(new_data) = data_rx.recv() => {
-                terminal.clear()?;
+            Message::Data(new_data) => {
+                terminal.clear()?; // TODO Test on connect ?
                 terminal.draw(|frame| {
-                    let layout = Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
-                        .split(frame.area());
+                    let layout =
+                        Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
+                            .split(frame.area());
 
-                        draw_field(&new_data, frame, layout[0]);
-                        draw_players_bar(&new_data, frame, layout[1]);
+                    draw_field(&new_data, frame, layout[0]);
+                    draw_players_bar(&new_data, frame, layout[1]);
                 })?;
             }
-            _ = tokio::time::sleep(Duration::from_millis(50)) => {} // TODO: check best sleep
         }
     }
     ratatui::restore();

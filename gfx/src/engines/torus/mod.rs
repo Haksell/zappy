@@ -10,6 +10,8 @@ mod mesh;
 mod server_link;
 mod texture;
 
+use crate::Message;
+
 use super::ServerData;
 use bevy::{
     app::App,
@@ -60,9 +62,7 @@ impl Default for TorusTransform {
 #[derive(Component, Debug)]
 struct Torus;
 
-pub async fn render(
-    data_rx: UnboundedReceiver<ServerData>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn render(data_rx: UnboundedReceiver<Message>) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {

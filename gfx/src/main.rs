@@ -1,18 +1,25 @@
 use crate::engines::ServerData;
 use clap::Parser;
-use crossterm::event::{self, Event};
+use crossterm::event::{self, Event, KeyEvent};
 use engines::Engine;
 use serde_json::{from_str, Value};
 use shared::map::Map;
 use shared::player::Player;
 use shared::GFX_PORT;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::time::Duration;
 
 mod engines;
+
+enum Message {
+    Disconnect,
+    KeyEvent(KeyEvent),
+    Data(ServerData),
+}
 
 #[derive(Parser, Debug)]
 #[command(name = "gfx", about, long_about = None, about = "Graphical client for zappy.")]
@@ -31,26 +38,29 @@ struct Args {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    let (event_tx, event_rx) = mpsc::channel(100); // TODO see console.rs 275
     let (data_tx, data_rx) = mpsc::unbounded_channel();
+    let data_tx = Arc::new(data_tx);
 
-    tokio::spawn(async move {
-        loop {
-            let poll = tokio::task::spawn_blocking(|| event::poll(Duration::from_millis(500)))
-                .await
-                .unwrap();
+    if args.engine == Engine::Console {
+        let key_tx = Arc::clone(&data_tx);
+        tokio::spawn(async move {
+            loop {
+                let poll = tokio::task::spawn_blocking(|| event::poll(Duration::from_millis(500)))
+                    .await
+                    .unwrap();
 
-            if let Ok(true) = poll {
-                let evt = tokio::task::spawn_blocking(|| event::read()).await.unwrap();
-                if let Ok(Event::Key(key)) = evt {
-                    if event_tx.send(key).await.is_err() {
-                        break;
+                if let Ok(true) = poll {
+                    let evt = tokio::task::spawn_blocking(|| event::read()).await.unwrap();
+                    if let Ok(Event::Key(key)) = evt {
+                        if key_tx.send(Message::KeyEvent(key)).is_err() {
+                            break;
+                        }
                     }
                 }
+                tokio::time::sleep(Duration::from_millis(500)).await;
             }
-            tokio::time::sleep(Duration::from_millis(500)).await;
-        }
-    });
+        });
+    }
 
     tokio::spawn(async move {
         loop {
@@ -70,7 +80,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 let teams: Result<BTreeMap<String, usize>, _> =
                                     serde_json::from_value(json_data["teams"].clone());
                                 if let (Ok(map), Ok(players), Ok(teams)) = (map, players, teams) {
-                                    if data_tx.send(ServerData::new(map, players, teams)).is_err() {
+                                    if data_tx
+                                        .send(Message::Data(ServerData::new(map, players, teams)))
+                                        .is_err()
+                                    {
                                         break;
                                     }
                                 } else {
@@ -83,12 +96,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     eprintln!("Connection lost, retrying...");
                 }
                 Err(e) => {
+                    let _ = data_tx.send(Message::Disconnect);
                     eprintln!("Failed to connect: {}, retrying in 1 second...", e);
                 }
             }
+            println!("??????");
             tokio::time::sleep(Duration::from_secs(1)).await;
         }
     });
 
-    args.engine.render(event_rx, data_rx).await
+    args.engine.render(data_rx).await
 }
