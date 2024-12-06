@@ -47,7 +47,6 @@ async fn handle_streaming_client(
         };
 
         if current_state != last_state {
-            println!("{}", serde_json::to_string(&current_state).unwrap());
             let serialized_state = match serde_json::to_string(&current_state) {
                 Ok(json) => json,
                 Err(err) => {

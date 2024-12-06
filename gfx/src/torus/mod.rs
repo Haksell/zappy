@@ -1,5 +1,5 @@
 // TODO: share most of the code with 2D bevy Renderer
-// TODO: button to swap main axis (probably a bad idea)
+// TODO: button to swap main axis (probably a bad idea, or just take min/max)
 // TODO: button to switch from 2D to torus and vice-versa?
 // TODO: ESPAAAAAAAAAACE
 
