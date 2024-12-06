@@ -44,8 +44,7 @@ impl Default for TorusTransform {
         Self {
             shift_minor: 0.,
             shift_major: 0.,
-            // TODO: next two values depend on grid size
-            minor_radius: 0.42,
+            minor_radius: 0.5,
             subdiv_idx: 4,
             rotate_x: 0.,
             rotate_y: 0.,
