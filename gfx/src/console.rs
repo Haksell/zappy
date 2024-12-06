@@ -60,15 +60,16 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
     spans.extend(vec![Span::styled("N", nourriture_style); nourriture]);
 
     // Add resource spans
-    for (i, &count) in stones.iter().enumerate() {
-        if count == 0 {
+    for (i, &cnt) in stones.iter().enumerate() {
+        if cnt == 0 {
             continue;
         }
 
-        let color = ZappyColor::idx(i);
-        let style = Style::default().fg(zappy_to_ratatui_color(color)).bold();
-        let char = Resource::try_from(i).unwrap().alias();
-        let resource_str = char.to_string().repeat(count);
+        let resource = Resource::try_from(i).unwrap();
+        let style = Style::default()
+            .fg(zappy_to_ratatui_color(resource.color()))
+            .bold();
+        let resource_str = resource.alias().to_string().repeat(cnt);
         spans.push(Span::styled(resource_str, style));
     }
 
@@ -80,18 +81,16 @@ fn map_stones_to_vec_span(resources: &[usize; Stone::SIZE]) -> Vec<Span> {
         .iter()
         .enumerate()
         .map(|(i, &cnt)| {
-            let c = Resource::try_from(i).unwrap().alias();
-            let resource_str = (0..cnt).map(|_| c).collect::<String>();
-            if !resource_str.is_empty() {
-                Span::styled(
-                    resource_str,
-                    Style::default()
-                        .fg(zappy_to_ratatui_color(ZappyColor::idx(i)))
-                        .bold(),
-                )
-            } else {
-                Span::raw("")
+            if cnt == 0 {
+                return Span::raw("");
             }
+            let resource = Resource::try_from(i).unwrap();
+            Span::styled(
+                resource.alias().to_string().repeat(cnt),
+                Style::default()
+                    .fg(zappy_to_ratatui_color(resource.color()))
+                    .bold(),
+            )
         })
         .collect::<Vec<Span>>()
 }

@@ -1,6 +1,6 @@
 use derive_getters::Getters;
 use shared::{
-    color::ZappyColor,
+    color::ZAPPY_COLORS,
     commands::PlayerCmd,
     map::Map,
     player::Player,
@@ -46,10 +46,9 @@ impl GameEngine {
                         .or_insert((0, 0))
                         .1 += 1;
                 }
-                let color = ZappyColor::idx(i);
                 (
                     team_name.clone(),
-                    Team::new(team_name.clone(), color, spawn_positions),
+                    Team::new(team_name.clone(), ZAPPY_COLORS[i], spawn_positions),
                 )
             })
             .collect();

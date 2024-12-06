@@ -74,7 +74,14 @@ impl Stone {
     }
 
     pub fn color(&self) -> ZappyColor {
-        ZappyColor::idx(*self as usize)
+        match self {
+            Stone::Deraumere => ZappyColor::Red,
+            Stone::Linemate => ZappyColor::Green,
+            Stone::Mendiane => ZappyColor::Yellow,
+            Stone::Phiras => ZappyColor::Blue,
+            Stone::Sibur => ZappyColor::Magenta,
+            Stone::Thystame => ZappyColor::Cyan,
+        }
     }
 }
 
@@ -133,6 +140,13 @@ impl Resource {
             Resource::Stone(Stone::Sibur) => (0.5, 0.85),
             Resource::Stone(Stone::Thystame) => (0.85, 0.85),
             Resource::Nourriture => (0.5, 0.5),
+        }
+    }
+
+    pub fn color(&self) -> ZappyColor {
+        match self {
+            Resource::Stone(stone) => stone.color(),
+            Resource::Nourriture => NOURRITURE_COLOR,
         }
     }
 }
