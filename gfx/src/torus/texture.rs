@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::LazyLock;
 
+const BLACKISH: u8 = 17;
 pub const TORUS_TEXTURE_SIZE: usize = 1024;
 pub const SVG_SIZE: usize = 1024;
 
@@ -62,35 +63,10 @@ fn blend_pixmap_with_texture(
 ) {
     let pixmap_data = pixmap.data();
 
-    // for y in 0..SVG_SIZE {
-    //     for x in 0..SVG_SIZE {
-    //         let tex_index = ((y + start_y) * TORUS_TEXTURE_SIZE + x + start_x) * 4;
-    //         let pixmap_index = (y * pixmap.width() as usize + x) * 4;
-
-    //         if pixmap_index < pixmap_data.len() && tex_index < data.len() {
-    //             let (r, g, b, a) = (
-    //                 pixmap_data[pixmap_index],
-    //                 pixmap_data[pixmap_index + 1],
-    //                 pixmap_data[pixmap_index + 2],
-    //                 pixmap_data[pixmap_index + 3],
-    //             );
-
-    //             let alpha = a as f32 / 255.;
-    //             data[tex_index] = lerp(data[tex_index] as f32, r as f32, alpha) as u8;
-    //             data[tex_index + 1] = lerp(data[tex_index + 1] as f32, g as f32, alpha) as u8;
-    //             data[tex_index + 2] = lerp(data[tex_index + 2] as f32, b as f32, alpha) as u8;
-    //             data[tex_index + 3] = 255;
-    //         }
-    //     }
-    // }
-
-    // TODO: if width or height is 1, take resource color
-
     for y in start_y..end_y {
         for x in start_x..end_x {
             let tex_index = (y * TORUS_TEXTURE_SIZE + x) * 4;
 
-            // TODO: fix centering
             let pixmap_y = (y - start_y) * pixmap.height() as usize / (end_y - start_y);
             let pixmap_x = (x - start_x) * pixmap.width() as usize / (end_x - start_x);
             let pixmap_index = (pixmap_y * pixmap.width() as usize + pixmap_x) * 4;
@@ -152,7 +128,11 @@ fn fill_texture(data: &mut [u8], game_state: &Option<GameState>) {
                     let start_x = map_x * TORUS_TEXTURE_SIZE / w;
                     let end_x = (map_x + 1) * TORUS_TEXTURE_SIZE / w;
                     let cell_range = ((start_x, end_x), (start_y, end_y));
-                    let bgcolor = if map_y & 1 == map_x & 1 { 255 } else { 0 };
+                    let bgcolor = if map_y & 1 == map_x & 1 {
+                        255
+                    } else {
+                        BLACKISH
+                    };
                     fill_background(data, cell_range, (bgcolor, bgcolor, bgcolor));
                     let cell = &game_state.map.field[map_y][map_x];
                     fill_cell(data, cell, cell_range);
