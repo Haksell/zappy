@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::{Options, Tree};
 use shared::resource::{Resource, Stone};
+use shared::utils::lerp;
 use shared::{color::RGB, map::Cell, GameState};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
@@ -74,12 +75,10 @@ fn blend_pixmap_with_texture(
                     pixmap_data[pixmap_index + 3],
                 );
 
-                let alpha = a as f32 / 255.0;
-                data[tex_index] = (data[tex_index] as f32 * (1.0 - alpha) + r as f32 * alpha) as u8;
-                data[tex_index + 1] =
-                    (data[tex_index + 1] as f32 * (1.0 - alpha) + g as f32 * alpha) as u8;
-                data[tex_index + 2] =
-                    (data[tex_index + 2] as f32 * (1.0 - alpha) + b as f32 * alpha) as u8;
+                let alpha = a as f32 / 255.;
+                data[tex_index] = lerp(data[tex_index] as f32, r as f32, alpha) as u8;
+                data[tex_index + 1] = lerp(data[tex_index + 1] as f32, g as f32, alpha) as u8;
+                data[tex_index + 2] = lerp(data[tex_index + 2] as f32, b as f32, alpha) as u8;
                 data[tex_index + 3] = 255;
             }
         }
