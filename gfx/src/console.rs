@@ -16,7 +16,7 @@ use shared::{
     player::Player,
     position::Direction,
     resource::{Resource, Stone, NOURRITURE_COLOR},
-    GameState,
+    GFXData,
 };
 use std::collections::BTreeMap;
 use tokio::sync::mpsc::UnboundedReceiver;
@@ -123,7 +123,7 @@ fn eggs_to_span(eggs: (usize, usize), color: Color) -> Span<'static> {
     Span::styled(s, Style::default().fg(color))
 }
 
-fn draw_field(data: &GameState, frame: &mut Frame, area: Rect) {
+fn draw_field(data: &GFXData, frame: &mut Frame, area: Rect) {
     let rows = Layout::vertical(vec![
         Constraint::Ratio(1, *data.map.height() as u32);
         *data.map.height()
@@ -183,7 +183,7 @@ fn draw_field(data: &GameState, frame: &mut Frame, area: Rect) {
     }
 }
 
-fn draw_players_bar(data: &GameState, frame: &mut Frame, area: Rect) {
+fn draw_players_bar(data: &GFXData, frame: &mut Frame, area: Rect) {
     let block = Block::default()
         .title("Players Stats")
         .borders(Borders::ALL);

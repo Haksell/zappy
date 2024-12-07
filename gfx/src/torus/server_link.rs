@@ -1,6 +1,6 @@
 use crate::Message;
 use bevy::prelude::*;
-use shared::GameState;
+use shared::GFXData;
 use std::{
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -14,7 +14,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 #[derive(Resource)]
 pub struct ServerLink {
     pub data_rx: Arc<Mutex<UnboundedReceiver<Message>>>,
-    pub game_state: Arc<Mutex<Option<GameState>>>,
+    pub game_state: Arc<Mutex<Option<GFXData>>>,
     pub update: Arc<AtomicBool>,
 }
 

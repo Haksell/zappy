@@ -20,13 +20,13 @@ use std::{
 pub const PROJECT_NAME: &'static str = "zappy";
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct GameState {
+pub struct GFXData {
     pub map: Map,
     pub players: BTreeMap<u16, Player>,
     pub teams: BTreeMap<String, (ZappyColor, usize)>,
 }
 
-impl GameState {
+impl GFXData {
     pub fn new(
         map: Map,
         players: BTreeMap<u16, Player>,

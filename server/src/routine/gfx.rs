@@ -1,5 +1,5 @@
 use crate::game_engine::GameEngine;
-use shared::GameState;
+use shared::GFXData;
 use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
@@ -28,14 +28,14 @@ async fn handle_streaming_client(
     server: Arc<Mutex<GameEngine>>,
     mut socket: TcpStream,
 ) -> std::io::Result<()> {
-    let mut last_state = GameState::default();
+    let mut last_state = GFXData::default();
 
     loop {
         tokio::time::sleep(Duration::from_millis(20)).await;
 
         let current_state = {
             let server_lock = server.lock().await;
-            GameState::new(
+            GFXData::new(
                 server_lock.map().clone(),
                 server_lock.players().clone(),
                 server_lock

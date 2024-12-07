@@ -5,7 +5,7 @@ use clap::Parser;
 use clap::ValueEnum;
 use crossterm::event::{self, Event, KeyEvent};
 use serde_json::from_str;
-use shared::{GameState, GFX_PORT};
+use shared::{GFXData, GFX_PORT};
 use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -17,7 +17,7 @@ use tokio::time::Duration;
 enum Message {
     Disconnect,
     KeyEvent(KeyEvent),
-    State(GameState),
+    State(GFXData),
 }
 
 #[derive(Parser, Debug)]
@@ -88,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut lines = reader.lines();
 
                     while let Ok(Some(line)) = lines.next_line().await {
-                        match from_str::<GameState>(&line) {
+                        match from_str::<GFXData>(&line) {
                             Ok(new_state) => {
                                 if data_tx.send(Message::State(new_state)).is_err() {
                                     break;

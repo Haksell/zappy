@@ -5,7 +5,7 @@ use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::{Options, Tree};
 use shared::resource::{Resource, Stone};
 use shared::utils::lerp;
-use shared::{color::RGB, map::Cell, GameState};
+use shared::{color::RGB, map::Cell, GFXData};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::LazyLock;
@@ -138,7 +138,7 @@ pub fn fill_disconnected(data: &mut [u8]) {
     fill_background(data, TORUS_INTERVAL, DISCONNECTED_COLOR);
 }
 
-fn fill_texture(data: &mut [u8], game_state: &Option<GameState>, blackish: RGB) {
+fn fill_texture(data: &mut [u8], game_state: &Option<GFXData>, blackish: RGB) {
     match &game_state {
         None => fill_disconnected(data),
         Some(game_state) => {
