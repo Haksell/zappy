@@ -23,8 +23,10 @@ use bevy::{
 use events::{handle_keyboard, handle_mouse_wheel};
 use mesh::{fill_torus_mesh, update_torus_mesh};
 use server_link::{network_setup, ServerLink};
-use shared::{color::RGB, utils::lerp, PROJECT_NAME};
-use texture::{fill_disconnected, update_texture, TORUS_TEXTURE_SIZE};
+use shared::{color::RGBA, utils::lerp, PROJECT_NAME};
+use texture::{
+    fill_background, fill_disconnected, update_texture, TORUS_INTERVAL, TORUS_TEXTURE_SIZE,
+};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 const SUBDIVISIONS: &[u16] = &[8, 13, 21, 34, 55, 89, 144, 233];
@@ -37,7 +39,7 @@ struct TorusTransform {
     subdiv_idx: usize,
     rotate_x: f32,
     rotate_y: f32,
-    blackish: RGB,
+    blackish: RGBA,
 }
 
 impl Default for TorusTransform {
@@ -49,7 +51,7 @@ impl Default for TorusTransform {
             subdiv_idx: 4,
             rotate_x: 0.,
             rotate_y: 0.,
-            blackish: (100, 100, 100),
+            blackish: (100, 100, 100, 255),
         }
     }
 }
@@ -63,11 +65,20 @@ impl TorusTransform {
     }
 }
 
-#[derive(Component, Debug)]
-struct Torus;
+#[derive(Component, Debug, PartialEq)]
+struct Torus {
+    level: usize,
+}
 
-#[derive(Component, Debug)]
-struct Layer;
+impl Torus {
+    fn new(level: usize) -> Self {
+        Self { level }
+    }
+
+    fn proportion(&self) -> f32 {
+        self.level as f32 * 0.09
+    }
+}
 
 pub async fn render(data_rx: UnboundedReceiver<Message>) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
@@ -158,42 +169,46 @@ fn setup(
         material: materials.add(material),
         ..Default::default()
     };
-    commands.spawn((pbr, Torus));
+    commands.spawn((pbr, Torus::new(0)));
 
-    // FIRST LAYER
+    // LAYERS
 
-    let mut first_layer = Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
-    );
-    fill_torus_mesh(&mut first_layer, &torus_transform.higher_radius(0.2));
+    for layer in 1..10 {
+        let mut first_layer = Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::default(),
+        );
+        fill_torus_mesh(&mut first_layer, &torus_transform.higher_radius(1.0));
 
-    let mut texture = Image::new(
-        Extent3d {
-            width: TORUS_TEXTURE_SIZE as u32,
-            height: TORUS_TEXTURE_SIZE as u32,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        vec![0; 4 * TORUS_TEXTURE_SIZE * TORUS_TEXTURE_SIZE],
-        TextureFormat::Rgba8UnormSrgb,
-        RenderAssetUsages::default(),
-    );
+        let mut texture = Image::new(
+            Extent3d {
+                width: TORUS_TEXTURE_SIZE as u32,
+                height: TORUS_TEXTURE_SIZE as u32,
+                depth_or_array_layers: 1,
+            },
+            TextureDimension::D2,
+            vec![0; 4 * TORUS_TEXTURE_SIZE * TORUS_TEXTURE_SIZE],
+            TextureFormat::Rgba8UnormSrgb,
+            RenderAssetUsages::default(),
+        );
+        fill_background(&mut texture.data, TORUS_INTERVAL, (255, 255, 255, 0));
 
-    texture.sampler = ImageSampler::nearest();
-    let texture_handle = images.add(texture);
+        texture.sampler = ImageSampler::nearest();
+        let texture_handle = images.add(texture);
 
-    let material = StandardMaterial {
-        base_color_texture: Some(texture_handle),
-        metallic: 0.5,
-        perceptual_roughness: 0.2,
-        ..Default::default()
-    };
+        let material = StandardMaterial {
+            base_color_texture: Some(texture_handle),
+            metallic: 0.5,
+            alpha_mode: AlphaMode::Blend,
+            cull_mode: None,
+            ..Default::default()
+        };
 
-    let pbr = PbrBundle {
-        mesh: meshes.add(first_layer),
-        material: materials.add(material),
-        ..Default::default()
-    };
-    commands.spawn((pbr, Layer));
+        let pbr = PbrBundle {
+            mesh: meshes.add(first_layer),
+            material: materials.add(material),
+            ..Default::default()
+        };
+        commands.spawn((pbr, Torus::new(layer)));
+    }
 }

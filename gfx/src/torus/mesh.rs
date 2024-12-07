@@ -58,14 +58,14 @@ pub fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &TorusTransform) {
 }
 
 pub fn update_torus_mesh(
-    query: Query<&Handle<Mesh>, With<Torus>>,
+    query: Query<(&Handle<Mesh>, &Torus)>,
     mut meshes: ResMut<Assets<Mesh>>,
     torus_transform: Res<TorusTransform>,
 ) {
     if torus_transform.is_changed() {
-        if let Ok(mesh_handle) = query.get_single() {
+        for (mesh_handle, torus) in &query {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
-                fill_torus_mesh(mesh, &*torus_transform);
+                fill_torus_mesh(mesh, &torus_transform.higher_radius(torus.proportion()));
             }
         }
     }

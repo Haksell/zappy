@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-pub type RGB = (u8, u8, u8);
+pub type RGBA = (u8, u8, u8, u8);
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ZappyColor {
