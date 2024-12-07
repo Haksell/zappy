@@ -24,6 +24,12 @@ impl Cell {
         }
     }
 
+    pub fn random_position(&self) -> CellPos {
+        // CellPos::random_spaced()
+        // self.players.iter().map(f)
+        CellPos::random() // TODO: random_spaced
+    }
+
     pub fn add_resource(&mut self, resource: Resource) {
         let pos = CellPos::random();
         match resource {
@@ -76,18 +82,6 @@ pub struct CellPos {
 }
 
 impl CellPos {
-    fn new(x: f32, y: f32, angle: f32) -> Self {
-        debug_assert!(x > 0.);
-        debug_assert!(x < 1.);
-        debug_assert!(y > 0.);
-        debug_assert!(y < 1.);
-        Self {
-            x,
-            y,
-            angle: angle.rem_euclid(TAU),
-        }
-    }
-
     pub fn random() -> Self {
         const PADDING: f32 = 0.08;
         let mut thread_rng = rand::thread_rng();
@@ -102,14 +96,11 @@ impl CellPos {
         (self.x - other.x).powi(2) + (self.y - other.y).powi(2)
     }
 
-    fn random_spaced(others: &[Self]) -> Self {
+    fn random_spaced<I: Iterator<Item = Self>>(others: &mut I) -> Self {
         let mut max_dist_squared = 1.0;
         loop {
             let pos = Self::random();
-            if others
-                .iter()
-                .all(|other| other.dist_squared(&pos) <= max_dist_squared)
-            {
+            if others.all(|other| other.dist_squared(&pos) <= max_dist_squared) {
                 return pos;
             }
             max_dist_squared *= 0.99;

@@ -8,6 +8,7 @@ pub mod position;
 pub mod resource;
 pub mod team;
 
+use cell::CellPos;
 use color::ZappyColor;
 use map::Map;
 use player::Player;
@@ -167,6 +168,7 @@ impl Display for ServerResponse {
 pub struct Egg {
     pub team_name: String,
     pub position: Position,
+    pub cell_position: CellPos,
 }
 
 pub const HANDSHAKE_MSG: &'static str = "BIENVENUE\n";

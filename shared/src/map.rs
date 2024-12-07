@@ -47,7 +47,7 @@ impl Map {
     pub fn add_player(&mut self, id: u16, team_name: &str, position: &Position) {
         log::debug!("Adding {} to the game field.", id);
         let cell = &mut self.field[position.y][position.x];
-        cell.players.insert(id, CellPos::random()); // TODO
+        cell.players.insert(id, cell.random_position()); // TODO
         cell.eggs.get_mut(team_name).unwrap().1 -= 1;
     }
 
