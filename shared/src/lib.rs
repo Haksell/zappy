@@ -1,11 +1,11 @@
 pub mod color;
 pub mod commands;
 pub mod map;
+pub mod math;
 pub mod player;
 pub mod position;
 pub mod resource;
 pub mod team;
-pub mod utils;
 
 use color::ZappyColor;
 use map::Map;

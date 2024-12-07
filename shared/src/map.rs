@@ -3,15 +3,59 @@ use crate::resource::{Resource, Stone};
 use derive_getters::Getters;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::array;
+use std::collections::{BTreeMap, VecDeque};
 
 //TODO: change fields to private?
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Cell {
-    pub players: BTreeSet<u16>,
-    pub stones: [usize; Stone::SIZE],
-    pub nourriture: usize,
+    pub players: BTreeMap<u16, (Pos2D, Direction)>,
+    pub stones: [VecDeque<Pos2D>; Stone::SIZE],
+    pub nourriture: VecDeque<Pos2D>,
     pub eggs: BTreeMap<String, (usize, usize)>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct Pos2D {
+    x: f32,
+    y: f32,
+}
+
+impl Pos2D {
+    fn new(x: f32, y: f32) -> Self {
+        debug_assert!(x > 0.);
+        debug_assert!(x < 1.);
+        debug_assert!(y > 0.);
+        debug_assert!(y < 1.);
+        Self { x, y }
+    }
+
+    fn random() -> Self {
+        const PADDING: f32 = 0.08;
+        let mut thread_rng = rand::thread_rng();
+        Self {
+            x: thread_rng.gen_range(PADDING..=1. - PADDING),
+            y: thread_rng.gen_range(PADDING..=1. - PADDING),
+        }
+    }
+
+    fn dist_squared(&self, other: &Self) -> f32 {
+        (self.x - other.x).powi(2) + (self.y - other.y).powi(2)
+    }
+
+    fn random_spaced(others: &[Self]) -> Self {
+        let mut max_dist_squared = 1.0;
+        loop {
+            let pos = Self::random();
+            if others
+                .iter()
+                .all(|other| other.dist_squared(&pos) <= max_dist_squared)
+            {
+                return pos;
+            }
+            max_dist_squared *= 0.99;
+        }
+    }
 }
 
 //TODO: change fields to private?
@@ -26,42 +70,35 @@ pub struct Map {
 impl Cell {
     pub fn new() -> Self {
         Self {
-            players: BTreeSet::new(),
-            stones: [0; Stone::SIZE],
+            players: BTreeMap::new(),
+            stones: array::from_fn(|_| VecDeque::new()),
             eggs: BTreeMap::new(),
-            nourriture: 0,
+            nourriture: VecDeque::new(),
         }
     }
 
     pub fn add_resource(&mut self, resource: Resource) {
+        let pos = Pos2D::random();
         match resource {
-            Resource::Stone(stone) => self.stones[stone.index()] += 1,
-            Resource::Nourriture => self.nourriture += 1,
+            Resource::Stone(stone) => self.stones[stone.index()].push_back(pos),
+            Resource::Nourriture => self.nourriture.push_back(pos),
         }
     }
 
     pub fn remove_resource(&mut self, resource: &Resource) -> bool {
-        let count = match resource {
-            Resource::Stone(stone) => &mut self.stones[stone.index()],
-            Resource::Nourriture => &mut self.nourriture,
-        };
-
-        if *count == 0 {
-            false
-        } else {
-            *count -= 1;
-            true
+        match resource {
+            Resource::Stone(stone) => self.stones[stone.index()].pop_front().is_some(),
+            Resource::Nourriture => self.nourriture.pop_front().is_some(),
         }
     }
 
     pub fn get_resources_copy(&self) -> Vec<Resource> {
-        let mut res = Vec::with_capacity(self.nourriture + self.stones.iter().sum::<usize>());
-        res.extend(std::iter::repeat(Resource::Nourriture).take(self.nourriture));
-        for (stone_idx, &count) in self.stones.iter().enumerate() {
-            if count > 0 {
-                let stone = Resource::try_from(stone_idx).unwrap();
-                res.extend(std::iter::repeat(stone).take(count));
-            }
+        let capacity = self.nourriture.len() + self.stones.iter().map(VecDeque::len).sum::<usize>();
+        let mut res = Vec::with_capacity(capacity);
+        res.extend(std::iter::repeat(Resource::Nourriture).take(self.nourriture.len()));
+        for (stone_idx, positions) in self.stones.iter().enumerate() {
+            let stone = Resource::try_from(stone_idx).unwrap();
+            res.extend(std::iter::repeat(stone).take(positions.len()));
         }
 
         res

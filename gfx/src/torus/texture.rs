@@ -3,12 +3,14 @@ use super::{server_link::ServerLink, Torus};
 use bevy::prelude::*;
 use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::{Options, Tree};
+use shared::math::lerp;
 use shared::resource::{Resource, Stone};
-use shared::utils::lerp;
 use shared::{color::RGB, map::Cell, GFXData};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::LazyLock;
+
+type Interval2D = ((usize, usize), (usize, usize));
 
 pub const TORUS_TEXTURE_SIZE: usize = 2048;
 pub const TORUS_INTERVAL: Interval2D = ((0, TORUS_TEXTURE_SIZE), (0, TORUS_TEXTURE_SIZE));
@@ -48,8 +50,6 @@ static SVGS: LazyLock<HashMap<Resource, Pixmap>> = LazyLock::new(|| {
     .map(|&r| (r, load_svg(&format!("gfx/assets/{}.svg", r.alias()))))
     .collect()
 });
-
-type Interval2D = ((usize, usize), (usize, usize));
 
 fn write_pixel(data: &mut [u8], x: usize, y: usize, (r, g, b): RGB) {
     data[(y * TORUS_TEXTURE_SIZE + x) * 4] = r;
