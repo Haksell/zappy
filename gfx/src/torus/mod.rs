@@ -23,7 +23,7 @@ use bevy::{
 use events::{handle_keyboard, handle_mouse_wheel};
 use mesh::{fill_torus_mesh, update_torus_mesh};
 use server_link::{network_setup, ServerLink};
-use shared::{color::RGB, PROJECT_NAME};
+use shared::{color::RGB, utils::lerp, PROJECT_NAME};
 use texture::{fill_disconnected, update_texture, TORUS_TEXTURE_SIZE};
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -54,8 +54,20 @@ impl Default for TorusTransform {
     }
 }
 
+impl TorusTransform {
+    fn higher_radius(&self, proportion: f32) -> Self {
+        Self {
+            minor_radius: lerp(self.minor_radius, 1., proportion),
+            ..*self
+        }
+    }
+}
+
 #[derive(Component, Debug)]
 struct Torus;
+
+#[derive(Component, Debug)]
+struct Layer;
 
 pub async fn render(data_rx: UnboundedReceiver<Message>) -> Result<(), Box<dyn std::error::Error>> {
     App::new()
@@ -147,4 +159,41 @@ fn setup(
         ..Default::default()
     };
     commands.spawn((pbr, Torus));
+
+    // FIRST LAYER
+
+    let mut first_layer = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+    fill_torus_mesh(&mut first_layer, &torus_transform.higher_radius(0.2));
+
+    let mut texture = Image::new(
+        Extent3d {
+            width: TORUS_TEXTURE_SIZE as u32,
+            height: TORUS_TEXTURE_SIZE as u32,
+            depth_or_array_layers: 1,
+        },
+        TextureDimension::D2,
+        vec![0; 4 * TORUS_TEXTURE_SIZE * TORUS_TEXTURE_SIZE],
+        TextureFormat::Rgba8UnormSrgb,
+        RenderAssetUsages::default(),
+    );
+
+    texture.sampler = ImageSampler::nearest();
+    let texture_handle = images.add(texture);
+
+    let material = StandardMaterial {
+        base_color_texture: Some(texture_handle),
+        metallic: 0.5,
+        perceptual_roughness: 0.2,
+        ..Default::default()
+    };
+
+    let pbr = PbrBundle {
+        mesh: meshes.add(first_layer),
+        material: materials.add(material),
+        ..Default::default()
+    };
+    commands.spawn((pbr, Layer));
 }
