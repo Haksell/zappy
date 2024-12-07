@@ -121,12 +121,14 @@ fn calc_interval(
 
 fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
     // TODO: for each nourriture and resource, take a random x and y in the interval and draw circle of appropriate color
-    if cell.nourriture > 0 {
+    // TODO: accept several of same type
+    // TODO: in GFXData, mix stone count and nourriture count
+    if !cell.nourriture.is_empty() {
         let nourriture_interval = calc_interval(interval, Resource::Nourriture);
         blend_pixmap_with_texture(data, &SVGS[&Resource::Nourriture], nourriture_interval);
     }
-    for (i, &cnt) in cell.stones.iter().enumerate() {
-        if cnt > 0 {
+    for (i, cnt) in cell.stones.iter().enumerate() {
+        if !cnt.is_empty() {
             let resource = Resource::try_from(i).unwrap();
             let resource_interval = calc_interval(interval, resource);
             blend_pixmap_with_texture(data, &SVGS[&resource], resource_interval);

@@ -3,10 +3,10 @@ use derive_getters::Getters;
 use shared::{
     color::ZAPPY_COLORS,
     commands::PlayerCmd,
-    map::Map,
+    map::{CellPos, Map},
     player::Player,
     position::{Direction, Position, Side},
-    resource::{Resource, StoneSetOperations},
+    resource::Resource,
     team::Team,
     Egg,
     NetworkError::IsNotConnectedToServer,
@@ -75,7 +75,7 @@ impl GameEngine {
             .remove(player.id());
         self.map.field[player.position().y][player.position().x]
             .players
-            .insert(*player.id());
+            .insert(*player.id(), CellPos::random());
     }
 
     fn apply_cmd(&mut self, player_id: u16, command: &PlayerCmd) -> Vec<(u16, ServerResponse)> {
@@ -183,7 +183,7 @@ impl GameEngine {
                     let player = self.players.get(&player_id).unwrap();
                     let ids: Vec<u16> = self.map.field[player.position().y][player.position().x]
                         .players
-                        .iter()
+                        .keys()
                         .filter_map(|&id| if id != player_id { Some(id) } else { None })
                         .collect();
                     (ids, player.position().dir)
@@ -224,7 +224,7 @@ impl GameEngine {
                 }
                 let same_lvl_players = self.map.field[position.y][position.x]
                     .players
-                    .iter()
+                    .keys()
                     .filter_map(|&lvl| {
                         let other = self.players.get(&lvl).unwrap();
                         if *other.level() == *player.level()
@@ -238,7 +238,6 @@ impl GameEngine {
                     .collect::<Vec<_>>();
                 if same_lvl_players.len() >= player.nxt_lvl_player_cnt_requirements()
                     && self.map.field[position.y][position.x]
-                        .stones
                         .reduce_current_from(player.nxt_lvl_stone_requirements())
                 {
                     same_lvl_players
@@ -486,8 +485,8 @@ mod game_engine_tests {
             .field
             .iter()
             .flatten()
-            .filter(|v| !v.players.contains(&player_id))
-            .map(|c| c.stones.iter().sum::<usize>() + c.nourriture)
+            .filter(|v| !v.players.contains_key(&player_id))
+            .map(|c| c.stones.iter().map(VecDeque::len).sum::<usize>() + c.nourriture.len())
             .sum::<usize>()
     }
 
@@ -677,7 +676,7 @@ mod game_engine_tests {
                     assert!(
                         game.map.field[player.position().y][player.position().x]
                             .players
-                            .contains(player.id()),
+                            .contains_key(player.id()),
                         "Should add a new player to the map"
                     );
                     assert_eq!(
@@ -839,7 +838,7 @@ mod game_engine_tests {
             assert!(
                 game.map.field[new_position.y][new_position.x]
                     .players
-                    .contains(&player_id),
+                    .contains_key(&player_id),
                 "Player should be present at new position"
             );
 
@@ -1290,11 +1289,12 @@ mod game_engine_tests {
                 .iter()
                 .zip(result)
                 .all(|(a, b)| a.0 == b.0 && a.1 == *b.1));
-            assert_eq!(
-                game.map.field[position.y][position.x].stones,
-                final_cell_content
-            );
-            assert_eq!(game.map.field[position.y][position.x].nourriture, 0);
+            assert!(game.map.field[position.y][position.x]
+                .stones
+                .iter()
+                .zip(final_cell_content.iter())
+                .all(|(a, &b)| a.len() == b));
+            assert!(game.map.field[position.y][position.x].nourriture.is_empty());
             assert_eq!(player_under_test.inventory(), &final_inventory);
             assert_eq!(resources_sum_on_other_cell(&player_under_test_id, &game), 0);
         }
@@ -1352,17 +1352,13 @@ mod game_engine_tests {
             //Then
             let player_under_test = game.players.get(&player_under_test_id).unwrap();
             assert_eq!(
-                game.map.field[position.y][position.x].nourriture,
+                game.map.field[position.y][position.x].nourriture.len(),
                 final_cell_nourriture_count
             );
-            assert_eq!(
-                game.map.field[position.y][position.x]
-                    .stones
-                    .iter()
-                    .map(|v| *v as u64)
-                    .sum::<u64>(),
-                0
-            );
+            assert!(game.map.field[position.y][position.x]
+                .stones
+                .iter()
+                .all(VecDeque::is_empty));
             assert_eq!(resources_sum_on_other_cell(&player_under_test_id, &game), 0);
             assert_eq!(*player_under_test.remaining_life(), final_hp);
             assert_eq!(execution_results_buffer.len(), 1);

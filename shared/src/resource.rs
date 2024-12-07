@@ -1,26 +1,9 @@
+use crate::color::ZappyColor;
 use rand::{seq::SliceRandom as _, thread_rng};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
-use crate::color::ZappyColor;
-
 pub type StoneSet = [usize; Stone::SIZE];
-
-pub trait StoneSetOperations {
-    fn reduce_current_from(&mut self, other: &StoneSet) -> bool;
-}
-
-impl StoneSetOperations for StoneSet {
-    fn reduce_current_from(&mut self, other: &StoneSet) -> bool {
-        let has_enough_resources = self.iter().zip(other.iter()).all(|(a, b)| a >= b);
-        if has_enough_resources {
-            for (idx, count) in other.iter().enumerate() {
-                self[idx] -= count;
-            }
-        }
-        has_enough_resources
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Hash)]
 #[repr(u8)]

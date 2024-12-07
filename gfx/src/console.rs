@@ -13,12 +13,13 @@ use ratatui::{
 };
 use shared::{
     color::ZappyColor,
+    map::CellPos,
     player::Player,
     position::Direction,
     resource::{Resource, Stone, NOURRITURE_COLOR},
     GFXData,
 };
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 fn zappy_to_ratatui_color(color: ZappyColor) -> RatatuiColor {
@@ -49,7 +50,10 @@ fn direction_to_emoji(direction: &Direction) -> char {
     }
 }
 
-fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) -> Vec<Span> {
+fn map_resource_to_vec_span<'a>(
+    nourriture: &'a VecDeque<CellPos>,
+    stones: &'a [VecDeque<CellPos>; Stone::SIZE],
+) -> Vec<Span<'a>> {
     let mut spans = Vec::new();
 
     // Add nourriture spans
@@ -57,11 +61,11 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
     let nourriture_style = Style::default()
         .fg(zappy_to_ratatui_color(nourriture_color))
         .bold();
-    spans.extend(vec![Span::styled("N", nourriture_style); nourriture]);
+    spans.extend(vec![Span::styled("N", nourriture_style); nourriture.len()]);
 
     // Add resource spans
-    for (i, &cnt) in stones.iter().enumerate() {
-        if cnt == 0 {
+    for (i, cnt) in stones.iter().enumerate() {
+        if cnt.is_empty() {
             continue;
         }
 
@@ -69,7 +73,7 @@ fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) ->
         let style = Style::default()
             .fg(zappy_to_ratatui_color(resource.color()))
             .bold();
-        let resource_str = resource.alias().to_string().repeat(cnt);
+        let resource_str = resource.alias().to_string().repeat(cnt.len());
         spans.push(Span::styled(resource_str, style));
     }
 
@@ -143,7 +147,7 @@ fn draw_field(data: &GFXData, frame: &mut Frame, area: Rect) {
         for x in 0..*data.map.width() {
             let col = cols.next().unwrap();
             let cell = &data.map.field[y][x];
-            let mapped_map_resources = map_resource_to_vec_span(cell.nourriture, &cell.stones);
+            let mapped_map_resources = map_resource_to_vec_span(&cell.nourriture, &cell.stones);
             let mapped_eggs = cell
                 .eggs
                 .iter()
@@ -154,7 +158,7 @@ fn draw_field(data: &GFXData, frame: &mut Frame, area: Rect) {
                 .collect::<Vec<_>>();
             let mapped_player = cell
                 .players
-                .iter()
+                .keys()
                 .sorted()
                 .map(|p| {
                     let player = data.players.get(p).unwrap();

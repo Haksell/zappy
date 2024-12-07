@@ -1,41 +1,48 @@
 use crate::position::{Direction, Position};
-use crate::resource::{Resource, Stone};
+use crate::resource::{Resource, Stone, StoneSet};
 use derive_getters::Getters;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::array;
 use std::collections::{BTreeMap, VecDeque};
+use std::f32::consts::TAU;
 
 //TODO: change fields to private?
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Cell {
-    pub players: BTreeMap<u16, (Pos2D, Direction)>,
-    pub stones: [VecDeque<Pos2D>; Stone::SIZE],
-    pub nourriture: VecDeque<Pos2D>,
+    pub players: BTreeMap<u16, CellPos>,
+    pub stones: [VecDeque<CellPos>; Stone::SIZE],
+    pub nourriture: VecDeque<CellPos>,
     pub eggs: BTreeMap<String, (usize, usize)>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct Pos2D {
+pub struct CellPos {
     x: f32,
     y: f32,
+    angle: f32,
 }
 
-impl Pos2D {
-    fn new(x: f32, y: f32) -> Self {
+impl CellPos {
+    fn new(x: f32, y: f32, angle: f32) -> Self {
         debug_assert!(x > 0.);
         debug_assert!(x < 1.);
         debug_assert!(y > 0.);
         debug_assert!(y < 1.);
-        Self { x, y }
+        Self {
+            x,
+            y,
+            angle: angle.rem_euclid(TAU),
+        }
     }
 
-    fn random() -> Self {
+    pub fn random() -> Self {
         const PADDING: f32 = 0.08;
         let mut thread_rng = rand::thread_rng();
         Self {
             x: thread_rng.gen_range(PADDING..=1. - PADDING),
             y: thread_rng.gen_range(PADDING..=1. - PADDING),
+            angle: thread_rng.gen_range(0.0..TAU),
         }
     }
 
@@ -78,7 +85,7 @@ impl Cell {
     }
 
     pub fn add_resource(&mut self, resource: Resource) {
-        let pos = Pos2D::random();
+        let pos = CellPos::random();
         match resource {
             Resource::Stone(stone) => self.stones[stone.index()].push_back(pos),
             Resource::Nourriture => self.nourriture.push_back(pos),
@@ -102,6 +109,22 @@ impl Cell {
         }
 
         res
+    }
+
+    pub fn reduce_current_from(&mut self, stone_set: &StoneSet) -> bool {
+        let has_enough_resources = self
+            .stones
+            .iter()
+            .zip(stone_set.iter())
+            .all(|(a, &b)| a.len() >= b);
+        if has_enough_resources {
+            for (idx, &count) in stone_set.iter().enumerate() {
+                for _ in 0..count {
+                    self.stones[idx].pop_front();
+                }
+            }
+        }
+        has_enough_resources
     }
 }
 
@@ -136,7 +159,7 @@ impl Map {
     pub fn add_player(&mut self, id: u16, team_name: &str, position: &Position) {
         log::debug!("Adding {} to the game field.", id);
         let cell = &mut self.field[position.y][position.x];
-        cell.players.insert(id);
+        cell.players.insert(id, CellPos::random()); // TODO
         cell.eggs.get_mut(team_name).unwrap().1 -= 1;
     }
 
