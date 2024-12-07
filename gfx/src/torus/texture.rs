@@ -5,7 +5,7 @@ use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::{Options, Tree};
 use shared::cell::CellPos;
 use shared::math::lerp;
-use shared::resource::{Resource, Stone};
+use shared::resource::{Resource, Stone, RESOURCE_PROPORTION};
 use shared::{cell::Cell, color::RGB, GFXData};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
@@ -104,7 +104,6 @@ fn fill_background(
 }
 
 fn calc_interval(((start_x, end_x), (start_y, end_y)): Interval2D, pos: &CellPos) -> Interval2D {
-    const RESOURCE_PROPORTION: f32 = 0.1;
     let (start_x, end_x) = (
         lerp(start_x as f32, end_x as f32, pos.x - RESOURCE_PROPORTION) as usize,
         lerp(start_x as f32, end_x as f32, pos.x + RESOURCE_PROPORTION) as usize,

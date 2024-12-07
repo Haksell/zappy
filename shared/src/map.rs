@@ -1,5 +1,5 @@
 use crate::{
-    cell::{Cell, CellPos},
+    cell::Cell,
     position::{Direction, Position},
     resource::Resource,
 };

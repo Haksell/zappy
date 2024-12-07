@@ -1,4 +1,4 @@
-use crate::resource::{Resource, Stone, StoneSet};
+use crate::resource::{Resource, Stone, StoneSet, RESOURCE_PROPORTION};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::array;
@@ -11,7 +11,7 @@ pub struct Cell {
     pub players: BTreeMap<u16, CellPos>,
     pub stones: [VecDeque<CellPos>; Stone::SIZE],
     pub nourriture: VecDeque<CellPos>,
-    pub eggs: BTreeMap<String, (usize, usize)>,
+    pub eggs: BTreeMap<String, (usize, usize)>, // TODO: position
 }
 
 impl Cell {
@@ -25,13 +25,18 @@ impl Cell {
     }
 
     pub fn random_position(&self) -> CellPos {
-        // CellPos::random_spaced()
-        // self.players.iter().map(f)
-        CellPos::random() // TODO: random_spaced
+        CellPos::random_spaced(
+            &self
+                .players
+                .values()
+                .chain(self.stones.iter().flatten())
+                .chain(self.nourriture.iter())
+                .collect(), // TODO: chain eggs
+        )
     }
 
     pub fn add_resource(&mut self, resource: Resource) {
-        let pos = CellPos::random();
+        let pos = self.random_position();
         match resource {
             Resource::Stone(stone) => self.stones[stone.index()].push_back(pos),
             Resource::Nourriture => self.nourriture.push_back(pos),
@@ -83,7 +88,7 @@ pub struct CellPos {
 
 impl CellPos {
     pub fn random() -> Self {
-        const PADDING: f32 = 0.08;
+        const PADDING: f32 = RESOURCE_PROPORTION * 1.5;
         let mut thread_rng = rand::thread_rng();
         Self {
             x: thread_rng.gen_range(PADDING..=1. - PADDING),
@@ -96,11 +101,15 @@ impl CellPos {
         (self.x - other.x).powi(2) + (self.y - other.y).powi(2)
     }
 
-    fn random_spaced<I: Iterator<Item = Self>>(others: &mut I) -> Self {
-        let mut max_dist_squared = 1.0;
+    fn random_spaced(others: &Vec<&Self>) -> Self {
+        let mut max_dist_squared = 0.25;
         loop {
+            println!("{max_dist_squared}");
             let pos = Self::random();
-            if others.all(|other| other.dist_squared(&pos) <= max_dist_squared) {
+            if others
+                .iter()
+                .all(|other| other.dist_squared(&pos) >= max_dist_squared)
+            {
                 return pos;
             }
             max_dist_squared *= 0.99;
