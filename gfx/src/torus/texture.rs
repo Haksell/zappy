@@ -5,7 +5,7 @@ use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::{Options, Tree};
 use shared::math::lerp;
 use shared::resource::{Resource, Stone};
-use shared::{color::RGB, map::Cell, GFXData};
+use shared::{cell::Cell, color::RGB, GFXData};
 use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::LazyLock;

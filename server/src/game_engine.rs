@@ -1,9 +1,10 @@
 use crate::args::ServerArgs;
 use derive_getters::Getters;
 use shared::{
+    cell::CellPos,
     color::ZAPPY_COLORS,
     commands::PlayerCmd,
-    map::{CellPos, Map},
+    map::Map,
     player::Player,
     position::{Direction, Position, Side},
     resource::Resource,

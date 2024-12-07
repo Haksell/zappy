@@ -12,8 +12,8 @@ use ratatui::{
     Frame,
 };
 use shared::{
+    cell::CellPos,
     color::ZappyColor,
-    map::CellPos,
     player::Player,
     position::Direction,
     resource::{Resource, Stone, NOURRITURE_COLOR},

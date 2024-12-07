@@ -114,6 +114,7 @@ impl Resource {
         *RESOURCES_WEIGHTS.choose(&mut rng).unwrap()
     }
 
+    // TODO: delete
     pub fn cell_position(&self) -> (f32, f32) {
         match self {
             Resource::Stone(Stone::Deraumere) => (0.15, 0.15),

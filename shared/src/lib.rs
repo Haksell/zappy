@@ -1,3 +1,4 @@
+pub mod cell;
 pub mod color;
 pub mod commands;
 pub mod map;
