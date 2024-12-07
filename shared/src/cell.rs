@@ -70,9 +70,9 @@ impl Cell {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct CellPos {
-    x: f32,
-    y: f32,
-    angle: f32,
+    pub x: f32,
+    pub y: f32,
+    pub angle: f32, // TODO: use
 }
 
 impl CellPos {

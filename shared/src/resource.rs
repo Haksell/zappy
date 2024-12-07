@@ -114,19 +114,6 @@ impl Resource {
         *RESOURCES_WEIGHTS.choose(&mut rng).unwrap()
     }
 
-    // TODO: delete
-    pub fn cell_position(&self) -> (f32, f32) {
-        match self {
-            Resource::Stone(Stone::Deraumere) => (0.15, 0.15),
-            Resource::Stone(Stone::Linemate) => (0.5, 0.15),
-            Resource::Stone(Stone::Mendiane) => (0.85, 0.15),
-            Resource::Stone(Stone::Phiras) => (0.15, 0.85),
-            Resource::Stone(Stone::Sibur) => (0.5, 0.85),
-            Resource::Stone(Stone::Thystame) => (0.85, 0.85),
-            Resource::Nourriture => (0.5, 0.5),
-        }
-    }
-
     pub fn color(&self) -> ZappyColor {
         match self {
             Resource::Stone(stone) => stone.color(),

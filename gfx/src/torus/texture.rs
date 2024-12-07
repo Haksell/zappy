@@ -3,6 +3,7 @@ use super::{server_link::ServerLink, Torus};
 use bevy::prelude::*;
 use resvg::tiny_skia::{Pixmap, Transform};
 use resvg::usvg::{Options, Tree};
+use shared::cell::CellPos;
 use shared::math::lerp;
 use shared::resource::{Resource, Stone};
 use shared::{cell::Cell, color::RGB, GFXData};
@@ -102,19 +103,15 @@ fn fill_background(
     }
 }
 
-fn calc_interval(
-    ((start_x, end_x), (start_y, end_y)): Interval2D,
-    resource: Resource,
-) -> Interval2D {
+fn calc_interval(((start_x, end_x), (start_y, end_y)): Interval2D, pos: &CellPos) -> Interval2D {
     const RESOURCE_PROPORTION: f32 = 0.1;
-    let (cell_x, cell_y) = resource.cell_position();
     let (start_x, end_x) = (
-        lerp(start_x as f32, end_x as f32, cell_x - RESOURCE_PROPORTION) as usize,
-        lerp(start_x as f32, end_x as f32, cell_x + RESOURCE_PROPORTION) as usize,
+        lerp(start_x as f32, end_x as f32, pos.x - RESOURCE_PROPORTION) as usize,
+        lerp(start_x as f32, end_x as f32, pos.x + RESOURCE_PROPORTION) as usize,
     );
     let (start_y, end_y) = (
-        lerp(start_y as f32, end_y as f32, cell_y - RESOURCE_PROPORTION) as usize,
-        lerp(start_y as f32, end_y as f32, cell_y + RESOURCE_PROPORTION) as usize,
+        lerp(start_y as f32, end_y as f32, pos.y - RESOURCE_PROPORTION) as usize,
+        lerp(start_y as f32, end_y as f32, pos.y + RESOURCE_PROPORTION) as usize,
     );
     ((start_x, end_x), (start_y, end_y))
 }
@@ -123,14 +120,14 @@ fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
     // TODO: for each nourriture and resource, take a random x and y in the interval and draw circle of appropriate color
     // TODO: accept several of same type
     // TODO: in GFXData, mix stone count and nourriture count
-    if !cell.nourriture.is_empty() {
-        let nourriture_interval = calc_interval(interval, Resource::Nourriture);
+    for pos in &cell.nourriture {
+        let nourriture_interval = calc_interval(interval, pos);
         blend_pixmap_with_texture(data, &SVGS[&Resource::Nourriture], nourriture_interval);
     }
-    for (i, cnt) in cell.stones.iter().enumerate() {
-        if !cnt.is_empty() {
+    for (i, positions) in cell.stones.iter().enumerate() {
+        for pos in positions {
             let resource = Resource::try_from(i).unwrap();
-            let resource_interval = calc_interval(interval, resource);
+            let resource_interval = calc_interval(interval, pos);
             blend_pixmap_with_texture(data, &SVGS[&resource], resource_interval);
         }
     }
