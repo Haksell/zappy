@@ -10,7 +10,8 @@ use std::collections::HashMap;
 use std::sync::atomic::Ordering;
 use std::sync::LazyLock;
 
-pub const TORUS_TEXTURE_SIZE: usize = 1024;
+pub const TORUS_TEXTURE_SIZE: usize = 2048;
+pub const TORUS_INTERVAL: Interval2D = ((0, TORUS_TEXTURE_SIZE), (0, TORUS_TEXTURE_SIZE));
 pub const SVG_SIZE: usize = 1024;
 
 static SVGS: LazyLock<HashMap<Resource, Pixmap>> = LazyLock::new(|| {
@@ -105,7 +106,7 @@ fn calc_interval(
     ((start_x, end_x), (start_y, end_y)): Interval2D,
     resource: Resource,
 ) -> Interval2D {
-    const RESOURCE_PROPORTION: f32 = 0.12;
+    const RESOURCE_PROPORTION: f32 = 0.1;
     let (cell_x, cell_y) = resource.cell_position();
     let (start_x, end_x) = (
         lerp(start_x as f32, end_x as f32, cell_x - RESOURCE_PROPORTION) as usize,
@@ -134,11 +135,7 @@ fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
 }
 pub fn fill_disconnected(data: &mut [u8]) {
     const DISCONNECTED_COLOR: RGB = (220, 20, 60);
-    fill_background(
-        data,
-        ((0, TORUS_TEXTURE_SIZE), (0, TORUS_TEXTURE_SIZE)),
-        DISCONNECTED_COLOR,
-    );
+    fill_background(data, TORUS_INTERVAL, DISCONNECTED_COLOR);
 }
 
 fn fill_texture(data: &mut [u8], game_state: &Option<GameState>, blackish: RGB) {
@@ -183,11 +180,8 @@ pub fn update_texture(
         let material = materials.get_mut(handle).unwrap();
         let image_handle = material.base_color_texture.as_mut().unwrap();
         let image = images.get_mut(image_handle).unwrap();
-        fill_texture(
-            &mut image.data,
-            &server_link.game_state.lock().unwrap(),
-            torus_transform.blackish,
-        );
+        let game_state = server_link.game_state.lock().unwrap();
+        fill_texture(&mut image.data, &game_state, torus_transform.blackish);
         server_link.update.store(false, Ordering::Relaxed);
     }
 }

@@ -2,7 +2,7 @@ use super::{Torus, TorusTransform, SUBDIVISIONS};
 use bevy::{prelude::*, render::mesh::Indices};
 use std::f32::consts::TAU;
 
-pub fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
+pub fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &TorusTransform) {
     let subdiv = SUBDIVISIONS[torus_transform.subdiv_idx];
 
     let mut positions = Vec::new();
@@ -58,12 +58,12 @@ pub fn fill_torus_mesh(mesh: &mut Mesh, torus_transform: &Res<TorusTransform>) {
 }
 
 pub fn update_torus_mesh(
-    query: Query<(&Handle<Mesh>, &Torus)>,
+    query: Query<&Handle<Mesh>, With<Torus>>,
     mut meshes: ResMut<Assets<Mesh>>,
     torus_transform: Res<TorusTransform>,
 ) {
     if torus_transform.is_changed() {
-        if let Ok((mesh_handle, _)) = query.get_single() {
+        if let Ok(mesh_handle) = query.get_single() {
             if let Some(mesh) = meshes.get_mut(mesh_handle) {
                 fill_torus_mesh(mesh, &torus_transform);
             }

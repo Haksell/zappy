@@ -22,7 +22,7 @@ pub fn handle_mouse_wheel(
         };
         torus_transform.minor_radius = (torus_transform.minor_radius
             + (mouse_event.y * dt * MOUSE_WHEEL_SPEED))
-            .clamp(0.2, 0.95);
+            .clamp(0.2, 0.97);
 
         if let Ok(mut transform) = camera_query.get_single_mut() {
             transform.translation.z = camera_distance(torus_transform.minor_radius);
