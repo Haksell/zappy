@@ -1,6 +1,7 @@
 // TODO: if enough lines, one line for each team
 
 use crate::Message;
+use bevy::tasks::futures_lite::StreamExt as _;
 use itertools::Itertools as _;
 use ratatui::{
     crossterm::event::KeyCode,
@@ -262,38 +263,71 @@ pub async fn render(
     mut data_rx: UnboundedReceiver<Message>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = ratatui::init();
+    let mut prev_state: Option<GameState> = None;
+    let mut event_stream = crossterm::event::EventStream::new();
 
     loop {
-        let message = match data_rx.recv().await {
-            Some(message) => message,
-            None => {
-                eprintln!("None in recv ????");
-                continue;
-            }
-        };
-        match message {
-            Message::Disconnect => {} // TODO: terminal.clear()?;
-            Message::KeyEvent(key) => {
-                if key.code == KeyCode::Esc
-                    || key.code == KeyCode::Char('q')
-                    || key.code == KeyCode::Char('Q')
-                {
-                    break;
+        tokio::select! {
+            event = event_stream.next() => {
+                if let Some(Ok(event)) = event {
+                    match event {
+                        crossterm::event::Event::Key(key) => {
+                            if key.code == KeyCode::Esc || key.code == KeyCode::Char('q') || key.code == KeyCode::Char('Q') {
+                                break;
+                            }
+                        },
+                        crossterm::event::Event::Resize(_, _) => {
+                            if let Some(state) = &prev_state {
+                                terminal.draw(|frame| {
+                                    let layout =
+                                        Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
+                                            .split(frame.area());
+
+                                    draw_field(&state, frame, layout[0]);
+                                    draw_players_bar(&state, frame, layout[1]);
+                                })?;
+                            }
+                        },
+                        _ => {},
+                    }
                 }
             }
-            Message::State(new_state) => {
-                terminal.clear()?; // TODO Test on connect ?
-                terminal.draw(|frame| {
-                    let layout =
-                        Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
-                            .split(frame.area());
+            message = data_rx.recv() => {
+                match message {
+                    Some(message) => {
+                        match message {
+                            Message::Disconnect => {
+                                if prev_state.is_some() {
+                                    terminal.clear()?;
+                                    ratatui::restore();
+                                    prev_state = None;
+                                }
+                            }
+                            Message::State(new_state) => {
+                                if prev_state.is_none() {
+                                    terminal.clear()?;
+                                }
+                                terminal.draw(|frame| {
+                                    let layout =
+                                        Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
+                                            .split(frame.area());
 
-                    draw_field(&new_state, frame, layout[0]);
-                    draw_players_bar(&new_state, frame, layout[1]);
-                })?;
+                                    draw_field(&new_state, frame, layout[0]);
+                                    draw_players_bar(&new_state, frame, layout[1]);
+                                    prev_state = Some(new_state);
+                                })?;
+                            }
+                        }
+                    },
+                    None => {
+                        eprintln!("None in recv ????");
+                        continue;
+                    }
+                }
             }
         }
     }
+
     ratatui::restore();
     Ok(())
 }

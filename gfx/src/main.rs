@@ -3,11 +3,9 @@ mod torus;
 
 use clap::Parser;
 use clap::ValueEnum;
-use crossterm::event::{self, Event, KeyEvent};
 use serde_json::from_str;
 use shared::{GameState, GFX_PORT};
 use std::fmt::Debug;
-use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -16,7 +14,6 @@ use tokio::time::Duration;
 
 enum Message {
     Disconnect,
-    KeyEvent(KeyEvent),
     State(GameState),
 }
 
@@ -56,28 +53,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     let (data_tx, data_rx) = mpsc::unbounded_channel();
-    let data_tx = Arc::new(data_tx);
-
-    if args.engine == Engine::Console {
-        let key_tx = Arc::clone(&data_tx);
-        tokio::spawn(async move {
-            loop {
-                let poll = tokio::task::spawn_blocking(|| event::poll(Duration::from_millis(50)))
-                    .await
-                    .unwrap();
-
-                if let Ok(true) = poll {
-                    let evt = tokio::task::spawn_blocking(|| event::read()).await.unwrap();
-                    if let Ok(Event::Key(key)) = evt {
-                        if key_tx.send(Message::KeyEvent(key)).is_err() {
-                            break;
-                        }
-                    }
-                }
-                tokio::time::sleep(Duration::from_millis(50)).await;
-            }
-        });
-    }
 
     tokio::spawn(async move {
         loop {

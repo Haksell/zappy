@@ -56,7 +56,6 @@ pub fn network_setup(server_link: ResMut<ServerLink>) {
                             *game_state.lock().unwrap() = Some(new_state);
                             update.store(true, Ordering::Relaxed);
                         }
-                        _ => {}
                     }
                 }
             });
