@@ -293,35 +293,34 @@ pub async fn render(
                 }
             }
             message = data_rx.recv() => {
-                match message {
-                    Some(message) => {
-                        match message {
-                            Message::Disconnect => {
-                                if prev_state.is_some() {
-                                    terminal.clear()?;
-                                    ratatui::restore();
-                                    prev_state = None;
-                                }
-                            }
-                            Message::State(new_state) => {
-                                if prev_state.is_none() {
-                                    terminal.clear()?;
-                                }
-                                terminal.draw(|frame| {
-                                    let layout =
-                                        Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
-                                            .split(frame.area());
-
-                                    draw_field(&new_state, frame, layout[0]);
-                                    draw_players_bar(&new_state, frame, layout[1]);
-                                    prev_state = Some(new_state);
-                                })?;
-                            }
-                        }
-                    },
+                let message = match message {
+                    Some(message) => message,
                     None => {
                         eprintln!("None in recv ????");
                         continue;
+                    }
+                };
+                match message {
+                    Message::Disconnect => {
+                        if prev_state.is_some() {
+                            terminal.clear()?;
+                            ratatui::restore();
+                            prev_state = None;
+                        }
+                    }
+                    Message::State(new_state) => {
+                        if prev_state.is_none() {
+                            terminal.clear()?;
+                        }
+                        terminal.draw(|frame| {
+                            let layout =
+                                Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
+                                    .split(frame.area());
+
+                            draw_field(&new_state, frame, layout[0]);
+                            draw_players_bar(&new_state, frame, layout[1]);
+                            prev_state = Some(new_state);
+                        })?;
                     }
                 }
             }
