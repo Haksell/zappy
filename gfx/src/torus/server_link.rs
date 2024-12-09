@@ -48,7 +48,8 @@ pub fn network_setup(server_link: ResMut<ServerLink>) {
                         }
                     };
                     match message {
-                        Message::Disconnect => {
+                        Message::Disconnect(error) => {
+                            eprintln!("Failed to connect: {}, retrying in 1 second...", error);
                             *game_state.lock().unwrap() = None;
                             update.store(true, Ordering::Relaxed);
                         }

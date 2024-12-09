@@ -301,11 +301,20 @@ pub async fn render(
                     }
                 };
                 match message {
-                    Message::Disconnect => {
+                    Message::Disconnect(error) => {
                         if prev_state.is_some() {
                             terminal.clear()?;
                             prev_state = None;
                         }
+                        terminal.draw(|frame| {
+                            let layout = Layout::vertical([Constraint::Percentage(80), Constraint::Percentage(20)])
+                                .split(frame.area());
+
+                            let error_widget = Paragraph::new(format!("Failed to connect: {}, retrying in 1 second...", error))
+                                .block(Block::default().borders(Borders::ALL).title("Error"))
+                                .style(Style::default().fg(Color::Red));
+                            frame.render_widget(error_widget, layout[1]);
+                        })?;
                     }
                     Message::State(new_state) => {
                         if prev_state.is_none() {
