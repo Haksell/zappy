@@ -15,7 +15,6 @@ use ratatui::{
 use shared::{
     color::ZappyColor,
     player::Player,
-    position::Direction,
     resource::{Resource, Stone, NOURRITURE_COLOR},
     GameState,
 };
@@ -41,13 +40,8 @@ fn zappy_to_ratatui_color(color: ZappyColor) -> RatatuiColor {
     }
 }
 
-fn direction_to_emoji(direction: &Direction) -> char {
-    match direction {
-        Direction::North => '^',
-        Direction::East => '>',
-        Direction::South => 'v',
-        Direction::West => '<',
-    }
+fn team_color(data: &GameState, team: &String) -> RatatuiColor {
+    zappy_to_ratatui_color(data.teams.get(team).unwrap().0)
 }
 
 fn map_resource_to_vec_span(nourriture: usize, stones: &[usize; Stone::SIZE]) -> Vec<Span> {
@@ -106,7 +100,7 @@ fn map_player_to_span(color: Color, player: &Player) -> Span {
                 ""
             },
             player.id(),
-            direction_to_emoji(&player.position().dir),
+            player.position().dir.as_char(),
         ),
         Style::default().fg(color),
     )
@@ -148,10 +142,7 @@ fn draw_field(data: &GameState, frame: &mut Frame, area: Rect) {
             let mapped_eggs = cell
                 .eggs
                 .iter()
-                .map(|(team_name, &eggs)| {
-                    let color = data.teams.get(team_name).unwrap().0;
-                    eggs_to_span(eggs, zappy_to_ratatui_color(color))
-                })
+                .map(|(team_name, &eggs)| eggs_to_span(eggs, team_color(data, team_name)))
                 .collect::<Vec<_>>();
             let mapped_player = cell
                 .players
@@ -159,10 +150,7 @@ fn draw_field(data: &GameState, frame: &mut Frame, area: Rect) {
                 .sorted()
                 .map(|p| {
                     let player = data.players.get(p).unwrap();
-                    map_player_to_span(
-                        zappy_to_ratatui_color(data.teams.get(player.team()).unwrap().0),
-                        player,
-                    )
+                    map_player_to_span(team_color(data, player.team()), player)
                 })
                 .collect::<Vec<_>>();
 
@@ -196,15 +184,13 @@ fn draw_players_bar(data: &GameState, frame: &mut Frame, area: Rect) {
 
     let mut teams_data = data
         .teams
-        .keys()
-        .map(|team_name| {
-            //TODO: make function that return color to avoid unwrap and .0 every time
-            let team_color = zappy_to_ratatui_color(data.teams.get(team_name).unwrap().0);
+        .iter()
+        .map(|(team_name, &(team_color, _))| {
             (
                 team_name.clone(),
                 vec![vec![Span::styled(
                     team_name,
-                    Style::default().fg(team_color),
+                    Style::default().fg(zappy_to_ratatui_color(team_color)),
                 )]],
             )
         })
@@ -212,23 +198,21 @@ fn draw_players_bar(data: &GameState, frame: &mut Frame, area: Rect) {
 
     for player in data.players.values() {
         if let Some(details) = teams_data.get_mut(player.team()) {
-            let mut current_player_details: Vec<Span> = Vec::new();
-            let style = Style::default().fg(zappy_to_ratatui_color(
-                data.teams.get(player.team()).unwrap().0,
-            ));
-            current_player_details.push(Span::styled(format!("🧬 {}", player.id()), style));
-            current_player_details.push(Span::raw(" | "));
-            current_player_details.push(Span::styled(
+            let mut player_details: Vec<Span> = Vec::new();
+            let style = Style::default().fg(team_color(data, player.team()));
+            player_details.push(Span::styled(format!("🧬 {}", player.id()), style));
+            player_details.push(Span::raw(" | "));
+            player_details.push(Span::styled(
                 format!("💜 {}", player.remaining_life()),
                 style,
             ));
-            current_player_details.push(Span::raw(" | "));
-            current_player_details.push(Span::raw("⭐".repeat(*player.level() as usize)));
-            current_player_details.push(Span::raw(" | 🎒 "));
-            current_player_details.extend(map_stones_to_vec_span(player.inventory()));
-            current_player_details.push(Span::raw(" |"));
+            player_details.push(Span::raw(" | "));
+            player_details.push(Span::raw("⭐".repeat(*player.level() as usize)));
+            player_details.push(Span::raw(" | 🎒 "));
+            player_details.extend(map_stones_to_vec_span(player.inventory()));
+            player_details.push(Span::raw(" |"));
 
-            details.push(current_player_details);
+            details.push(player_details);
         }
     }
 
