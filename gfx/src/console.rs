@@ -304,7 +304,6 @@ pub async fn render(
                     Message::Disconnect => {
                         if prev_state.is_some() {
                             terminal.clear()?;
-                            ratatui::restore();
                             prev_state = None;
                         }
                     }
