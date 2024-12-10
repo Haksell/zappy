@@ -1,3 +1,4 @@
+use crate::color::ZappyColor;
 use crate::position::Direction;
 use crate::resource::{Resource, Stone, StoneSet, RESOURCE_PROPORTION};
 use rand::Rng;
@@ -8,7 +9,7 @@ use std::collections::{BTreeMap, VecDeque};
 // TODO: change fields to private?
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct Cell {
-    pub players: BTreeMap<u16, CellPos>,
+    pub players: BTreeMap<u16, (ZappyColor, CellPos)>,
     pub stones: [VecDeque<CellPos>; Stone::SIZE],
     pub nourriture: VecDeque<CellPos>,
     pub eggs: BTreeMap<String, (usize, usize)>, // TODO: position
@@ -29,6 +30,7 @@ impl Cell {
             &self
                 .players
                 .values()
+                .map(|(_, pos)| pos)
                 .chain(self.stones.iter().flatten())
                 .chain(self.nourriture.iter())
                 .collect(), // TODO: chain eggs

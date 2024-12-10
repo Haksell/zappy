@@ -91,7 +91,7 @@ fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
         }
     }
     for (id, cell_pos) in &cell.players {
-        println!("{id} {cell_pos:?}");
+        let color = println!("{id} {cell_pos:?}");
     }
 }
 
