@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
 pub type StoneSet = [usize; Stone::SIZE];
-pub const RESOURCE_PROPORTION: f32 = 0.08;
+pub const RESOURCE_PROPORTION: f32 = 0.06;
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Clone, Copy, Hash)]
 #[repr(u8)]

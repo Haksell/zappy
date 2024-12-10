@@ -90,6 +90,9 @@ fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
             blend_pixmap_with_texture(data, &SVGS[&resource], resource_interval);
         }
     }
+    for (id, cell_pos) in &cell.players {
+        println!("{id} {cell_pos:?}");
+    }
 }
 
 pub fn fill_disconnected(data: &mut [u8]) {

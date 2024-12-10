@@ -1,9 +1,9 @@
+use crate::position::Direction;
 use crate::resource::{Resource, Stone, StoneSet, RESOURCE_PROPORTION};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::array;
 use std::collections::{BTreeMap, VecDeque};
-use std::f32::consts::TAU;
 
 // TODO: change fields to private?
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -24,7 +24,7 @@ impl Cell {
         }
     }
 
-    pub fn random_position(&self) -> CellPos {
+    pub fn random_position(&self, dir: Option<Direction>) -> CellPos {
         CellPos::random_spaced(
             &self
                 .players
@@ -32,11 +32,12 @@ impl Cell {
                 .chain(self.stones.iter().flatten())
                 .chain(self.nourriture.iter())
                 .collect(), // TODO: chain eggs
+            dir,
         )
     }
 
     pub fn add_resource(&mut self, resource: Resource) {
-        let pos = self.random_position();
+        let pos = self.random_position(None);
         match resource {
             Resource::Stone(stone) => self.stones[stone.index()].push_back(pos),
             Resource::Nourriture => self.nourriture.push_back(pos),
@@ -77,23 +78,28 @@ impl Cell {
         }
         has_enough_resources
     }
+
+    pub fn add_player(&mut self, id: u16, team_name: &str, dir: Direction) {
+        self.players.insert(id, self.random_position(Some(dir)));
+        self.eggs.get_mut(team_name).unwrap().1 -= 1;
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct CellPos {
     pub x: f32,
     pub y: f32,
-    pub angle: f32, // TODO: use
+    pub dir: Direction, // TODO: use
 }
 
 impl CellPos {
-    pub fn random() -> Self {
+    fn random() -> Self {
         const PADDING: f32 = RESOURCE_PROPORTION * 1.5;
         let mut thread_rng = rand::thread_rng();
         Self {
             x: thread_rng.gen_range(PADDING..=1. - PADDING),
             y: thread_rng.gen_range(PADDING..=1. - PADDING),
-            angle: thread_rng.gen_range(0.0..TAU),
+            dir: Direction::random(),
         }
     }
 
@@ -101,14 +107,17 @@ impl CellPos {
         (self.x - other.x).powi(2) + (self.y - other.y).powi(2)
     }
 
-    fn random_spaced(others: &Vec<&Self>) -> Self {
+    fn random_spaced(others: &Vec<&Self>, dir: Option<Direction>) -> Self {
         let mut max_dist_squared = 0.25;
         loop {
-            let pos = Self::random();
+            let mut pos = Self::random();
             if others
                 .iter()
                 .all(|other| other.dist_squared(&pos) >= max_dist_squared)
             {
+                if let Some(dir) = dir {
+                    pos.dir = dir;
+                }
                 return pos;
             }
             max_dist_squared *= 0.99;

@@ -74,9 +74,10 @@ impl GameEngine {
             .players
             .remove(player.id());
         let new_cell = &mut self.map.field[player.position().y][player.position().x];
-        new_cell
-            .players
-            .insert(*player.id(), new_cell.random_position());
+        new_cell.players.insert(
+            *player.id(),
+            new_cell.random_position(Some(player.position().dir)),
+        );
     }
 
     fn apply_cmd(&mut self, player_id: u16, command: &PlayerCmd) -> Vec<(u16, ServerResponse)> {
@@ -263,7 +264,7 @@ impl GameEngine {
                 let egg = Egg {
                     team_name: player.team().clone(),
                     position: player.position().clone(),
-                    cell_position: cell.random_position(),
+                    cell_position: cell.random_position(None),
                 };
                 self.eggs
                     .entry(self.frame + PlayerCmd::EGG_FETCH_TIME_DELAY)
