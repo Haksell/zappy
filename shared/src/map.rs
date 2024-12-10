@@ -7,7 +7,6 @@ use derive_getters::Getters;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-//TODO: change fields to private?
 #[derive(Debug, Serialize, Deserialize, Getters, Default, Clone, PartialEq)]
 pub struct Map {
     #[getter(skip)]
