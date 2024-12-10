@@ -6,6 +6,7 @@
 mod events;
 mod mesh;
 mod server_link;
+mod svg;
 mod texture;
 
 use crate::Message;

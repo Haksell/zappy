@@ -1,56 +1,18 @@
+use super::svg::{PLAYER_SVG, SVGS};
 use super::TorusTransform;
 use super::{server_link::ServerLink, Torus};
 use bevy::prelude::*;
-use resvg::tiny_skia::{Pixmap, Transform};
-use resvg::usvg::{Options, Tree};
+use resvg::tiny_skia::Pixmap;
 use shared::cell::CellPos;
 use shared::math::lerp;
-use shared::resource::{Resource, Stone, RESOURCE_PROPORTION};
+use shared::resource::{Resource, RESOURCE_PROPORTION};
 use shared::{cell::Cell, color::RGB, GFXData};
-use std::collections::HashMap;
 use std::sync::atomic::Ordering;
-use std::sync::LazyLock;
 
 type Interval2D = ((usize, usize), (usize, usize));
 
 pub const TORUS_TEXTURE_SIZE: usize = 2048;
 pub const TORUS_INTERVAL: Interval2D = ((0, TORUS_TEXTURE_SIZE), (0, TORUS_TEXTURE_SIZE));
-pub const SVG_SIZE: usize = 1024;
-
-static SVGS: LazyLock<HashMap<Resource, Pixmap>> = LazyLock::new(|| {
-    use Stone::*;
-
-    fn load_svg(path: &str) -> Pixmap {
-        let svg_data = std::fs::read(path).expect(&format!("Failed to read {path:?}"));
-        let options = Options::default();
-        let tree = Tree::from_data(&svg_data, &options)
-            .expect(&format!("Failed to parse {path:?} as a SVG"));
-
-        let mut pixmap = Pixmap::new(SVG_SIZE as u32, SVG_SIZE as u32).unwrap();
-
-        let scale_x = SVG_SIZE as f32 / tree.size().width();
-        let scale_y = SVG_SIZE as f32 / tree.size().height();
-        let scale = scale_x.min(scale_y);
-
-        let transform = Transform::from_scale(scale, scale);
-
-        resvg::render(&tree, transform, &mut pixmap.as_mut());
-        pixmap
-    }
-
-    [
-        Resource::Stone(Deraumere),
-        Resource::Stone(Linemate),
-        Resource::Stone(Mendiane),
-        Resource::Stone(Phiras),
-        Resource::Stone(Sibur),
-        Resource::Stone(Thystame),
-        Resource::Nourriture,
-    ]
-    .iter()
-    .map(|&r| (r, load_svg(&format!("gfx/assets/{}.svg", r.alias()))))
-    .collect()
-});
 
 fn write_pixel(data: &mut [u8], x: usize, y: usize, (r, g, b): RGB) {
     data[(y * TORUS_TEXTURE_SIZE + x) * 4] = r;
@@ -127,7 +89,8 @@ fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
         for pos in positions {
             let resource = Resource::try_from(i).unwrap();
             let resource_interval = calc_interval(interval, pos);
-            blend_pixmap_with_texture(data, &SVGS[&resource], resource_interval);
+            // blend_pixmap_with_texture(data, &SVGS[&resource], resource_interval);
+            blend_pixmap_with_texture(data, &PLAYER_SVG, resource_interval);
         }
     }
 }
