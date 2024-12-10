@@ -47,7 +47,7 @@ pub async fn client_routine(
             }
             .await;
 
-            //Specific client loop ends here, cleanup before quiting async task
+            // Specific client loop ends here, cleanup before quiting async task
             client_senders_clone.lock().await.remove(&id);
             server_arc_for_disconnect.lock().await.remove_player(id);
             log::debug!("{} has been deleted by server", id);
@@ -57,7 +57,7 @@ pub async fn client_routine(
                     ZappyError::Game(err) => log::error!("{err}"),
                     ZappyError::Player(err) => {
                         let msg = err.to_string();
-                        //TODO: handle?
+                        // TODO: handle?
                         let _ = client.writeln(msg.as_str()).await;
                         log::info!("{}", err);
                     }
