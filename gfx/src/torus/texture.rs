@@ -1,4 +1,4 @@
-use super::svg::{PLAYER_SVG, SVGS};
+use super::svg::SVGS;
 use super::TorusTransform;
 use super::{server_link::ServerLink, Torus};
 use bevy::prelude::*;
@@ -89,8 +89,7 @@ fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
         for pos in positions {
             let resource = Resource::try_from(i).unwrap();
             let resource_interval = calc_interval(interval, pos);
-            // blend_pixmap_with_texture(data, &SVGS[&resource], resource_interval);
-            blend_pixmap_with_texture(data, &PLAYER_SVG, resource_interval);
+            blend_pixmap_with_texture(data, &SVGS[&resource], resource_interval);
         }
     }
 }
