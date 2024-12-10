@@ -104,7 +104,6 @@ impl CellPos {
     fn random_spaced(others: &Vec<&Self>) -> Self {
         let mut max_dist_squared = 0.25;
         loop {
-            println!("{max_dist_squared}");
             let pos = Self::random();
             if others
                 .iter()
