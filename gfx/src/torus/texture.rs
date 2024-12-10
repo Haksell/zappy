@@ -78,8 +78,6 @@ fn calc_interval(((start_x, end_x), (start_y, end_y)): Interval2D, pos: &CellPos
 }
 
 fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
-    // TODO: for each nourriture and resource, take a random x and y in the interval and draw circle of appropriate color
-    // TODO: accept several of same type
     // TODO: in GFXData, mix stone count and nourriture count
     for pos in &cell.nourriture {
         let nourriture_interval = calc_interval(interval, pos);
