@@ -63,6 +63,15 @@ impl Direction {
             Direction::West => (-1, 0),
         }
     }
+
+    pub fn as_char(&self) -> char {
+        match self {
+            Direction::North => '^',
+            Direction::East => '>',
+            Direction::South => 'v',
+            Direction::West => '<',
+        }
+    }
 }
 
 impl Display for Direction {

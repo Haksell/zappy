@@ -52,7 +52,7 @@ pub fn handle_keyboard(
 
     fn update_value(
         val: &mut f32,
-        keys: &Res<ButtonInput<KeyCode>>,
+        keys: &ButtonInput<KeyCode>,
         key_add: KeyCode,
         key_sub: KeyCode,
         dt: f32,
@@ -70,12 +70,7 @@ pub fn handle_keyboard(
     update_value(&mut tt.rotate_x, &keys, KeyW, KeyS, dt, TAU);
     update_value(&mut tt.rotate_y, &keys, KeyA, KeyD, dt, TAU);
 
-    fn update_color(
-        val: &mut u8,
-        keys: &Res<ButtonInput<KeyCode>>,
-        key_add: KeyCode,
-        key_sub: KeyCode,
-    ) {
+    fn update_color(val: &mut u8, keys: &ButtonInput<KeyCode>, key_add: KeyCode, key_sub: KeyCode) {
         let change = (keys.pressed(key_add) as i16 - keys.pressed(key_sub) as i16) * 5;
         *val = (*val as i16 + change).clamp(0, 255) as u8;
     }

@@ -34,11 +34,10 @@ pub fn network_setup(server_link: ResMut<ServerLink>) {
     let update = Arc::clone(&server_link.update);
 
     thread::spawn(move || {
-        let mut data_rx = data_rx.lock().unwrap();
-
         tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(async move {
+                let mut data_rx = data_rx.lock().unwrap();
                 loop {
                     let message = match data_rx.recv().await {
                         Some(message) => message,
@@ -48,7 +47,8 @@ pub fn network_setup(server_link: ResMut<ServerLink>) {
                         }
                     };
                     match message {
-                        Message::Disconnect => {
+                        Message::Disconnect(error) => {
+                            eprintln!("Failed to connect: {}, retrying in 1 second...", error);
                             *game_state.lock().unwrap() = None;
                             update.store(true, Ordering::Relaxed);
                         }
@@ -56,7 +56,6 @@ pub fn network_setup(server_link: ResMut<ServerLink>) {
                             *game_state.lock().unwrap() = Some(new_state);
                             update.store(true, Ordering::Relaxed);
                         }
-                        _ => {}
                     }
                 }
             });
