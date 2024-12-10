@@ -29,16 +29,15 @@ impl ServerLink {
 }
 
 pub fn network_setup(server_link: ResMut<ServerLink>) {
-    let data_rx = Arc::clone(&server_link.data_rx);
-    let game_state = Arc::clone(&server_link.game_state);
-    let update = Arc::clone(&server_link.update);
+    let data_rx = server_link.data_rx.clone();
+    let game_state = server_link.game_state.clone();
+    let update = server_link.update.clone();
 
     thread::spawn(move || {
-        let mut data_rx = data_rx.lock().unwrap();
-
         tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(async move {
+                let mut data_rx = data_rx.lock().unwrap();
                 loop {
                     let message = match data_rx.recv().await {
                         Some(message) => message,

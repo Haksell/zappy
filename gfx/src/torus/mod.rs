@@ -30,6 +30,8 @@ use texture::{
 use tokio::sync::mpsc::UnboundedReceiver;
 
 const SUBDIVISIONS: &[u16] = &[8, 13, 21, 34, 55, 89, 144, 233];
+const WINDOW_HEIGHT: f32 = 800.;
+const WINDOW_WIDTH: f32 = 800.;
 
 #[derive(Resource, Debug)]
 struct TorusTransform {
@@ -85,7 +87,7 @@ pub async fn render(data_rx: UnboundedReceiver<Message>) -> Result<(), Box<dyn s
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: PROJECT_NAME.into(),
-                resolution: WindowResolution::new(800., 800.), // TODO: consts + hud
+                resolution: WindowResolution::new(WINDOW_WIDTH, WINDOW_HEIGHT), // TODO hud
                 ..Default::default()
             }),
             ..Default::default()
