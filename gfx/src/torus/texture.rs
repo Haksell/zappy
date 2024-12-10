@@ -131,6 +131,7 @@ fn fill_cell(data: &mut [u8], cell: &Cell, interval: Interval2D) {
         }
     }
 }
+
 pub fn fill_disconnected(data: &mut [u8]) {
     const DISCONNECTED_COLOR: RGB = (220, 20, 60);
     fill_background(data, TORUS_INTERVAL, DISCONNECTED_COLOR);
