@@ -132,8 +132,7 @@ pub fn update_texture(
     mut images: ResMut<Assets<Image>>,
     server_link: ResMut<ServerLink>,
 ) {
-    // TODO: remove torus_transform.is_changed()
-    // used now for blackish rgb
+    // TODO: remove torus_transform.is_changed() (used for blackish rgb)
     if server_link.update.load(Ordering::Relaxed) || torus_transform.is_changed() {
         let handle = query.get_single().unwrap();
         let material = materials.get_mut(handle).unwrap();
