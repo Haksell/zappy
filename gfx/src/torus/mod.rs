@@ -60,6 +60,9 @@ impl Default for TorusTransform {
 struct Torus;
 
 pub async fn render(data_rx: UnboundedReceiver<Message>) -> Result<(), Box<dyn std::error::Error>> {
+    let server_link = ServerLink::new();
+    network_setup(data_rx, &server_link);
+
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -70,8 +73,8 @@ pub async fn render(data_rx: UnboundedReceiver<Message>) -> Result<(), Box<dyn s
             ..Default::default()
         }))
         .init_resource::<TorusTransform>()
-        .insert_resource(ServerLink::new(data_rx))
-        .add_systems(Startup, (setup, network_setup))
+        .insert_resource(server_link)
+        .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
