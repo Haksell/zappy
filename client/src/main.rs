@@ -1,4 +1,5 @@
 use clap::Parser;
+use shared::HANDSHAKE_MSG;
 use std::{
     io::{Read as _, Write},
     net::TcpStream,
@@ -27,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bytes_read = stream.read(&mut buffer).unwrap();
     let response = String::from_utf8_lossy(&buffer[..bytes_read]);
     println!("Server response: {}", response);
-    if response != "BIENVENUE\n" {
+    if response != HANDSHAKE_MSG {
         return Err("Server did not greet (Maybe server is not a zappy server)".into());
     }
 

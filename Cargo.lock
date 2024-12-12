@@ -1537,6 +1537,7 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
+ "shared",
 ]
 
 [[package]]
