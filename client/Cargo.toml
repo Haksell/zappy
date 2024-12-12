@@ -7,4 +7,3 @@ edition = "2021"
 clap = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-rustyline = { version = "15.0.0", features = ["custom-bindings", "derive"] }
