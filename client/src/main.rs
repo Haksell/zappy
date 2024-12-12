@@ -1,7 +1,7 @@
 use clap::Parser;
 use shared::HANDSHAKE_MSG;
 use std::{
-    io::{Read as _, Write},
+    io::{BufRead as _, BufReader, Read as _, Write},
     net::TcpStream,
 };
 
@@ -24,20 +24,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stream = TcpStream::connect(format!("{}:{}", args.address, args.port))?;
     eprintln!("Connected to server");
 
-    let mut buffer = [0; 1024];
-    let bytes_read = stream.read(&mut buffer).unwrap();
-    let response = String::from_utf8_lossy(&buffer[..bytes_read]);
-    println!("Server response: {}", response);
-    if response != HANDSHAKE_MSG {
-        return Err("Server did not greet (Maybe server is not a zappy server)".into());
+    let reader = BufReader::new(stream);
+    let mut lines = reader.lines();
+
+    let handshake = lines.next().expect("Handshake not found")?;
+    if handshake + "\n" != HANDSHAKE_MSG {
+        return Err("Invalid handshake (Server may not be a zappy server)".into());
     }
 
-    // TODO validate team
-    stream.write_all(args.team.as_bytes())?;
-    let bytes_read = stream.read(&mut buffer).unwrap();
-    let response = String::from_utf8_lossy(&buffer[..bytes_read]);
-    println!("Server response: {}", response);
+    // stream.write("".as_bytes());
 
+    while let Some(Ok(line)) = lines.next() {
+        println!("Received line '{}'", line);
+    }
+    eprintln!("Connection lost.");
+
+    // TODO validate team
     // TODO ai
 
     Ok(())
