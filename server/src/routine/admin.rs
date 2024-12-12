@@ -8,13 +8,13 @@ use std::error::Error;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Mutex;
 use tokio_rustls::TlsAcceptor;
 
 pub async fn admin_routine(
     server: Arc<Mutex<GameEngine>>,
-    player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
+    player_senders: Arc<Mutex<HashMap<u16, UnboundedSender<ServerCommandToClient>>>>,
     (listener, acceptor): (TcpListener, TlsAcceptor),
     security_context: Arc<Mutex<SecurityContext>>,
 ) -> Result<(), Box<dyn Error>> {
@@ -77,7 +77,7 @@ pub async fn admin_routine(
 async fn handle_admin(
     _server: Arc<Mutex<GameEngine>>,
     client: &mut Connection,
-    _player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
+    _player_senders: Arc<Mutex<HashMap<u16, UnboundedSender<ServerCommandToClient>>>>,
 ) -> Result<(), ZappyError> {
     loop {
         let msg = client.read().await?;

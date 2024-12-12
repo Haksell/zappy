@@ -20,7 +20,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Mutex;
 
 #[tokio::main(flavor = "current_thread")]
@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let admin_listener = TcpListener::bind(format!("127.0.0.1:{}", ADMIN_PORT)).await?;
     let gfx_listener = TcpListener::bind(format!("127.0.0.1:{}", GFX_PORT)).await?;
     let security_context = Arc::new(Mutex::new(SecurityContext::from_env()?));
-    let player_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>> =
+    let player_senders: Arc<Mutex<HashMap<u16, UnboundedSender<ServerCommandToClient>>>> =
         Arc::new(Mutex::new(HashMap::new()));
     let server = Arc::new(Mutex::new(server));
     let acceptor = setup_tls()?;

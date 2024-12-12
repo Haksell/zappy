@@ -6,12 +6,12 @@ use std::error::Error;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::{mpsc, Mutex};
 
 pub async fn client_routine(
     server: Arc<Mutex<GameEngine>>,
-    client_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
+    client_senders: Arc<Mutex<HashMap<u16, UnboundedSender<ServerCommandToClient>>>>,
     listener: TcpListener,
 ) -> Result<(), Box<dyn Error>> {
     loop {
@@ -24,7 +24,7 @@ pub async fn client_routine(
         let client_senders_clone = Arc::clone(&client_senders);
 
         tokio::spawn(async move {
-            let (cmd_tx, cmd_rx) = mpsc::channel::<ServerCommandToClient>(32);
+            let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
             let stream: Pin<Box<dyn AsyncReadWrite + Send>> = Box::pin(socket);
             let mut client = Connection::new(stream, id);
             let handle_result: Result<(), ZappyError> = async {
@@ -70,7 +70,7 @@ pub async fn client_routine(
 async fn handle_client(
     server: Arc<Mutex<GameEngine>>,
     client: &mut Connection,
-    mut cmd_rx: mpsc::Receiver<ServerCommandToClient>,
+    mut cmd_rx: mpsc::UnboundedReceiver<ServerCommandToClient>,
 ) -> Result<(), ZappyError> {
     loop {
         tokio::select! {

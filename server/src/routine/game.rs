@@ -3,12 +3,12 @@ use shared::{ServerCommandToClient, ServerResponse};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Mutex;
 
 pub async fn game_routine(
     server: Arc<Mutex<GameEngine>>,
-    client_senders: Arc<Mutex<HashMap<u16, Sender<ServerCommandToClient>>>>,
+    client_senders: Arc<Mutex<HashMap<u16, UnboundedSender<ServerCommandToClient>>>>,
     tud: u16,
 ) {
     let t0 = tokio::time::Instant::now();
@@ -25,14 +25,13 @@ pub async fn game_routine(
             if let Some(connection) = client_senders.lock().await.get(&client_id) {
                 //TODO: investigate is "slow reader" case is possible?
                 //TODO: for example can send take a lot of time to block us here?
-                if let Err(e) = connection
-                    .send(ServerCommandToClient::SendMessage(response.clone()))
-                    .await
+                if let Err(e) =
+                    connection.send(ServerCommandToClient::SendMessage(response.clone()))
                 {
                     log::error!("Failed to send message to client: {:?}", e);
                 }
                 if let ServerResponse::Mort = response {
-                    if let Err(e) = connection.send(ServerCommandToClient::Shutdown).await {
+                    if let Err(e) = connection.send(ServerCommandToClient::Shutdown) {
                         log::error!("Failed to send message to client: {:?}", e);
                     }
                 }
