@@ -46,7 +46,7 @@ pub(crate) struct ServerArgs {
 
 fn validate_dimension(s: &str) -> Result<usize, String> {
     let dimension: usize = s.parse().map_err(|_| "Not a valid number")?;
-    if (2..100).contains(&dimension) {
+    if (2..=100).contains(&dimension) {
         Ok(dimension)
     } else {
         Err(format!("Grid dimensions must be between 2 and 100"))
@@ -55,7 +55,7 @@ fn validate_dimension(s: &str) -> Result<usize, String> {
 
 fn validate_clients(s: &str) -> Result<u16, String> {
     let clients: u16 = s.parse().map_err(|_| "Not a valid number")?;
-    if clients > 0 && clients <= MAX_PLAYERS_IN_TEAM {
+    if (1..=MAX_PLAYERS_IN_TEAM).contains(&clients) {
         Ok(clients)
     } else {
         Err(format!(
