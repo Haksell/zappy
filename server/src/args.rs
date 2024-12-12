@@ -3,7 +3,6 @@ use derive_builder::Builder;
 use shared::{MAX_PLAYERS_IN_TEAM, MAX_TEAMS};
 
 // TODO: more default values
-// TODO: min max value for width and height
 
 #[derive(Parser, Debug, Builder, Default)]
 #[builder(setter(into))]
@@ -12,10 +11,10 @@ pub(crate) struct ServerArgs {
     #[arg(short, long, help = "Port number", default_value_t = 8080)]
     pub(crate) port: u16,
 
-    #[arg(short('x'), long, help = "World width")]
+    #[arg(short('x'), long, value_parser = validate_dimension, help = "World width")]
     pub(crate) width: usize,
 
-    #[arg(short('y'), long, help = "World height")]
+    #[arg(short('y'), long, value_parser = validate_dimension, help = "World height")]
     pub(crate) height: usize,
 
     #[arg(
@@ -40,9 +39,18 @@ pub(crate) struct ServerArgs {
         long,
         help = "List of team names",
         required = true,
-        num_args = 1..=MAX_TEAMS as usize // TODO: test
+        num_args = 1..=MAX_TEAMS
     )]
     pub(crate) names: Vec<String>,
+}
+
+fn validate_dimension(s: &str) -> Result<usize, String> {
+    let dimension: usize = s.parse().map_err(|_| "Not a valid number")?;
+    if (2..100).contains(&dimension) {
+        Ok(dimension)
+    } else {
+        Err(format!("Grid dimensions must be between 2 and 100"))
+    }
 }
 
 fn validate_clients(s: &str) -> Result<u16, String> {

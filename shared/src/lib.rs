@@ -180,7 +180,7 @@ pub const MAX_FIELD_SIZE: usize = 50;
 pub const MAX_PLAYER_LVL: u8 = 8;
 pub const DECREASED_HP_PER_FRAME: u64 = 1;
 pub const MAX_PLAYERS_IN_TEAM: u16 = 1024;
-pub const MAX_TEAMS: u16 = 14; // TODO: sync with ZappyColor
+pub const MAX_TEAMS: usize = 14; // TODO: sync with ZappyColor
 
 pub const LIFE_TICKS: u64 = 444 * 126;
 pub const LIVES_START: u64 = 10;
