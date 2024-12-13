@@ -36,11 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     sender.write(args.team.as_bytes())?;
 
-    while let Some(Ok(line)) = lines.next() {
-        println!("Received line '{}'", line);
-    }
-
-    let n_clients: usize = lines.next().expect("Missing line from server")?.parse()?;
+    let n_clients: usize = lines.next().expect("Missing line from server")?.parse()?; // Not good number
     let dimensions = lines
         .next()
         .expect("Missing line from server")?
