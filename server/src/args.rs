@@ -22,7 +22,7 @@ pub(crate) struct ServerArgs {
         long,
         default_value_t = 1,
         value_parser = validate_clients,
-        help = "Number of clients authorized at the beginning of the game"
+        help = "Number of clients per team authorized at the beginning of the game"
     )]
     pub(crate) clients: u16,
 

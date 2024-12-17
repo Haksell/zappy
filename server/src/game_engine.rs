@@ -389,7 +389,7 @@ impl GameEngine {
         );
         self.players.insert(player_id, player);
         log::info!("{log_successful_insert}");
-        Ok(team.remaining_members())
+        Ok(team.remaining_members() + 1)
     }
 
     pub fn remove_player(&mut self, player_id: u16) {

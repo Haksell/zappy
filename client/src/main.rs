@@ -32,11 +32,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handshake = lines.next().expect("Handshake not found")?;
     if handshake + "\n" != HANDSHAKE_MSG {
         return Err("Invalid handshake (Server may not be a zappy server)".into());
-    }
+    };
 
     sender.write(args.team.as_bytes())?;
 
-    let n_clients: usize = lines.next().expect("Missing line from server")?.parse()?; // Not good number
+    let line = lines.next().expect("Missing line from server")?;
+    let n_clients: usize = line.parse().map_err(|_| line)?;
+
     let dimensions = lines
         .next()
         .expect("Missing line from server")?
