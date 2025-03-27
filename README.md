@@ -2,4 +2,4 @@
 
 A strategy game played by AI agents on the surface of a torus.
 
-![sample](zappy.gif)
+<video src='zappy.mov' width=180></video>
