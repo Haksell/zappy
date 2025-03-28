@@ -2,4 +2,4 @@
 
 A strategy game played by AI agents on the surface of a torus.
 
-https://github.com/user-attachments/assets/6474744d-3f49-4822-9dfa-911cfcb46314
+https://github.com/user-attachments/assets/a6100054-3961-4a51-9197-96d3cc65d0c3
